@@ -571,9 +571,13 @@ reconstruye lo que cambió.
 
 ### 9.2 Documentos guía
 
-`README.md` · `CONTRIBUTING.md` · `CODESTYLE.md` · `ARCHITECTURE.md` · `SECURITY.md` ·
-`ROADMAP.md` · `SPECS.md` · `CHANGELOG.md` · `DEFINITION_OF_DONE.md` ·
-`docs/arquitectura/adr/` (un archivo por decisión, con contexto, opciones y consecuencias).
+`README.md` · `CONTRIBUTING.md` · `CODESTYLE.md` · `SECURITY.md` · `ROADMAP.md` ·
+`CHANGELOG.md` · `DEFINITION_OF_DONE.md` · `docs/arquitectura/adr/` (un archivo por decisión, con
+contexto, opciones y consecuencias).
+
+**Este documento (`docs/arquitectura/diseno-base.md`) es la especificación viva del proyecto.** Se
+descartaron `SPECS.md` y `ARCHITECTURE.md` como archivos separados para evitar tres documentos que
+describen lo mismo y se contradicen entre sí con el tiempo. Una sola fuente de verdad.
 
 `.gitignore` excluye archivos de entorno (`.env`, `*.local.*`), artefactos de construcción,
 directorios de configuración local de editores y herramientas, y cualquier archivo de credenciales.

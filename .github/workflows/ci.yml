@@ -66,6 +66,10 @@ jobs:
     needs: cambios
     if: needs.cambios.outputs.java == 'true'
     runs-on: ubuntu-latest
+    env:
+      # A nivel de job para poder consultarlo desde el `if` de un paso:
+      # el env declarado dentro de un paso no es visible en su propia condición.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -102,12 +106,17 @@ jobs:
       - name: Vulnerabilidades en dependencias
         run: ./mvnw -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
 
+      # Se omite mientras SONAR_TOKEN no esté configurado, en lugar de fallar.
+      # Se activa solo con cargar el secreto en Settings → Secrets → Actions.
       - name: Análisis SonarCloud
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./mvnw -B sonar:sonar -Dsonar.projectKey=LOAD-13_ayni-bank
+        run: >
+          ./mvnw -B sonar:sonar
+          -Dsonar.projectKey=LOAD-13_ayni-bank
+          -Dsonar.organization=load-13
+          -Dsonar.host.url=https://sonarcloud.io
 
       - name: Publicar informe de pruebas
         if: always()
@@ -184,8 +193,12 @@ jobs:
   # ── 6. Imágenes de contenedor ───────────────────────────────────────────
   imagenes:
     name: Construir y escanear imágenes
-    needs: [secretos, java, python, web]
-    if: always() && !failure() && !cancelled()
+    needs: [cambios, secretos, java, python, web]
+    # Solo cuando hay código de servicio. Mientras services/ esté vacío
+    # (Sprint 0, AYNI-38) este job se omite en lugar de fallar.
+    if: |
+      always() && !failure() && !cancelled() &&
+      (needs.cambios.outputs.java == 'true' || needs.cambios.outputs.python == 'true')
     runs-on: ubuntu-latest
     strategy:
       matrix:
