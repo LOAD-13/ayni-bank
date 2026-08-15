@@ -1,0 +1,171 @@
+name: CD
+
+on:
+  push:
+    branches: [develop]          # → despliegue automático a staging (Raspberry Pi 5)
+  release:
+    types: [published]           # → despliegue a producción, con aprobación manual
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/load-13/ayni
+
+jobs:
+
+  # ── Publicar imágenes multi-arquitectura ARM64 ──────────────────────────
+  publicar:
+    name: Publicar imágenes en GHCR
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        servicio:
+          - ayni-gateway
+          - ayni-identity-service
+          - ayni-core-banking-service
+          - ayni-notification-service
+          - ayni-kyc-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Autenticarse en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular etiquetas
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.servicio }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      # ARM64 porque staging (Raspberry Pi 5) y producción (Oracle Ampere)
+      # comparten arquitectura: la misma imagen corre en ambos sin recompilar.
+      - name: Construir y publicar (linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.servicio }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Staging: automático, sin intervención ───────────────────────────────
+  staging:
+    name: Desplegar a staging
+    if: github.event_name == 'push'
+    needs: publicar
+    runs-on: [self-hosted, raspberry-pi]      # runner en la Raspberry Pi 5
+    environment:
+      name: staging
+      url: https://staging.ayni.pe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Desplegar
+        run: |
+          cd infra/docker
+          docker compose -f docker-compose.staging.yml pull
+          docker compose -f docker-compose.staging.yml up -d --remove-orphans
+          docker image prune -f
+
+      - name: Esperar a que los servicios estén sanos
+        run: ./infra/scripts/esperar-salud.sh https://staging.ayni.pe 180
+
+      - name: Pruebas de humo
+        run: ./infra/scripts/pruebas-humo.sh https://staging.ayni.pe
+
+  # ── Pruebas end-to-end sobre staging ────────────────────────────────────
+  e2e:
+    name: Pruebas E2E y seguridad en staging
+    if: github.event_name == 'push'
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: npm, cache-dependency-path: web/ayni-web/package-lock.json }
+
+      - name: Suite Playwright
+        working-directory: web/ayni-web
+        env:
+          E2E_BASE_URL: https://staging.ayni.pe
+        run: npm ci && npx playwright install --with-deps && npm run test:e2e
+
+      - name: Escaneo dinámico OWASP ZAP
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: https://staging.ayni.pe
+          fail_action: false        # informa, no bloquea el despliegue de staging
+
+      - name: Publicar informes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-e2e
+          path: |
+            web/ayni-web/playwright-report/
+            report_html.html
+
+  # ── Producción: requiere aprobación explícita del Product Owner ─────────
+  produccion:
+    name: Desplegar a producción
+    if: github.event_name == 'release'
+    needs: publicar
+    runs-on: ubuntu-latest
+    environment:
+      name: production          # ← protegida: exige aprobación manual en GitHub
+      url: https://ayni.pe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Respaldar la base de datos antes de desplegar
+        run: ./infra/scripts/respaldo-produccion.sh
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Guardar la versión actual para poder revertir
+        id: anterior
+        run: echo "tag=$(./infra/scripts/version-desplegada.sh)" >> "$GITHUB_OUTPUT"
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Desplegar en Oracle Cloud
+        run: ./infra/scripts/desplegar-produccion.sh "${{ github.event.release.tag_name }}"
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Pruebas de humo post-despliegue
+        id: humo
+        run: ./infra/scripts/pruebas-humo.sh https://ayni.pe
+
+      # Si las pruebas de humo fallan, se revierte solo. No se deja producción rota.
+      - name: Revertir automáticamente si las pruebas fallan
+        if: failure() && steps.humo.outcome == 'failure'
+        run: ./infra/scripts/desplegar-produccion.sh "${{ steps.anterior.outputs.tag }}"
+        env:
+          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Registrar el despliegue
+        if: success()
+        run: |
+          echo "Versión ${{ github.event.release.tag_name }} desplegada en producción."
+          echo "Aprobado por: ${{ github.actor }}"

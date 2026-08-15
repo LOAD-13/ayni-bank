@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: ayni-servicios
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - ayni-gateway:8080
+          - ayni-identity-service:8080
+          - ayni-core-banking-service:8080
+          - ayni-notification-service:8080
+        labels: { entorno: dev }
+
+  - job_name: ayni-kyc
+    metrics_path: /metrics
+    static_configs:
+      - targets: [ayni-kyc-service:8000]
+        labels: { entorno: dev }

@@ -1,0 +1,234 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+
+jobs:
+
+  # ── 1. Ningún secreto entra al repositorio ──────────────────────────────
+  secretos:
+    name: Escaneo de secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # historial completo: Gitleaks revisa commits antiguos
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── 2. Detecta qué cambió para no reconstruir todo el monorepo ──────────
+  cambios:
+    name: Detectar cambios
+    runs-on: ubuntu-latest
+    outputs:
+      java: ${{ steps.filtro.outputs.java }}
+      python: ${{ steps.filtro.outputs.python }}
+      web: ${{ steps.filtro.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filtro
+        with:
+          filters: |
+            java:
+              - 'services/ayni-gateway/**'
+              - 'services/ayni-identity-service/**'
+              - 'services/ayni-core-banking-service/**'
+              - 'services/ayni-notification-service/**'
+              - 'contracts/**'
+            python:
+              - 'services/ayni-kyc-service/**'
+              - 'contracts/**'
+            web:
+              - 'web/**'
+
+  # ── 3. Servicios Java: estilo, arquitectura, pruebas, cobertura ─────────
+  java:
+    name: Java · calidad y pruebas
+    needs: cambios
+    if: needs.cambios.outputs.java == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Verificar formato (Spotless + Checkstyle)
+        run: ./mvnw -B spotless:check checkstyle:check
+
+      - name: Compilar
+        run: ./mvnw -B clean compile
+
+      - name: Pruebas unitarias de dominio
+        run: ./mvnw -B test -Dgroups=unit
+
+      # La arquitectura no es una recomendación: si se viola, el build falla.
+      - name: Verificar arquitectura hexagonal (ArchUnit)
+        run: ./mvnw -B test -Dtest='*ArquitecturaTest'
+
+      - name: Pruebas de integración (Testcontainers)
+        run: ./mvnw -B verify -Dgroups=integration
+
+      - name: Criterios de aceptación (Cucumber)
+        run: ./mvnw -B verify -Dgroups=acceptance
+
+      - name: Umbral de cobertura (JaCoCo ≥ 80% en dominio)
+        run: ./mvnw -B jacoco:check
+
+      - name: Vulnerabilidades en dependencias
+        run: ./mvnw -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7
+
+      - name: Análisis SonarCloud
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./mvnw -B sonar:sonar -Dsonar.projectKey=LOAD-13_ayni-bank
+
+      - name: Publicar informe de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-java
+          path: |
+            **/target/surefire-reports/
+            **/target/site/jacoco/
+
+  # ── 4. Servicio de visión (Python) ──────────────────────────────────────
+  python:
+    name: Python · calidad y pruebas
+    needs: cambios
+    if: needs.cambios.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ayni-kyc-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Formato y linting (Ruff)
+        run: ruff check . && ruff format --check .
+
+      - name: Tipado estricto (mypy)
+        run: mypy --strict src/
+
+      - name: Pruebas
+        run: pytest --cov=src --cov-report=xml --cov-fail-under=80
+
+      # Si Python cambia el contrato, Java debe enterarse en este PR, no en producción.
+      - name: Validar contrato OpenAPI
+        run: python -m scripts.validar_contrato ../../contracts/kyc-service.openapi.yaml
+
+  # ── 5. Aplicación web ───────────────────────────────────────────────────
+  web:
+    name: Web · calidad y accesibilidad
+    needs: cambios
+    if: needs.cambios.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/ayni-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/ayni-web/package-lock.json
+
+      - run: npm ci
+      - name: Linting y formato
+        run: npm run lint && npm run format:check
+      - name: Verificación de tipos
+        run: npm run typecheck
+      - name: Pruebas
+        run: npm run test -- --coverage
+      - name: Construir
+        run: npm run build
+      - name: Accesibilidad (axe-core · WCAG 2.1 AA)
+        run: npm run test:a11y
+
+  # ── 6. Imágenes de contenedor ───────────────────────────────────────────
+  imagenes:
+    name: Construir y escanear imágenes
+    needs: [secretos, java, python, web]
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        servicio:
+          - ayni-gateway
+          - ayni-identity-service
+          - ayni-core-banking-service
+          - ayni-notification-service
+          - ayni-kyc-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir imagen (sin publicar)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.servicio }}
+          push: false
+          load: true
+          tags: ayni/${{ matrix.servicio }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Escanear vulnerabilidades (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ayni/${{ matrix.servicio }}:ci
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+  # ── 7. Puerta única que las reglas de rama exigen ───────────────────────
+  ci-ok:
+    name: CI completa
+    needs: [secretos, java, python, web, imagenes]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar que ningún job falló
+        run: |
+          if echo '${{ toJSON(needs) }}' | grep -q '"result": *"failure"'; then
+            echo "::error::Al menos un job de CI falló. El PR no puede fusionarse."
+            exit 1
+          fi
+          echo "Todas las verificaciones pasaron."

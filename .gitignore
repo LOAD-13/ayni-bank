@@ -1,0 +1,79 @@
+# === Entorno y secretos ===
+.env
+.env.*
+!.env.example
+*.local.*
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# === Configuración local de herramientas y editores ===
+.claude/
+.cursor/
+.aider*
+.mcp.json
+.history/
+
+# === Java / Maven / Gradle ===
+target/
+build/
+!**/src/**/target/
+.gradle/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+hs_err_pid*
+replay_pid*
+
+# === Python ===
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# === Node / Next.js ===
+node_modules/
+.next/
+out/
+.turbo/
+dist/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+
+# === Docker y datos locales ===
+docker-data/
+postgres-data/
+minio-data/
+rabbitmq-data/
+grafana-data/
+
+# === IDE ===
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+*.swp
+.settings/
+.project
+.classpath
+
+# === Sistema operativo ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Reportes y artefactos de pruebas ===
+*.log
+logs/
+playwright-report/
+test-results/
+allure-results/
+.scannerwork/
