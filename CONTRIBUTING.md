@@ -167,6 +167,98 @@ AYNI-42
 - **Squash and merge** hacia `develop`, para que el historial quede legible.
 - Quien abre el PR **no** lo aprueba.
 
+### Tras fusionar: la rama se elimina
+
+```bash
+# Remoto (o el botón "Delete branch" que aparece tras el merge)
+git push origin --delete feature/AYNI-42-registro-de-usuario
+
+# Local
+git switch develop
+git pull origin develop
+git branch -d feature/AYNI-42-registro-de-usuario
+
+# Limpiar referencias a ramas remotas ya borradas
+git fetch --prune
+```
+
+**No se pierde trazabilidad.** El *squash* arrastra los commits a `develop`, la clave de Jira viaja
+en el nombre de la rama, en el mensaje de commit y en el título del PR, y **el Pull Request queda
+archivado en GitHub para siempre** con su diff completo, su revisión y su discusión. Conservar
+ramas muertas solo ensucia el listado y dificulta encontrar las vivas.
+
+---
+
+## 3.b Versionado y etiquetas
+
+**Cada versión funcional que llega a `main` se etiqueta.** Ese es el mecanismo de reversión: sin
+tags no hay a dónde volver.
+
+### Versionado semántico
+
+`MAJOR.MINOR.PATCH` — por ejemplo `v1.2.3`
+
+| Parte | Se incrementa cuando |
+|---|---|
+| `MAJOR` | Cambio incompatible: se rompe un contrato de API existente |
+| `MINOR` | Nueva funcionalidad compatible hacia atrás |
+| `PATCH` | Corrección de defecto sin cambio funcional |
+
+Antes del primer despliegue a producción usamos `v0.x.y`. El **`v1.0.0` se reserva para el MVP** del
+13 de diciembre.
+
+### Crear una versión
+
+```bash
+# 1. Rama de estabilización desde develop
+git switch develop && git pull origin develop
+git switch -c release/1.0.0
+
+# 2. Actualizar CHANGELOG.md y la versión en los POM
+git commit -m "chore(release): preparar la versión 1.0.0"
+git push -u origin release/1.0.0
+
+# 3. Pull Request de release/1.0.0 hacia main, con aprobación
+
+# 4. Tras fusionar, etiquetar main
+git switch main && git pull origin main
+git tag -a v1.0.0 -m "Release 1.0.0 — MVP Ayni Bank
+
+Onboarding KYC con verificación documental y biométrica.
+Cuenta de ahorro remunerada en soles y dólares con devengo diario.
+Tarjeta de débito virtual con controles del cliente.
+Transferencias internas e interbancarias."
+git push origin v1.0.0
+
+# 5. Devolver los cambios de la release a develop
+git switch develop
+git merge --no-ff main
+git push origin develop
+```
+
+El push del tag **dispara el despliegue a producción**, que queda esperando la aprobación del
+Product Owner en el entorno `production` de GitHub.
+
+Después, en GitHub → **Releases → Draft a new release** → seleccionar el tag y publicar las notas.
+
+### Revertir a una versión anterior
+
+```bash
+# Ver las versiones disponibles
+git tag -l --sort=-version:refname
+
+# Ver qué contenía una versión
+git show v1.0.0
+
+# Desplegar una versión anterior: publicar de nuevo ese release,
+# o desplegar su imagen desde GHCR
+docker pull ghcr.io/load-13/ayni-core-banking-service:1.0.0
+```
+
+**Los tags no se borran ni se mueven nunca.** Un tag es un punto fijo en la historia: si se
+reescribe, cualquiera que hubiera desplegado esa versión tendría algo distinto de lo que dice tener.
+Si una versión sale mal, se publica una nueva (`v1.0.1`), no se corrige la anterior.
+
 ---
 
 ## 4. Revisión de código
