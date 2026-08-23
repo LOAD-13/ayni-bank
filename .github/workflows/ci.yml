@@ -98,7 +98,10 @@ jobs:
 
       # Se omite mientras SONAR_TOKEN no esté configurado, en lugar de fallar.
       # Se activa solo con cargar el secreto en Settings → Secrets → Actions.
+      # No bloquea mientras no se confirme la clave de organizacion y el binding
+      # del proyecto en SonarCloud. Se vuelve bloqueante en cuanto reporte en verde.
       - name: Análisis SonarCloud
+        continue-on-error: true
         if: github.event_name == 'pull_request' && env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
