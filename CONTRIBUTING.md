@@ -127,6 +127,55 @@ git rebase develop
 ./mvnw clean verify
 ```
 
+### Reproducir el pipeline en local
+
+El Sprint 0 se cerró tras ocho rondas de CI, y **las ocho eran reproducibles en local**. Cada
+ronda cuesta entre cinco y quince minutos de espera; reproducirla en local cuesta segundos. Antes
+de subir, ejecuta la verificación que corresponda a lo que tocaste.
+
+**Servicios Java.** `verify` incluye ArchUnit; si falla ahí, falla en el CI.
+
+```bash
+./mvnw -B clean verify
+```
+
+**Servicio Python.** Instala en un **entorno virtual nuevo**, no sobre uno ya poblado. `pip`
+actualiza sin reevaluar las restricciones de los paquetes que ya estaban instalados, así que un
+conflicto de versiones puede no aparecer en tu máquina y sí en el CI, que siempre instala en
+limpio.
+
+```bash
+cd services/ayni-kyc-service
+python -m venv .venv-check
+.venv-check/bin/pip install -r requirements.txt -r requirements-dev.txt   # Scripts/pip en Windows
+ruff check . && mypy --strict src/ && pytest -q
+```
+
+**Vulnerabilidades de contenedor.** No hace falta Docker: Trivy analiza el jar directamente y
+detecta las mismas dependencias que encontraría dentro de la imagen.
+
+```bash
+./mvnw -B clean package -DskipTests
+mkdir -p /tmp/escaneo && cp services/ayni-gateway/target/*.jar /tmp/escaneo/app.jar
+trivy rootfs --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 /tmp/escaneo
+```
+
+Usa **la misma versión de Trivy que el pipeline** (hoy 0.74.0) o los resultados no serán
+comparables.
+
+### Dos causas de fallo que no son culpa tuya
+
+- **`429 Too Many Requests` de Maven Central.** Los cinco jobs de imagen descienden el árbol de
+  dependencias a la vez y Central corta. Es transitorio: **Re-run failed jobs**. Si el job
+  `Java · calidad y pruebas` está en verde, la versión existe y el problema es de tasa, no del POM.
+- **`mvnw: Permission denied`.** El bit de ejecución se perdió al añadir el fichero desde Windows.
+  `.gitattributes` **no** lo corrige:
+
+  ```bash
+  git update-index --chmod=+x mvnw
+  git ls-files -s mvnw        # debe mostrar 100755, no 100644
+  ```
+
 ### Título del PR
 
 Mismo formato que un commit: `feat(identity): registro de usuario con validación de contraseña`
@@ -316,12 +365,26 @@ Los **seis integrantes** del equipo son Developers.
 git clone https://github.com/LOAD-13/ayni-bank.git
 cd ayni-bank
 cp .env.example .env
-docker compose -f infra/docker/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait
 ```
+
+**`--env-file .env` no es opcional.** Compose busca el `.env` en el directorio del fichero compose
+—`infra/docker/`—, no en aquel desde el que lo invocas. Sin esa opción las variables se interpolan
+a cadena vacía, y el fallo es confuso porque Compose solo lo advierte: verás a Postgres negarse a
+arrancar por contraseña vacía sin que la causa aparezca por ningún lado.
+
+`--wait` hace que el comando no devuelva el control hasta que todos los servicios estén *healthy*,
+o falle si alguno no lo consigue. Es lo que convierte «levantó» en «funciona».
 
 Si algo no arranca, revisa primero los health checks:
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml ps
-docker compose -f infra/docker/docker-compose.yml logs -f ayni-core-banking-service
+docker compose --env-file .env -f infra/docker/docker-compose.yml ps
+docker compose --env-file .env -f infra/docker/docker-compose.yml logs -f ayni-core-banking-service
+```
+
+Para empezar de cero, incluidos los volúmenes de datos:
+
+```bash
+docker compose --env-file .env -f infra/docker/docker-compose.yml down -v
 ```

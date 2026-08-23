@@ -3,15 +3,20 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
+  # Cada servicio escucha en su propio puerto: el 8080 es solo el del gateway.
+  # Se declaran por separado para poder etiquetar el servicio, que es lo que
+  # permite filtrar por servicio en Grafana.
   - job_name: ayni-servicios
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets:
-          - ayni-gateway:8080
-          - ayni-identity-service:8080
-          - ayni-core-banking-service:8080
-          - ayni-notification-service:8080
-        labels: { entorno: dev }
+      - targets: [ayni-gateway:8080]
+        labels: { entorno: dev, servicio: ayni-gateway }
+      - targets: [ayni-identity-service:8081]
+        labels: { entorno: dev, servicio: ayni-identity-service }
+      - targets: [ayni-core-banking-service:8082]
+        labels: { entorno: dev, servicio: ayni-core-banking-service }
+      - targets: [ayni-notification-service:8083]
+        labels: { entorno: dev, servicio: ayni-notification-service }
 
   - job_name: ayni-kyc
     metrics_path: /metrics

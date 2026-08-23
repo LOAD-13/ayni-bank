@@ -1,0 +1,19 @@
+# Fuentes de datos aprovisionadas al arrancar Grafana. Sin esto, el entorno
+# levanta pero Grafana aparece vacio y hay que configurarlo a mano en cada
+# maquina, que es justo lo que HU-18 quiere evitar.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
