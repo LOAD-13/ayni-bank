@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 # Imagen ARM64 para Raspberry Pi 5 y Oracle Ampere. Ver ADR-0005.
+# El contexto de construccion es la RAIZ del repositorio, igual que en los
+# servicios Java, para que el CI use un unico criterio.
 
 FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
@@ -7,10 +9,10 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends         libglib2.0-0 libgl1 curl     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/ayni-kyc-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src ./src
+COPY services/ayni-kyc-service/src ./src
 
 RUN useradd --create-home --shell /bin/false ayni && chown -R ayni:ayni /app
 USER ayni

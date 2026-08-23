@@ -32,6 +32,15 @@
         <archunit.version>1.3.0</archunit.version>
         <jacoco.version>0.8.12</jacoco.version>
         <sonar.version>5.0.0.4389</sonar.version>
+        <!-- Excluidas del calculo de cobertura: clases de arranque de Spring Boot,
+             configuracion y puertos del dominio. Son declaraciones sin logica, y
+             medir su cobertura no dice nada sobre la calidad de las pruebas.
+             El umbral del 80 % se aplica al dominio, que es donde vive el negocio. -->
+        <sonar.coverage.exclusions>
+            **/*Application.java,
+            **/infrastructure/config/**,
+            **/domain/port/**
+        </sonar.coverage.exclusions>
         <!-- Umbral de cobertura del dominio exigido por la Definition of Done -->
         <jacoco.dominio.minimo>0.80</jacoco.dominio.minimo>
     </properties>
