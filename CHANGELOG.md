@@ -11,7 +11,15 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
 ### Añadido
 - Estructura inicial del monorepo con arquitectura hexagonal.
 - Documentos guía: contribución, estilo de código, seguridad, hoja de ruta y Definition of Done.
-- Registro de decisiones arquitectónicas (ADR-0001 a ADR-0005).
+- Registro de decisiones arquitectónicas (ADR-0001 a ADR-0006).
 - Sistema de diseño derivado de la identidad visual de la marca.
 - Entorno de desarrollo con Docker Compose: PostgreSQL, RabbitMQ, MinIO y observabilidad.
 - Pipelines de integración y despliegue continuos en GitHub Actions.
+- Esqueleto hexagonal de los cinco servicios, con health checks, reglas de ArchUnit e imágenes
+  ARM64 multi-etapa.
+
+### Seguridad
+- Elevado el BOM a Spring Boot 3.5.16 y Spring Cloud 2025.0.3, y fijado Netty 4.1.136.Final, tras
+  detectar Trivy 4 vulnerabilidades críticas y 95 altas en las imágenes de los servicios Java.
+- Elevadas las dependencias de `ayni-kyc-service` para corregir la falsificación de peticiones en
+  Starlette y la escritura arbitraria de ficheros en `python-multipart`.

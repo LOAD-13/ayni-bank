@@ -102,9 +102,14 @@ services:
 
   # ─────────────────────────── Servicios Ayni ───────────────────────────
 
+  # El contexto de construccion es la raiz del repositorio, no el directorio del
+  # servicio: el Dockerfile copia el pom.xml padre y los pom de los cuatro modulos
+  # Java, porque Maven aborta si el padre declara un modulo que no encuentra.
   ayni-gateway:
     <<: *java-common
-    build: ../../services/ayni-gateway
+    build:
+      context: ../..
+      dockerfile: services/ayni-gateway/Dockerfile
     container_name: ayni-gateway
     ports: ["8080:8080"]
     depends_on:
@@ -118,7 +123,9 @@ services:
 
   ayni-identity-service:
     <<: *java-common
-    build: ../../services/ayni-identity-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-identity-service/Dockerfile
     container_name: ayni-identity-service
     environment:
       <<: *java-env
@@ -130,7 +137,9 @@ services:
 
   ayni-core-banking-service:
     <<: *java-common
-    build: ../../services/ayni-core-banking-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-core-banking-service/Dockerfile
     container_name: ayni-core-banking-service
     environment:
       <<: *java-env
@@ -141,7 +150,9 @@ services:
 
   ayni-notification-service:
     <<: *java-common
-    build: ../../services/ayni-notification-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-notification-service/Dockerfile
     container_name: ayni-notification-service
     environment:
       <<: *java-env
@@ -154,7 +165,9 @@ services:
       rabbitmq: { condition: service_healthy }
 
   ayni-kyc-service:
-    build: ../../services/ayni-kyc-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-kyc-service/Dockerfile
     container_name: ayni-kyc-service
     restart: unless-stopped
     environment:
@@ -172,16 +185,23 @@ services:
       retries: 5
     networks: [ayni]
 
-  ayni-web:
-    build: ../../web/ayni-web
-    container_name: ayni-web
-    restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-    ports: ["3000:3000"]
-    depends_on:
-      ayni-gateway: { condition: service_started }
-    networks: [ayni]
+  # ayni-web se reincorpora al andamiar la aplicacion Next.js. Mientras `web/`
+  # este vacio, declararlo aqui hace fallar `docker compose up` entero: Compose
+  # intenta construir un contexto sin Dockerfile y aborta antes de levantar nada.
+  # Ver la seccion «Alcance ajustado» de docs/gestion/sprint-backlog/sprint-0.md
+  #
+  # ayni-web:
+  #   build:
+  #     context: ../..
+  #     dockerfile: web/ayni-web/Dockerfile
+  #   container_name: ayni-web
+  #   restart: unless-stopped
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: http://localhost:8080
+  #   ports: ["3000:3000"]
+  #   depends_on:
+  #     ayni-gateway: { condition: service_started }
+  #   networks: [ayni]
 
   # ─────────────────────────── Observabilidad ───────────────────────────
 

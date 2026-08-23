@@ -71,7 +71,7 @@ de entregar**.
 | 3 | Configurar `.gitignore` y `.gitattributes` | 1h |
 | 4 | Invitar al equipo y verificar permisos | 1h |
 
-### `AYNI-38` · T-07 · Esqueleto hexagonal de los cinco servicios ⬜ [8 pts]
+### `AYNI-38` · T-07 · Esqueleto hexagonal de los cinco servicios ✅ [8 pts]
 
 | # | Subtarea | Est. |
 |---|---|---|
@@ -129,17 +129,39 @@ de entregar**.
 
 ---
 
-## Estado al 15 de agosto de 2026
+## Estado al 23 de agosto de 2026
 
 | Estado | Ítems | Puntos |
 |---|---|---|
-| ✅ Hecho | 8 | 37 |
-| 🟡 En curso | 2 | 11 |
-| ⬜ Por hacer | 1 | 8 |
+| ✅ Hecho | 10 | 48 |
+| 🟡 En curso | 1 | 8 |
 
-**Impedimento identificado:** `AYNI-38` (esqueleto hexagonal) bloquea el cierre de `AYNI-29`. Sin
-servicios, `docker compose up` no puede levantar la aplicación y la historia no cumple su criterio
-de aceptación. Es el primer trabajo del equipo.
+Queda `AYNI-29` (HU-18), que es el último ítem del sprint.
+
+**Impedimento resuelto.** `AYNI-38` bloqueaba el cierre de `AYNI-29`: sin servicios,
+`docker compose up` no podía levantar la aplicación. El esqueleto se fusionó en `develop` el 23 de
+agosto y con él quedan en pie los cinco servicios, sus health checks, las reglas de ArchUnit y las
+imágenes ARM64.
+
+### Lo aprendido, para el Sprint 1
+
+El esqueleto necesitó **ocho rondas de integración continua**, todas por fallos reales y todas
+reproducibles en local. Dos acciones concretas salen de aquí:
+
+1. La sección [«Reproducir el pipeline en local»](../../../CONTRIBUTING.md) recoge el comando de
+   verificación de cada tecnología. Ejecutarla antes de subir deja de ser opcional.
+2. El job `imagenes` usa `fail-fast` por omisión: cuando un servicio de la matriz falla, GitHub
+   cancela los otros cuatro y se pierde su resultado. Eso convirtió en ocho rondas secuenciales lo
+   que podían haber sido dos o tres. Pendiente para el Sprint 1: `fail-fast: false` y
+   `max-parallel: 2`, que además mitiga el `429` de Maven Central.
+
+### Alcance ajustado
+
+- **`ayni-web` sale del `docker-compose` del Sprint 0.** El directorio `web/` está vacío: andamiar
+  Next.js implica configurar lint, formato, tipos, pruebas y axe-core, que es trabajo de una
+  Historia propia y no del entorno reproducible. Se reincorpora al levantar la aplicación web.
+- **Las puertas de calidad se activan de forma escalonada.** Ver
+  [ADR-0006](../../arquitectura/adr/0006-activacion-escalonada-de-las-puertas-de-calidad.md).
 
 ## Definition of Done
 
