@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+# UP042 sugiere enum.StrEnum, que exige Python 3.11+. Se mantiene (str, Enum)
+# por compatibilidad con los entornos locales del equipo; el comportamiento es
+# equivalente y la imagen de produccion corre sobre Python 3.12.
+ignore = ["UP042"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+# La libreria no publica stubs de tipos.
+module = ["prometheus_fastapi_instrumentator.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
