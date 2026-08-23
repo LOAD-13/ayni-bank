@@ -2,6 +2,33 @@ spring:
   application:
     name: ayni-identity-service
 
+  # ─── Base de datos ───────────────────────────────────────────────────────
+  # Los valores por defecto permiten arrancar contra la infraestructura del
+  # docker compose sin exportar nada. En contenedor los sobreescribe el entorno.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ayni}
+    username: ${SPRING_DATASOURCE_USERNAME:ayni_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:cambiar_en_local}
+    hikari:
+      pool-name: ayni-identity-service-pool
+      maximum-pool-size: 10
+
+  # Cada servicio migra unicamente su propio schema. Ningun servicio lee ni
+  # altera tablas de otro: esa frontera es el limite del bounded context.
+  flyway:
+    enabled: true
+    schemas: identity
+    default-schema: identity
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    # Nunca baseline automatico: si el schema tiene objetos que Flyway no
+    # registro, queremos enterarnos, no que los de por buenos en silencio.
+    baseline-on-migrate: false
+
+  # ddl-auto no existe aqui a proposito. El esquema lo define Flyway y solo
+  # Flyway; que un ORM altere tablas por su cuenta es inaceptable en un
+  # sistema financiero. Ver §4.5 del documento de diseño.
+
 server:
   port: 8081
 
