@@ -65,10 +65,30 @@ proyecto académico.
 - Transferencias entre cuentas Ayni.
 - Transferencias interbancarias (contra cámara de compensación simulada con contrato definido).
 - Conversión de moneda con tipo de cambio consultado a la **API real de SUNAT/BCRP**.
-- Notificaciones por correo electrónico.
+- Notificaciones por **correo electrónico y SMS**, sobre el mismo mecanismo de eventos.
 - Movimientos y estado de cuenta en PDF.
 - Landing pública.
 - Back-office interno de operaciones con segregación de funciones.
+
+### 2.1.1 Volumetría comprometida
+
+El alcance se dimensiona sobre estas cifras, que son las que deben soportar las pruebas de carga
+del Sprint 8 y las que sustentan el dimensionamiento de la infraestructura:
+
+| Magnitud | Valor |
+|---|---|
+| Clientes registrados al cierre del proyecto | **10 000** |
+| Cuentas activas (incluye multimoneda) | 13 000 |
+| Usuarios concurrentes en tráfico normal | **200** |
+| Transacciones por minuto en tráfico normal | 50 |
+| Usuarios concurrentes en tráfico pico | **500** |
+| Transacciones por minuto en pico | 150 |
+| Movimientos acumulados al cierre | ~1 200 000 |
+| Documentos KYC almacenados en MinIO | ~30 000 (3 por cliente) |
+
+**Los picos no son arbitrarios:** en banca peruana la concurrencia se dispara en **quincena y fin de
+mes**, cuando se pagan sueldos, y en campañas comerciales. El factor 2.5× sobre el tráfico normal es
+el criterio de dimensionamiento habitual del sector.
 
 ### 2.2 Fuera del alcance (declarado explícitamente en el Acta)
 
@@ -215,6 +235,24 @@ por lo que el consumidor deduplica por `eventId`.
   es posible auditar ni reconstruir el importe recibido.
 - Compra y venta tienen tipos distintos: el banco gana en el spread, como en la realidad.
 
+### 3.7.1 Política de tipo de cambio
+
+**SUNAT/BCRP es la referencia, no el precio final.** Ningún banco convierte moneda al tipo oficial:
+el margen es su ingreso por el servicio. Ayni define su política así:
+
+| Concepto | Regla |
+|---|---|
+| Referencia | Tipo de cambio publicado por SUNAT/BCRP, consultado y cacheado a diario |
+| Spread estándar | **0.50 %** aplicado simétricamente: compra a referencia − 0.25 %, venta a referencia + 0.25 % |
+| Tarifa preferencial | **0.25 %** de spread para clientes con saldo promedio mensual ≥ S/ 5 000 |
+| Transparencia | La interfaz muestra siempre el tipo aplicado, el de referencia y el margen, antes de confirmar |
+| Registro | Cada conversión guarda el tipo de referencia, el spread aplicado, el tipo final y su timestamp |
+
+El **segmento preferencial** replica lo que hacen los bancos peruanos con sus clientes de mayor
+saldo. Introduce una regla de negocio real, con su condición evaluable, y da material de prueba:
+un mismo importe convertido por dos clientes distintos debe dar resultados distintos y ambos deben
+ser auditables.
+
 ---
 
 ## 4. Datos
@@ -322,6 +360,15 @@ solo una operación sensible (**principio de cuatro ojos**: quien inicia no apru
 - **OWASP ASVS nivel 2** y **OWASP Top 10** como línea base verificable.
 - **ISO/IEC 27001, Anexo A** para controles organizativos.
 - **ISO/IEC 25010:2023** para calidad de producto.
+- **Marco normativo del sistema financiero peruano.** El diseño se alinea con las exigencias de la
+  **Superintendencia de Banca, Seguros y AFP (SBS)** que aplican a un producto de ahorro: publicación
+  transparente de la **TREA**, información previa al cliente sobre comisiones y tipo de cambio
+  aplicado, y trazabilidad de las operaciones. Se adoptan además las buenas prácticas de **ASBANC**
+  en prevención del fraude digital: verificación de identidad reforzada, límites operativos
+  progresivos para cuentas nuevas y notificación inmediata de todo movimiento.
+  El proyecto **no busca autorización de funcionamiento ante la SBS** — es académico — pero diseña
+  como si fuera a solicitarla, y mantiene una matriz de trazabilidad normativa que vincula cada
+  exigencia con el control que la satisface.
 - **Ley N.º 29733, Ley de Protección de Datos Personales del Perú**: el rostro es **dato sensible**
   y exige consentimiento explícito e informado. El onboarding incluye pantalla de consentimiento,
   política de retención y procedimiento de borrado.
@@ -418,6 +465,30 @@ Ambos entornos son **ARM64**, de modo que la misma imagen Docker corre en los do
 | Correo transaccional | Brevo / Resend, capa gratuita | S/ 0 |
 | **Total recurrente** | | **≈ S/ 4 / mes** |
 
+### 7.2.1 Costo del equipo Scrum
+
+El desembolso en infraestructura es casi nulo, pero **el trabajo del equipo tiene un costo real**.
+Se valoriza a precios de mercado peruano para dimensionar lo que costaría este proyecto en una
+organización:
+
+| Rol | Personas | Tarifa de mercado | Dedicación | 4 meses |
+|---|---|---|---|---|
+| Scrum Master | 1 | S/ 7 946 / mes (Lima) | 25 % | S/ 7 946 |
+| Developer | 5 | S/ 2 531 / mes | 25 % | S/ 12 655 |
+| Product Owner | 1 | Aporte académico del docente | — | No imputado |
+| **Total mano de obra** | **6** | | | **S/ 20 601** |
+
+**Costo total valorizado del proyecto: ≈ S/ 20 616** (S/ 20 601 de mano de obra + S/ 15 de
+infraestructura durante el ciclo).
+
+La dedicación del 25 % corresponde a unas 10 horas semanales sobre una jornada de 48 horas, que es
+la disponibilidad real de un equipo de estudiantes con carga académica simultánea.
+
+*Fuentes salariales: Indeed Perú y Computrabajo, consultadas en 2026. El sueldo de desarrollador
+junior en el mercado peruano se sitúa entre S/ 1 188 y S/ 1 570; se emplea la tarifa de
+«desarrollador de software» (S/ 2 531) por corresponder mejor al perfil de un egresado de décimo
+ciclo.*
+
 *Escenario de operación comercial* (referencia para el Acta): AWS con EC2 en dos zonas, RDS
 Multi-AZ, S3, balanceador y CloudWatch ≈ **USD 300–450 / mes**. El contraste evidencia que la
 elección de infraestructura es una decisión arquitectónica consciente.
@@ -467,15 +538,26 @@ pruebas superó.
 
 | Integrante | Rol Scrum |
 |---|---|
-| Joaquín Alfonso Loa Denegri | **Product Owner** + Developer |
-| Kiara Moshell Santti Saavedra | **Scrum Master** + Developer |
-| Gerardo Raul Socualaya Mandamiento | Developer |
+| Dr. Carlos R. P. Tovar | **Product Owner** |
+| Joaquín Alfonso Loa Denegri | **Scrum Master** + Developer |
+| Kiara Mishell Santti Saavedra | Developer |
+| Gerardo Raúl Socualaya Mandamiento | Developer |
 | Eduardo Vargas Zumaeta | Developer |
+| Frank Grheg Sotomayor Suasnabar | Developer |
+| Fabián García Champi | Developer |
 
-Los cuatro integrantes son Developers. El **Product Owner** define la visión, prioriza el Product
-Backlog, formula el Product Goal y decide cuándo se despliega; no gestiona el cómo técnico. El
-**Scrum Master** es un líder servicial: facilita los eventos de Scrum, retira impedimentos y vela
-por el cumplimiento de la Definition of Done; no es jefe de proyecto ni secretario del equipo.
+El **Product Owner** es el docente del curso, que actúa como dueño del producto: define la visión,
+prioriza el Product Backlog, formula el Product Goal y decide cuándo se despliega. No gestiona el
+cómo técnico.
+
+El **Scrum Master** es un líder servicial: facilita los eventos de Scrum, retira impedimentos y vela
+por el cumplimiento de la Definition of Done. No es jefe de proyecto ni secretario del equipo.
+
+Los **seis integrantes del equipo** ejercen como Developers; el Scrum Master lo hace además de su
+rol de facilitación.
+
+**Capacidad por sprint:** 6 personas × 2 semanas × ~10 h semanales = **120 horas**. Se compromete
+como máximo el 85 % (102 h), reservando holgura para imprevistos.
 
 ### 8.2 Catálogo de épicas
 

@@ -1,7 +1,7 @@
 # Product Backlog — Ayni Bank
 
 **Versión 1.0** · 15 de agosto de 2026
-**Product Owner:** Joaquín Alfonso Loa Denegri
+**Product Owner:** Dr. Carlos R. P. Tovar  ·  **Scrum Master:** Joaquín Alfonso Loa Denegri
 **Herramienta de gestión:** Jira — proyecto [`AYNI`](https://jloadenegri.atlassian.net/jira/software/projects/AYNI)
 
 > **Fuente de verdad: Jira.** Este documento es una fotografía legible y versionada del Product
@@ -119,7 +119,7 @@ Leyenda de estado: ✅ Hecho · 🟡 En curso · ⬜ Por hacer
 | Sprint 7 | 16–29 nov | 2 | 16 | Operación, auditoría y accesibilidad |
 | Sprint 8 | 30 nov – 13 dic | 2 | 21 | Endurecimiento y cierre |
 
-**Velocidad prevista:** unos 22 puntos por sprint de dos semanas. Es una previsión, no un
+**Velocidad prevista:** unos 22 puntos por sprint de dos semanas, con un equipo de seis Developers. Es una previsión, no un
 compromiso: se recalcula con los datos reales al cerrar cada sprint.
 
 ---

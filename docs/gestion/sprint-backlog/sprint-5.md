@@ -11,7 +11,7 @@
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 52 h. Sprint deliberadamente holgado: absorbe la deuda técnica
+120 h disponibles · Comprometido: 78 h. Sprint deliberadamente holgado: absorbe la deuda técnica
 acumulada de los sprints 2 a 4 y prepara el despliegue v2.
 
 ---

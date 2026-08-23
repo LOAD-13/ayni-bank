@@ -11,7 +11,7 @@
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 62 h. Se reserva holgura amplia para el cierre, la documentación
+120 h disponibles · Comprometido: 93 h. Se reserva holgura amplia para el cierre, la documentación
 final y la preparación de la sustentación.
 
 ---

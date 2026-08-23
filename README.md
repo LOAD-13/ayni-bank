@@ -269,13 +269,16 @@ Criterio de terminado en [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md)
 
 | Integrante | Rol |
 |---|---|
-| **Joaquín Alfonso Loa Denegri** | Jefe de Proyecto · Product Owner · Developer |
-| **Kiara Moshell Santti Saavedra** | Scrum Master · Developer |
+| **Dr. Carlos R. P. Tovar** | Product Owner |
+| **Joaquín Alfonso Loa Denegri** | Scrum Master · Developer |
+| **Kiara Mishell Santti Saavedra** | Developer |
 | **Gerardo Raúl Socualaya Mandamiento** | Developer |
 | **Eduardo Vargas Zumaeta** | Developer |
+| **Frank Grheg Sotomayor Suasnabar** | Developer |
+| **Fabián García Champi** | Developer |
 
 Proyecto del curso **Integrador II: Software** — Ingeniería de Software, Universidad Tecnológica del
-Perú. Ciclo 2026-2. Docente asesor: Dr. Carlos R. P. Tovar.
+Perú. Ciclo 2026-2.
 
 ---
 

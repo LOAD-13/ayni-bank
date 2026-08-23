@@ -20,7 +20,7 @@ KYC simulado por el real sin tocar la integración.
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 68 h · Holgura: 15%
+120 h disponibles · Comprometido: 102 h · Holgura: 15%
 
 ---
 
