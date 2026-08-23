@@ -365,12 +365,26 @@ Los **seis integrantes** del equipo son Developers.
 git clone https://github.com/LOAD-13/ayni-bank.git
 cd ayni-bank
 cp .env.example .env
-docker compose -f infra/docker/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait
 ```
+
+**`--env-file .env` no es opcional.** Compose busca el `.env` en el directorio del fichero compose
+—`infra/docker/`—, no en aquel desde el que lo invocas. Sin esa opción las variables se interpolan
+a cadena vacía, y el fallo es confuso porque Compose solo lo advierte: verás a Postgres negarse a
+arrancar por contraseña vacía sin que la causa aparezca por ningún lado.
+
+`--wait` hace que el comando no devuelva el control hasta que todos los servicios estén *healthy*,
+o falle si alguno no lo consigue. Es lo que convierte «levantó» en «funciona».
 
 Si algo no arranca, revisa primero los health checks:
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml ps
-docker compose -f infra/docker/docker-compose.yml logs -f ayni-core-banking-service
+docker compose --env-file .env -f infra/docker/docker-compose.yml ps
+docker compose --env-file .env -f infra/docker/docker-compose.yml logs -f ayni-core-banking-service
+```
+
+Para empezar de cero, incluidos los volúmenes de datos:
+
+```bash
+docker compose --env-file .env -f infra/docker/docker-compose.yml down -v
 ```
