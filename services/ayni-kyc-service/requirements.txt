@@ -7,4 +7,5 @@ pydantic-settings==2.5.2
 # CVE-2024-53981, CVE-2026-24486, CVE-2026-42561, CVE-2026-53539: corregidos en 0.0.30+
 python-multipart==0.0.32
 minio==7.2.9
-prometheus-fastapi-instrumentator==7.0.0
+# 8.x es la primera serie compatible con starlette 1.x
+prometheus-fastapi-instrumentator==8.1.0
