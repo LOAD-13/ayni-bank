@@ -9,7 +9,7 @@
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 68 h
+120 h disponibles · Comprometido: 102 h
 
 ---
 

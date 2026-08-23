@@ -12,7 +12,7 @@ de entregar**.
 
 ## Capacidad
 
-40 h disponibles (1 semana × 4 personas × ~10 h). Comprometido: 38 h.
+60 h disponibles (1 semana × 6 personas × ~10 h). Comprometido: 57 h.
 
 ---
 

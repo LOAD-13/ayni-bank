@@ -51,8 +51,8 @@ Los criterios de aceptación de cada historia están en Jira y en
 
 ## Capacidad del equipo
 
-4 integrantes × 2 semanas × ~10 h semanales = **80 horas** por sprint de dos semanas.
-Se compromete como máximo el **85%** (68 h), reservando holgura para imprevistos y para el trabajo
+6 integrantes × 2 semanas × ~10 h semanales = **120 horas** por sprint de dos semanas.
+Se compromete como máximo el **85 %** (102 h), reservando holgura para imprevistos y para el trabajo
 no planificado que siempre aparece.
 
 ## Nota sobre el detalle

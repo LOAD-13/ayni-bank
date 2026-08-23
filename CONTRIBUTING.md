@@ -302,9 +302,11 @@ Estas no se negocian y la revisión las rechaza sin discusión:
 | Sprint Review | Último día del sprint | 1 h |
 | Sprint Retrospective | Tras el Review | 45 min |
 
-El **Product Owner** (Joaquín) prioriza el backlog y decide los despliegues a producción.
-La **Scrum Master** (Kiara) facilita los eventos, retira impedimentos y vela por la Definition of
-Done.
+El **Product Owner** (Dr. Carlos R. P. Tovar, docente del curso) prioriza el backlog, formula el
+Product Goal y decide los despliegues a producción.
+El **Scrum Master** (Joaquín Loa) facilita los eventos, retira impedimentos y vela por la Definition
+of Done.
+Los **seis integrantes** del equipo son Developers.
 
 ---
 

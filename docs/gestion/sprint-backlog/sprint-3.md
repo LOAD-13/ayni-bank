@@ -11,7 +11,7 @@
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 64 h. Se reserva más holgura de lo habitual porque este sprint
+120 h disponibles · Comprometido: 96 h. Se reserva más holgura de lo habitual porque este sprint
 cierra con el primer despliegue a producción.
 
 ---

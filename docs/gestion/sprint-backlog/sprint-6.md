@@ -11,7 +11,7 @@ Es el sprint que demuestra **compatibilidad e interoperabilidad** según ISO/IEC
 
 ## Capacidad
 
-80 h disponibles · Comprometido: 70 h
+120 h disponibles · Comprometido: 105 h
 
 ---
 
