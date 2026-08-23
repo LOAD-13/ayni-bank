@@ -113,6 +113,41 @@
                         <phase>verify</phase>
                         <goals><goal>report</goal></goals>
                     </execution>
+                    <!-- Sin esta ejecucion, jacoco.dominio.minimo es un numero
+                         que no lee nadie: `report` mide pero no exige, y solo
+                         `check` rompe el build.
+
+                         Se activa ya, aunque los paquetes de dominio esten
+                         vacios, porque hoy es inerte: la regla no encuentra
+                         paquetes que evaluar y el build pasa. En cuanto exista
+                         la primera clase de dominio empieza a exigir el 80 %
+                         sola, sin que nadie tenga que acordarse de activarla.
+
+                         El umbral se aplica al dominio y solo al dominio: es
+                         donde vive el negocio. Ver ADR-0006. -->
+                    <execution>
+                        <id>umbral-dominio</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <haltOnFailure>true</haltOnFailure>
+                            <rules>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>pe.ayni.bank.*.domain.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.dominio.minimo}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

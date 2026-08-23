@@ -21,6 +21,7 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
   productos y tasas, política cambiaria y plantillas de notificación.
 - Datos semilla de tipo de cambio, cargados solo bajo el perfil `dev`.
 - Fuentes de datos de Grafana aprovisionadas: Prometheus y Loki.
+- Umbral de cobertura del dominio del 80 %, exigido por JaCoCo y bloqueante.
 
 ### Corregido
 - El `.env` de la raíz no se cargaba: Compose lo busca junto al fichero compose, de modo que las
@@ -29,6 +30,9 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
   lugar de a la raíz del repositorio.
 - Faltaba `micrometer-registry-prometheus`, sin el cual `/actuator/prometheus` devuelve 404; y
   `prometheus.yml` recolectaba los cuatro servicios Java en el puerto 8080.
+- El umbral de cobertura del dominio estaba declarado en el POM pero ningún plugin lo leía: faltaba
+  la ejecución `jacoco:check`, la única que rompe el build.
+- El job de imágenes cancelaba el resto de la matriz al primer fallo, ocultando los demás.
 
 ### Seguridad
 - Elevado el BOM a Spring Boot 3.5.16 y Spring Cloud 2025.0.3, y fijado Netty 4.1.136.Final, tras

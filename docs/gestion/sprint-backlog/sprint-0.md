@@ -183,10 +183,14 @@ reproducibles en local. Dos acciones concretas salen de aquí:
 
 1. La sección [«Reproducir el pipeline en local»](../../../CONTRIBUTING.md) recoge el comando de
    verificación de cada tecnología. Ejecutarla antes de subir deja de ser opcional.
-2. El job `imagenes` usa `fail-fast` por omisión: cuando un servicio de la matriz falla, GitHub
-   cancela los otros cuatro y se pierde su resultado. Eso convirtió en ocho rondas secuenciales lo
-   que podían haber sido dos o tres. Pendiente para el Sprint 1: `fail-fast: false` y
-   `max-parallel: 2`, que además mitiga el `429` de Maven Central.
+2. El job `imagenes` usaba `fail-fast` por omisión: cuando un servicio de la matriz fallaba, GitHub
+   cancelaba los otros cuatro y se perdía su resultado. Eso convirtió en ocho rondas secuenciales
+   lo que podían haber sido dos o tres. **Corregido en este sprint** con `fail-fast: false` y
+   `max-parallel: 2`, que además escalona las descargas y mitiga el `429` de Maven Central.
+3. **El umbral de cobertura del 80 % no se aplicaba en ningún punto.** La propiedad estaba
+   declarada y ningún plugin la leía. Se activó en este sprint tras comprobar que `jacoco:check` es
+   inerte con los paquetes de dominio vacíos y bloqueante en cuanto aparece la primera clase. Ver
+   [ADR-0006](../../arquitectura/adr/0006-activacion-escalonada-de-las-puertas-de-calidad.md).
 
 ### Alcance ajustado
 

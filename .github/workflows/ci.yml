@@ -89,17 +89,21 @@ jobs:
       - name: Pruebas (unitarias, dominio y arquitectura)
         run: ./mvnw -B verify
 
-      # Los pasos siguientes se activan cuando exista el codigo que verifican.
-      # Se declaran ahora para que la Definition of Done sea trazable, pero no
-      # bloquean mientras los modulos que los necesitan aun no existen.
-      - name: Umbral de cobertura del dominio (JaCoCo)
-        continue-on-error: true
-        run: ./mvnw -B jacoco:report
+      # El umbral del 80 % sobre el dominio se aplica dentro de `verify`, en la
+      # ejecucion `umbral-dominio` de JaCoCo declarada en el POM padre. Es
+      # bloqueante y no necesita un paso propio aqui. Ver ADR-0006.
 
       # Se omite mientras SONAR_TOKEN no esté configurado, en lugar de fallar.
-      # Se activa solo con cargar el secreto en Settings → Secrets → Actions.
-      # No bloquea mientras no se confirme la clave de organizacion y el binding
-      # del proyecto en SonarCloud. Se vuelve bloqueante en cuanto reporte en verde.
+      #
+      # `sonar:sonar` por si solo SUBE el analisis y termina: no consulta el
+      # veredicto de la puerta de calidad. Con qualitygate.wait el paso espera
+      # el resultado y lo deja escrito en el log, que es lo que permite saber
+      # cuando la puerta esta lista para volverse bloqueante.
+      #
+      # Sigue con continue-on-error a proposito: hacerla bloqueante hoy haria
+      # fallar todos los PR por «Coverage on New Code» antes de que exista una
+      # sola prueba, y una puerta siempre en rojo enseña a saltarsela. Se retira
+      # el continue-on-error cuando reporte en verde. Ver ADR-0006.
       - name: Análisis SonarCloud
         continue-on-error: true
         if: github.event_name == 'pull_request' && env.SONAR_TOKEN != ''
@@ -110,6 +114,8 @@ jobs:
           -Dsonar.projectKey=LOAD-13_ayni-bank
           -Dsonar.organization=load-13
           -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=180
 
       - name: Publicar informe de pruebas
         if: always()
@@ -193,6 +199,15 @@ jobs:
       (needs.cambios.outputs.java == 'true' || needs.cambios.outputs.python == 'true')
     runs-on: ubuntu-latest
     strategy:
+      # fail-fast: false porque con el valor por omision, el primer servicio que
+      # falla cancela los otros cuatro y se pierde su resultado. Eso convirtio el
+      # andamiaje del Sprint 0 en ocho rondas de una correccion cada una, cuando
+      # podian haber sido dos o tres viendo todos los fallos juntos.
+      fail-fast: false
+      # max-parallel porque los cinco jobs descargan el arbol de dependencias a
+      # la vez desde la misma IP y Maven Central responde 429. Escalonarlos es
+      # mas lento por ronda y mucho mas rapido en total: no hay que repetirla.
+      max-parallel: 2
       matrix:
         servicio:
           - ayni-gateway

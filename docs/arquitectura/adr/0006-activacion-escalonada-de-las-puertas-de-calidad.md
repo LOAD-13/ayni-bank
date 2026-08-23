@@ -56,11 +56,11 @@ estándar, estamos reconociendo que **una verificación sobre un conjunto vacío
 | **Gitleaks** | 🔴 Bloqueante | — | Ya activa |
 | **Trivy** (imágenes) | 🔴 Bloqueante | — | Ya activa |
 | **Compilación y pruebas Maven** | 🔴 Bloqueante | — | Ya activa |
+| **Cobertura de dominio ≥ 80 %** | 🔴 Bloqueante | — | Ya activa · ver nota abajo |
 | **Ruff · mypy `--strict` · pytest** | 🔴 Bloqueante | — | Ya activa |
 | **Job agregador `CI completa`** | 🔴 Bloqueante | — | Ya activa |
 | **ArchUnit** | 🟡 Activa, con `allowEmptyShould(true)` | Las reglas `noClasses()` sobre `..domain..` no encuentran clases que evaluar y ArchUnit lo trata como error | Se retira la bandera en el Sprint 1, con las primeras entidades de dominio |
-| **Cobertura de dominio ≥ 80 %** | ⚪ **No se aplica** | No existe ejecución de `jacoco:check`. La propiedad `jacoco.dominio.minimo` está declarada en el POM padre pero ningún plugin la consume | Sprint 1: añadir la ejecución `check` con `haltOnFailure` |
-| **Quality gate de SonarCloud** | 🟡 Informativo (`continue-on-error`) | El binding del proyecto y la clave de organización se confirman con el primer análisis real | Sprint 1, en cuanto reporte en verde |
+| **Quality gate de SonarCloud** | 🟡 Informativo (`continue-on-error`) | Hacerla bloqueante hoy haría fallar todos los PR por «Coverage on New Code» antes de que exista una sola prueba | Sprint 1, en cuanto el log reporte la puerta en verde |
 | **Testcontainers** | ⚪ No integrado | No hay adaptadores de persistencia ni de mensajería que probar | Sprint 1, con el primer repositorio JPA |
 | **Cucumber** | ⚪ No integrado | No hay criterios de aceptación implementados | Sprint 1, con la primera Historia de Usuario funcional |
 | **OWASP Dependency-Check** | ⚪ No integrado | Trivy ya cubre las dependencias empaquetadas en la imagen; Dependency-Check aporta el análisis del árbol Maven completo | Sprint 2 |
@@ -68,6 +68,46 @@ estándar, estamos reconociendo que **una verificación sobre un conjunto vacío
 | **Validación del contrato OpenAPI** | ⚪ No integrado | `contracts/` aún no tiene especificaciones | Sprint 2 |
 
 Leyenda: 🔴 bloquea el Pull Request · 🟡 se ejecuta pero no bloquea · ⚪ no se ejecuta.
+
+### Nota · La cobertura se activó antes de tener dominio, y a propósito
+
+Al redactar este ADR se constató que el umbral del 80 % **no se aplicaba en ningún punto**: el POM
+declaraba `jacoco.dominio.minimo` pero el plugin solo ejecutaba `prepare-agent` y `report`, y
+`report` mide sin exigir. Solo `check` rompe el build. La Definition of Done afirmaba algo que la
+automatización no hacía.
+
+Lo previsible era aplazarlo al Sprint 1 con el resto. Se comprobó en su lugar cómo se comporta
+`check` sobre paquetes vacíos, y el resultado cambió la decisión:
+
+| Situación | Resultado |
+|---|---|
+| Paquetes de dominio vacíos | `All coverage checks have been met` · build en verde |
+| Una clase de dominio sin pruebas | `Rule violated … lines covered ratio is 0.00, but expected minimum is 0.80` · **build roto** |
+
+La regla es **inerte hoy y exigente en cuanto exista la primera clase de dominio**, sin que nadie
+tenga que acordarse de activarla. Activarla ahora no cuesta nada y elimina el riesgo de olvido, que
+es la forma habitual en que estas puertas nunca se encienden.
+
+Las dos comprobaciones importaban por igual. Verificar solo que el build pasa habría dejado abierta
+la posibilidad de que el patrón `pe.ayni.bank.*.domain.*` no coincidiera con nada nunca: una puerta
+decorativa que jamás salta es peor que ninguna, porque da confianza infundada.
+
+### Nota · `sonar:sonar` no consulta la puerta de calidad
+
+Detalle que conviene no olvidar al activarla: **`mvn sonar:sonar` sube el análisis y termina**. No
+espera el veredicto. Aunque se retirase el `continue-on-error`, el paso seguiría en verde mientras
+la subida funcionara, pasara o no pasara la puerta.
+
+El check rojo que aparece en el Pull Request no lo produce ese paso, sino la **aplicación de
+SonarCloud en GitHub**, como estado de commit independiente. Y como la protección de rama solo
+exige `CI completa`, ese rojo nunca ha bloqueado una fusión.
+
+Por eso el paso lleva ahora `-Dsonar.qualitygate.wait=true`: sigue sin bloquear, pero deja el
+veredicto escrito en el log. Ese es el instrumento que permite saber cuándo la puerta está lista
+para volverse bloqueante, en lugar de decidirlo a ciegas.
+
+**Volverla bloqueante son dos cambios, no uno:** conservar `qualitygate.wait` y retirar
+`continue-on-error`.
 
 ### Exclusiones de cobertura — permanentes, no transitorias
 
