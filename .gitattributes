@@ -10,6 +10,12 @@
 *.bash          text eol=lf
 mvnw            text eol=lf
 gradlew         text eol=lf
+
+# NOTA sobre el bit de ejecucion: este archivo NO lo controla. Git en Windows
+# no preserva +x, y sin el los runners de Linux fallan con Permission denied.
+# Si se anade un script nuevo, hay que marcarlo a mano en el indice:
+#     git update-index --chmod=+x <archivo>
+# Verificar con `git ls-files -s <archivo>`: debe decir 100755, no 100644.
 Dockerfile      text eol=lf
 *.dockerfile    text eol=lf
 
