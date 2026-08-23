@@ -5,7 +5,12 @@
 FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY pom.xml .
+# Se copian TODOS los pom de los modulos: el padre los declara y Maven
+# aborta si falta alguno, aunque solo vayamos a construir uno.
 COPY services/ayni-gateway/pom.xml services/ayni-gateway/pom.xml
+COPY services/ayni-identity-service/pom.xml services/ayni-identity-service/pom.xml
+COPY services/ayni-core-banking-service/pom.xml services/ayni-core-banking-service/pom.xml
+COPY services/ayni-notification-service/pom.xml services/ayni-notification-service/pom.xml
 RUN mvn -B -pl services/ayni-gateway -am dependency:go-offline
 COPY services/ayni-gateway/src services/ayni-gateway/src
 RUN mvn -B -pl services/ayni-gateway -am clean package -DskipTests
