@@ -1,6 +1,6 @@
 # Sprint Backlog — Sprint 1 · Esqueleto Ambulante
 
-**24 de agosto – 6 de septiembre de 2026** · 2 semanas · 4 ítems · 34 puntos
+**24 de agosto – 6 de septiembre de 2026** · 2 semanas · 5 ítems · 42 puntos
 
 ## Sprint Goal
 
@@ -20,11 +20,43 @@ KYC simulado por el real sin tocar la integración.
 
 ## Capacidad
 
-120 h disponibles · Comprometido: 102 h · Holgura: 15%
+120 h disponibles · Comprometido: **126 h** · **Holgura negativa: −5 %**
+
+**El sprint está sobrecomprometido a conciencia.** `AYNI-119` entró después de la planificación
+porque los mockups son el entregable evaluado de la sesión 4 y no admitían aplazamiento. Se decidió
+añadirlo sin retirar ningún ítem.
+
+El candidato natural a moverse era `AYNI-31` (13 pts), pero es el que monta staging y la Definition
+of Done de este sprint exige demostrar el flujo **sobre staging, no en local**. Sacarlo obligaba a
+relajar esa condición.
+
+Queda registrado para la retrospectiva: si el sprint no cierra completo, la causa es esta y no una
+mala estimación.
 
 ---
 
 ## Ítems y plan técnico
+
+### `AYNI-119` · T-10 · Prototipo interactivo y biblioteca de componentes [8 pts]
+
+Entregable evaluado de la sesión 4. El docente lo pidió de forma explícita: los mockups son
+obligatorios y, como mínimo, debe estar el flujo de registro con verificación facial, que **no es
+una foto estática sino una prueba de vivacidad en movimiento**.
+
+| # | Subtarea | Est. |
+|---|---|---|
+| 1 | Cargar los tokens de marca como variables del documento | 1h |
+| 2 | Construir los átomos: botones, campos, badges, indicador de progreso | 3h |
+| 3 | Landing pública con la TREA publicada y el simulador de rendimiento | 4h |
+| 4 | Flujo de registro: datos, DNI anverso, DNI reverso con OCR | 4h |
+| 5 | Prueba de vivacidad como secuencia de cuatro estados | 3h |
+| 6 | Resultado de la verificación en sus dos variantes: aprobada y en revisión | 2h |
+| 7 | Inicio de sesión con segundo factor TOTP | 3h |
+| 8 | Panel de banca por internet con la tarjeta de débito reutilizable | 4h |
+
+Herramienta: **pen.dev**, decidida en [ADR-0007](../../arquitectura/adr/0007-pen-dev-para-prototipado-de-interfaces.md).
+El contexto que se entrega al agente vive en `ayni-bank-workspace-design/contexto/`, fuera del
+repositorio.
 
 ### `AYNI-31` · HU-20 · [NF] Despliegue continuo con aprobación [13 pts]
 

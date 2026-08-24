@@ -11,7 +11,7 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
 ### Añadido
 - Estructura inicial del monorepo con arquitectura hexagonal.
 - Documentos guía: contribución, estilo de código, seguridad, hoja de ruta y Definition of Done.
-- Registro de decisiones arquitectónicas (ADR-0001 a ADR-0006).
+- Registro de decisiones arquitectónicas (ADR-0001 a ADR-0007).
 - Sistema de diseño derivado de la identidad visual de la marca.
 - Entorno de desarrollo con Docker Compose: PostgreSQL, RabbitMQ, MinIO y observabilidad.
 - Pipelines de integración y despliegue continuos en GitHub Actions.
