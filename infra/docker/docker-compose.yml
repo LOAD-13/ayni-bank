@@ -1,6 +1,14 @@
 # Ayni Bank — entorno de desarrollo local
-# Levantar:  docker compose -f infra/docker/docker-compose.yml up -d
-# Detener:   docker compose -f infra/docker/docker-compose.yml down -v
+#
+# Ejecutar SIEMPRE desde la raiz del repositorio y con --env-file explicito:
+#
+#   docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait
+#   docker compose --env-file .env -f infra/docker/docker-compose.yml down -v
+#
+# El --env-file no es opcional. Compose busca el .env en el directorio del
+# fichero compose (infra/docker/), no en el directorio desde el que se invoca,
+# asi que sin el las variables se interpolan a cadena vacia y Postgres se niega
+# a arrancar por contrasena vacia. Falla ademas de forma confusa: solo advierte.
 
 name: ayni-bank
 
@@ -102,14 +110,23 @@ services:
 
   # ─────────────────────────── Servicios Ayni ───────────────────────────
 
+  # El contexto de construccion es la raiz del repositorio, no el directorio del
+  # servicio: el Dockerfile copia el pom.xml padre y los pom de los cuatro modulos
+  # Java, porque Maven aborta si el padre declara un modulo que no encuentra.
   ayni-gateway:
     <<: *java-common
-    build: ../../services/ayni-gateway
+    build:
+      context: ../..
+      dockerfile: services/ayni-gateway/Dockerfile
     container_name: ayni-gateway
     ports: ["8080:8080"]
+    # service_healthy, no service_started: el health check de estos servicios
+    # incluye el estado de la base de datos, asi que esperar a que esten sanos
+    # verifica que Flyway aplico sus migraciones. Con service_started el gateway
+    # arrancaria sobre servicios que todavia no pueden atender.
     depends_on:
-      ayni-identity-service: { condition: service_started }
-      ayni-core-banking-service: { condition: service_started }
+      ayni-identity-service: { condition: service_healthy }
+      ayni-core-banking-service: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 20s
@@ -118,7 +135,9 @@ services:
 
   ayni-identity-service:
     <<: *java-common
-    build: ../../services/ayni-identity-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-identity-service/Dockerfile
     container_name: ayni-identity-service
     environment:
       <<: *java-env
@@ -130,7 +149,9 @@ services:
 
   ayni-core-banking-service:
     <<: *java-common
-    build: ../../services/ayni-core-banking-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-core-banking-service/Dockerfile
     container_name: ayni-core-banking-service
     environment:
       <<: *java-env
@@ -141,7 +162,9 @@ services:
 
   ayni-notification-service:
     <<: *java-common
-    build: ../../services/ayni-notification-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-notification-service/Dockerfile
     container_name: ayni-notification-service
     environment:
       <<: *java-env
@@ -154,7 +177,9 @@ services:
       rabbitmq: { condition: service_healthy }
 
   ayni-kyc-service:
-    build: ../../services/ayni-kyc-service
+    build:
+      context: ../..
+      dockerfile: services/ayni-kyc-service/Dockerfile
     container_name: ayni-kyc-service
     restart: unless-stopped
     environment:
@@ -163,8 +188,13 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       AYNI_UMBRAL_SIMILITUD_FACIAL: ${AYNI_UMBRAL_SIMILITUD_FACIAL:-0.80}
     ports: ["8000:8000"]
+    # minio-init crea los buckets y termina. Declararlo con
+    # service_completed_successfully expresa la dependencia real —el servicio
+    # necesita los buckets, no solo que MinIO responda— y ademas evita que
+    # `up --wait` interprete su salida con codigo 0 como una caida.
     depends_on:
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 20s
@@ -172,16 +202,23 @@ services:
       retries: 5
     networks: [ayni]
 
-  ayni-web:
-    build: ../../web/ayni-web
-    container_name: ayni-web
-    restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-    ports: ["3000:3000"]
-    depends_on:
-      ayni-gateway: { condition: service_started }
-    networks: [ayni]
+  # ayni-web se reincorpora al andamiar la aplicacion Next.js. Mientras `web/`
+  # este vacio, declararlo aqui hace fallar `docker compose up` entero: Compose
+  # intenta construir un contexto sin Dockerfile y aborta antes de levantar nada.
+  # Ver la seccion «Alcance ajustado» de docs/gestion/sprint-backlog/sprint-0.md
+  #
+  # ayni-web:
+  #   build:
+  #     context: ../..
+  #     dockerfile: web/ayni-web/Dockerfile
+  #   container_name: ayni-web
+  #   restart: unless-stopped
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: http://localhost:8080
+  #   ports: ["3000:3000"]
+  #   depends_on:
+  #     ayni-gateway: { condition: service_started }
+  #   networks: [ayni]
 
   # ─────────────────────────── Observabilidad ───────────────────────────
 

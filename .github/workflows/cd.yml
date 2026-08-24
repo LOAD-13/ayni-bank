@@ -56,7 +56,9 @@ jobs:
       - name: Construir y publicar (linux/arm64)
         uses: docker/build-push-action@v6
         with:
-          context: services/${{ matrix.servicio }}
+          # El Dockerfile necesita la raiz como contexto: referencia el pom.xml padre
+          context: .
+          file: services/${{ matrix.servicio }}/Dockerfile
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -133,11 +133,10 @@ Decisiones razonadas en [`docs/arquitectura/adr/`](docs/arquitectura/adr/)
 
 ## Cómo levantarlo
 
-> **Estado actual — Sprint 0 (17 – 23 ago 2026).** La fundación del repositorio, la infraestructura
-> y los pipelines están definidos. El andamiaje de los cinco servicios está en curso
-> (`AYNI-38`), por lo que `docker compose up` todavía no levanta la aplicación completa: sí
-> levanta PostgreSQL, RabbitMQ, MinIO y la observabilidad. Este bloque describe el
-> procedimiento definitivo, operativo al cierre del Sprint 0.
+> **Estado actual — cierre del Sprint 0 (23 ago 2026).** Levanta la infraestructura completa y los
+> cinco servicios con sus health checks y sus migraciones. Todavía **no** levanta la aplicación
+> web: `web/` se andamia en el Sprint 1. Los servicios exponen su health check y sus métricas;
+> los endpoints de negocio llegan con las Historias de Usuario que los definen.
 
 **Requisitos:** solo Docker y Git. Nada más.
 
@@ -145,24 +144,32 @@ Decisiones razonadas en [`docs/arquitectura/adr/`](docs/arquitectura/adr/)
 git clone https://github.com/LOAD-13/ayni-bank.git
 cd ayni-bank
 cp .env.example .env
-docker compose -f infra/docker/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait
 ```
 
-Las migraciones de Flyway se aplican solas al arrancar y se cargan datos de prueba.
+**`--env-file .env` no es opcional.** Compose busca el `.env` junto al fichero compose
+—`infra/docker/`—, no en el directorio desde el que lo invocas. Sin esa opción las variables quedan
+vacías y Postgres se niega a arrancar, sin que la causa aparezca en ningún error.
+
+`--wait` devuelve el control solo cuando todos los servicios están *healthy*.
+
+Las migraciones de Flyway se aplican solas al arrancar. Con el perfil `dev` —el de `.env.example`—
+se carga además el histórico de tipo de cambio de ejemplo.
 
 | Servicio | URL |
 |---|---|
-| Aplicación web | http://localhost:3000 |
 | API Gateway | http://localhost:8080 |
-| Documentación de la API | http://localhost:8080/swagger-ui.html |
+| Health check del gateway | http://localhost:8080/actuator/health |
+| Servicio de verificación de identidad | http://localhost:8000/health |
 | Consola de MinIO | http://localhost:9001 |
 | Panel de RabbitMQ | http://localhost:15672 |
 | Grafana | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
 
-Para detener y limpiar:
+Para detener y limpiar, volúmenes incluidos:
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml down -v
+docker compose --env-file .env -f infra/docker/docker-compose.yml down -v
 ```
 
 ---
@@ -269,13 +276,16 @@ Criterio de terminado en [`DEFINITION_OF_DONE.md`](DEFINITION_OF_DONE.md)
 
 | Integrante | Rol |
 |---|---|
-| **Joaquín Alfonso Loa Denegri** | Jefe de Proyecto · Product Owner · Developer |
-| **Kiara Moshell Santti Saavedra** | Scrum Master · Developer |
+| **Dr. Carlos R. P. Tovar** | Product Owner |
+| **Joaquín Alfonso Loa Denegri** | Scrum Master · Developer |
+| **Kiara Mishell Santti Saavedra** | Developer |
 | **Gerardo Raúl Socualaya Mandamiento** | Developer |
 | **Eduardo Vargas Zumaeta** | Developer |
+| **Frank Grheg Sotomayor Suasnabar** | Developer |
+| **Fabián García Champi** | Developer |
 
 Proyecto del curso **Integrador II: Software** — Ingeniería de Software, Universidad Tecnológica del
-Perú. Ciclo 2026-2. Docente asesor: Dr. Carlos R. P. Tovar.
+Perú. Ciclo 2026-2.
 
 ---
 

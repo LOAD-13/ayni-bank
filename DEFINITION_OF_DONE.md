@@ -4,6 +4,12 @@ Compromiso del equipo asociado al Incremento. **Un ítem no está terminado hast
 que sigue.** «Casi terminado» no existe: o está en la columna Hecho cumpliendo esta lista, o sigue
 en curso.
 
+> **Qué verifica el pipeline hoy.** Este documento describe el objetivo, no el estado actual de la
+> automatización. Varias de estas comprobaciones todavía no bloquean el Pull Request porque no hay
+> código de dominio sobre el que ejecutarlas. El detalle de cuáles, por qué y cuándo se activan
+> está en [ADR-0006](docs/arquitectura/adr/0006-activacion-escalonada-de-las-puertas-de-calidad.md).
+> **La lista de abajo no se rebaja**: se completa la automatización hasta alcanzarla.
+
 ---
 
 ## Para una Historia de Usuario

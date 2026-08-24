@@ -41,9 +41,11 @@ venv/
 # === Node / Next.js ===
 node_modules/
 .next/
-out/
 .turbo/
-dist/
+# Acotadas al proyecto web: sin la ruta, `out/` y `dist/` se tragarian los
+# paquetes de la arquitectura hexagonal (domain/port/out, infrastructure/out).
+web/**/out/
+web/**/dist/
 coverage/
 *.tsbuildinfo
 .pnpm-store/

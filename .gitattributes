@@ -1,0 +1,64 @@
+# Normalización de finales de línea.
+# Sin esto, un commit desde Windows puede reescribir un archivo entero y
+# producir diffs imposibles de revisar. Git guarda siempre LF en el
+# repositorio y entrega a cada máquina lo que le corresponde.
+
+* text=auto eol=lf
+
+# ─── Scripts que DEBEN conservar LF aunque se editen en Windows ───────────
+*.sh            text eol=lf
+*.bash          text eol=lf
+mvnw            text eol=lf
+gradlew         text eol=lf
+
+# NOTA sobre el bit de ejecucion: este archivo NO lo controla. Git en Windows
+# no preserva +x, y sin el los runners de Linux fallan con Permission denied.
+# Si se anade un script nuevo, hay que marcarlo a mano en el indice:
+#     git update-index --chmod=+x <archivo>
+# Verificar con `git ls-files -s <archivo>`: debe decir 100755, no 100644.
+Dockerfile      text eol=lf
+*.dockerfile    text eol=lf
+
+# ─── Scripts propios de Windows ───────────────────────────────────────────
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# ─── Código y configuración ───────────────────────────────────────────────
+*.java          text eol=lf diff=java
+*.py            text eol=lf diff=python
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf diff=html
+*.sql           text eol=lf
+*.xml           text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf diff=markdown
+*.mmd           text eol=lf
+*.properties    text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# ─── Binarios: nunca tocar ────────────────────────────────────────────────
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.webp          binary
+*.ico           binary
+*.pdf           binary
+*.docx          binary
+*.xlsx          binary
+*.jar           binary
+*.woff          binary
+*.woff2         binary
+*.ttf           binary
+
+# ─── Marcar como generados: se colapsan en la vista de diff de GitHub ─────
+package-lock.json  linguist-generated=true
+CHANGELOG.md       linguist-generated=true

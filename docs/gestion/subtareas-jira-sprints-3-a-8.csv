@@ -1,0 +1,123 @@
+﻿Summary,Issue Type,Parent,Project Key
+Modelar LibroMayor y AsientoContable con partida doble en el dominio (5h),Subtarea,AYNI-17,AYNI
+Implementar la invariante de que los asientos de una transaccion suman cero (3h),Subtarea,AYNI-17,AYNI
+"Migracion Flyway de transaccion, asiento_contable y devengo_interes (3h)",Subtarea,AYNI-17,AYNI
+Implementar el calculo de devengo diario con ano comercial de 360 dias (5h),Subtarea,AYNI-17,AYNI
+Asegurar precision con BigDecimal y redondeo HALF_EVEN en todo el flujo (3h),Subtarea,AYNI-17,AYNI
+Implementar la capitalizacion mensual el ultimo dia del mes (4h),Subtarea,AYNI-17,AYNI
+Implementar la gestion de tasas con vigencia historica (4h),Subtarea,AYNI-17,AYNI
+Programar la ejecucion diaria del proceso de devengo (3h),Subtarea,AYNI-17,AYNI
+Mostrar TREA y rendimiento acumulado en la interfaz (3h),Subtarea,AYNI-17,AYNI
+"Pruebas de precision: ano bisiesto, saldo cero, cambio de tasa (4h)",Subtarea,AYNI-17,AYNI
+Feature de Cucumber con los cuatro escenarios (3h),Subtarea,AYNI-17,AYNI
+Implementar la consulta de saldo derivado de los asientos (3h),Subtarea,AYNI-19,AYNI
+Anadir saldo_posterior como desnormalizacion deliberada y documentada (2h),Subtarea,AYNI-19,AYNI
+"Endpoint paginado de movimientos con filtros por fecha, tipo e importe (4h)",Subtarea,AYNI-19,AYNI
+Verificar autorizacion por recurso para impedir acceso a cuentas ajenas (3h),Subtarea,AYNI-19,AYNI
+Registrar los intentos de acceso indebido en la auditoria (2h),Subtarea,AYNI-19,AYNI
+"Panel principal con saldo, rendimiento del mes y TREA vigente (5h)",Subtarea,AYNI-19,AYNI
+Listado de movimientos con filtros y paginacion (5h),Subtarea,AYNI-19,AYNI
+Feature de Cucumber con los dos escenarios (2h),Subtarea,AYNI-19,AYNI
+Modelar Transferencia y su maquina de estados en el dominio (4h),Subtarea,AYNI-18,AYNI
+Implementar el caso de uso con transaccion unica y bloqueo pesimista (5h),Subtarea,AYNI-18,AYNI
+Implementar la idempotencia mediante cabecera Idempotency-Key (5h),Subtarea,AYNI-18,AYNI
+Migracion Flyway de transferencia y beneficiario (2h),Subtarea,AYNI-18,AYNI
+Validar saldo suficiente y estado de ambas cuentas antes de mover (3h),Subtarea,AYNI-18,AYNI
+Escribir el evento en outbox_event dentro del mismo COMMIT (3h),Subtarea,AYNI-18,AYNI
+Exigir confirmacion con segundo factor TOTP (3h),Subtarea,AYNI-18,AYNI
+Generar comprobante con numero unico y descarga en PDF (4h),Subtarea,AYNI-18,AYNI
+Pruebas de concurrencia: dos transferencias simultaneas sobre el mismo saldo (5h),Subtarea,AYNI-18,AYNI
+Pantalla de transferencia con confirmacion en dos pasos (6h),Subtarea,AYNI-18,AYNI
+Feature de Cucumber con los cinco escenarios (4h),Subtarea,AYNI-18,AYNI
+Implementar el publicador de outbox con marcado de enviados (4h),Subtarea,AYNI-24,AYNI
+Configurar exchanges y colas en RabbitMQ (3h),Subtarea,AYNI-24,AYNI
+Implementar el consumidor idempotente por eventId (4h),Subtarea,AYNI-24,AYNI
+"Migracion Flyway de plantilla, notificacion e intento_envio (2h)",Subtarea,AYNI-24,AYNI
+Disenar las plantillas de correo con la identidad de marca (4h),Subtarea,AYNI-24,AYNI
+Integrar el proveedor de correo transaccional (3h),Subtarea,AYNI-24,AYNI
+Implementar reintentos con backoff exponencial (3h),Subtarea,AYNI-24,AYNI
+Verificar que ningun dato sensible aparece en el correo ni en los logs (2h),Subtarea,AYNI-24,AYNI
+Alerta si hay eventos pendientes en outbox con mas de 5 minutos (2h),Subtarea,AYNI-24,AYNI
+Feature de Cucumber con los tres escenarios (3h),Subtarea,AYNI-24,AYNI
+Modelar Tarjeta y su maquina de estados en el dominio (3h),Subtarea,AYNI-20,AYNI
+Implementar la generacion de PAN con algoritmo de Luhn sobre BIN de pruebas (4h),Subtarea,AYNI-20,AYNI
+Garantizar unicidad del PAN generado (2h),Subtarea,AYNI-20,AYNI
+Implementar el cifrado AES-256-GCM del PAN en reposo (4h),Subtarea,AYNI-20,AYNI
+Migracion Flyway de tarjeta y control_tarjeta (2h),Subtarea,AYNI-20,AYNI
+"Implementar el CVV dinamico, sin almacenarlo nunca (4h)",Subtarea,AYNI-20,AYNI
+Emitir la tarjeta automaticamente al aprobarse el KYC (3h),Subtarea,AYNI-20,AYNI
+"Enmascarar el PAN en interfaz, logs y respuestas de API (3h)",Subtarea,AYNI-20,AYNI
+Revelacion puntual del PAN con MFA y registro en auditoria (4h),Subtarea,AYNI-20,AYNI
+Componente visual de tarjeta con la identidad de marca (5h),Subtarea,AYNI-20,AYNI
+Feature de Cucumber con los dos escenarios (2h),Subtarea,AYNI-20,AYNI
+Implementar congelar y descongelar con efecto inmediato (3h),Subtarea,AYNI-21,AYNI
+Implementar el limite diario de consumo y su acumulado (4h),Subtarea,AYNI-21,AYNI
+Implementar la habilitacion de compras por internet (2h),Subtarea,AYNI-21,AYNI
+Rechazar todo consumo sobre tarjeta congelada (2h),Subtarea,AYNI-21,AYNI
+Registrar cada cambio de configuracion en la auditoria (2h),Subtarea,AYNI-21,AYNI
+Notificar al cliente cada cambio en los controles (2h),Subtarea,AYNI-21,AYNI
+Panel de controles de tarjeta en la interfaz (5h),Subtarea,AYNI-21,AYNI
+Feature de Cucumber con los dos escenarios (2h),Subtarea,AYNI-21,AYNI
+Implementar la validacion del CCI de 20 digitos con su digito de control (3h),Subtarea,AYNI-22,AYNI
+Definir el contrato OpenAPI de la camara de compensacion (4h),Subtarea,AYNI-22,AYNI
+Implementar el simulador de camara de compensacion conforme al contrato (6h),Subtarea,AYNI-22,AYNI
+Implementar el adaptador de salida con Resilience4j (4h),Subtarea,AYNI-22,AYNI
+"Extender la maquina de estados: PENDIENTE, COMPLETADA, RECHAZADA (4h)",Subtarea,AYNI-22,AYNI
+Implementar los asientos de compensacion para la reversion (5h),Subtarea,AYNI-22,AYNI
+Implementar el tiempo maximo de espera y su reversion automatica (4h),Subtarea,AYNI-22,AYNI
+Gestion de beneficiarios frecuentes (4h),Subtarea,AYNI-22,AYNI
+Pantalla de transferencia interbancaria con validacion de CCI en vivo (5h),Subtarea,AYNI-22,AYNI
+Feature de Cucumber con los tres escenarios (3h),Subtarea,AYNI-22,AYNI
+Extender Money para impedir operar entre monedas distintas (3h),Subtarea,AYNI-23,AYNI
+Migracion Flyway de tipo_cambio y ajuste multimoneda del ledger (3h),Subtarea,AYNI-23,AYNI
+Implementar el adaptador real de SUNAT/BCRP (5h),Subtarea,AYNI-23,AYNI
+Implementar la cache diaria del tipo de cambio (3h),Subtarea,AYNI-23,AYNI
+Circuit breaker con respaldo al ultimo valor conocido (3h),Subtarea,AYNI-23,AYNI
+Advertir al cliente cuando se usa un tipo de cambio en cache (2h),Subtarea,AYNI-23,AYNI
+Implementar el spread de compra y venta (3h),Subtarea,AYNI-23,AYNI
+Implementar la conversion en tres asientos sin mezclar monedas (6h),Subtarea,AYNI-23,AYNI
+Registrar de forma inmutable el tipo aplicado y su timestamp (3h),Subtarea,AYNI-23,AYNI
+Apertura de cuenta en dolares (3h),Subtarea,AYNI-23,AYNI
+Pantalla de conversion con simulacion previa (5h),Subtarea,AYNI-23,AYNI
+Feature de Cucumber con los tres escenarios (3h),Subtarea,AYNI-23,AYNI
+Migracion Flyway de evento_auditoria (2h),Subtarea,AYNI-26,AYNI
+Revocar UPDATE y DELETE sobre la tabla a nivel de PostgreSQL (3h),Subtarea,AYNI-26,AYNI
+"Implementar el interceptor que registra actor, accion, recurso, IP y agente (5h)",Subtarea,AYNI-26,AYNI
+"Configurar Hibernate Envers en cuenta, tarjeta y persona (5h)",Subtarea,AYNI-26,AYNI
+Implementar la consulta de estado historico en una fecha dada (4h),Subtarea,AYNI-26,AYNI
+Implementar los cinco roles con sus permisos diferenciados (5h),Subtarea,AYNI-26,AYNI
+Implementar el principio de cuatro ojos en operaciones sensibles (5h),Subtarea,AYNI-26,AYNI
+Auditar los logs para verificar que no exponen datos sensibles (3h),Subtarea,AYNI-26,AYNI
+Back-office con vista de auditoria de solo lectura (6h),Subtarea,AYNI-26,AYNI
+Feature de Cucumber con los cuatro escenarios (3h),Subtarea,AYNI-26,AYNI
+Integrar axe-core en el pipeline como verificacion bloqueante (3h),Subtarea,AYNI-28,AYNI
+Corregir las violaciones de WCAG 2.1 AA detectadas (6h),Subtarea,AYNI-28,AYNI
+Verificar contraste de todos los pares de color contra los tokens (3h),Subtarea,AYNI-28,AYNI
+Asegurar navegacion completa por teclado en los flujos criticos (5h),Subtarea,AYNI-28,AYNI
+Implementar indicador de foco visible y coherente (2h),Subtarea,AYNI-28,AYNI
+Anadir texto alternativo y etiquetas asociadas en formularios (3h),Subtarea,AYNI-28,AYNI
+Reescribir los mensajes de error para que indiquen como corregir (3h),Subtarea,AYNI-28,AYNI
+Optimizacion de rendimiento web hasta Lighthouse mayor o igual a 90 (5h),Subtarea,AYNI-28,AYNI
+Prueba con usuarios reales usando lector de pantalla (4h),Subtarea,AYNI-28,AYNI
+Feature de Cucumber con los tres escenarios (3h),Subtarea,AYNI-28,AYNI
+Instrumentar los servicios con metricas de Micrometer y Prometheus (4h),Subtarea,AYNI-25,AYNI
+"Construir los paneles de Grafana con latencia, throughput y errores (5h)",Subtarea,AYNI-25,AYNI
+Escribir los escenarios de carga en k6 (5h),Subtarea,AYNI-25,AYNI
+Ejecutar la prueba de carga nominal con 200 usuarios concurrentes (3h),Subtarea,AYNI-25,AYNI
+Ejecutar la prueba de estres hasta identificar el punto de quiebre (4h),Subtarea,AYNI-25,AYNI
+Documentar el punto de quiebre y el comportamiento en degradacion (3h),Subtarea,AYNI-25,AYNI
+Optimizar los cuellos de botella detectados (8h),Subtarea,AYNI-25,AYNI
+Configurar alertas sobre los umbrales del SLA (3h),Subtarea,AYNI-25,AYNI
+Ejecutar pruebas de mutacion con PIT y analizar el informe (4h),Subtarea,AYNI-25,AYNI
+Verificar health checks y reinicio automatico en los cinco servicios (3h),Subtarea,AYNI-27,AYNI
+Configurar replicas de los servicios sin estado (4h),Subtarea,AYNI-27,AYNI
+Automatizar el respaldo diario de la base de datos (4h),Subtarea,AYNI-27,AYNI
+Ejecutar y cronometrar el procedimiento de restauracion (5h),Subtarea,AYNI-27,AYNI
+Documentar el procedimiento de recuperacion ante desastres (3h),Subtarea,AYNI-27,AYNI
+Prueba de caida de notification-service durante una transferencia (3h),Subtarea,AYNI-27,AYNI
+Prueba de caida de kyc-service durante un onboarding (3h),Subtarea,AYNI-27,AYNI
+Medir la disponibilidad real del mes y contrastarla con el 99.5% (3h),Subtarea,AYNI-27,AYNI
+Ejecutar OWASP ZAP y resolver los hallazgos de riesgo alto (5h),Subtarea,AYNI-27,AYNI
+Redactar la evidencia de cumplimiento de ISO/IEC 25010 (5h),Subtarea,AYNI-27,AYNI
+Actualizar el CHANGELOG y crear el tag v1.0.0 (2h),Subtarea,AYNI-27,AYNI
+Preparar la demostracion de la sustentacion final (4h),Subtarea,AYNI-27,AYNI
