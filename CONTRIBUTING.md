@@ -151,6 +151,22 @@ python -m venv .venv-check
 ruff check . && mypy --strict src/ && pytest -q
 ```
 
+**Aplicación web.** El job `Web · calidad y accesibilidad` ejecuta estos seis pasos, en este orden.
+Ejecútalos todos: pasar `test` y fallar `format:check` es una ronda de CI perdida por un espacio.
+
+```bash
+cd web/ayni-web
+npm ci
+npm run lint && npm run format:check && npm run typecheck
+npm run test -- --coverage
+npm run test:a11y
+npm run build
+```
+
+`npm ci`, no `npm install`: instala exactamente lo que fija el lockfile y falla si `package.json`
+y el lockfile discrepan, que es lo que hace el CI. `npm install` los reconciliaría en silencio y el
+fallo aparecería solo allí.
+
 **Vulnerabilidades de contenedor.** No hace falta Docker: Trivy analiza el jar directamente y
 detecta las mismas dependencias que encontraría dentro de la imagen.
 
