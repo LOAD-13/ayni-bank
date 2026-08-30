@@ -108,10 +108,7 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
 
   if (error || intentos >= INTENTOS_MAXIMOS) {
     return (
-      <div
-        role="alert"
-        className="rounded-[16px] border border-error bg-blanco p-8 text-center"
-      >
+      <div role="alert" className="rounded-[16px] border border-error bg-blanco p-8 text-center">
         <TriangleAlert aria-hidden="true" className="mx-auto h-9 w-9 text-error" />
         <h1 className="mt-4 text-[22px] font-bold text-azul-800">
           Tu cuenta está tardando más de lo normal

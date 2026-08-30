@@ -91,9 +91,7 @@ test.describe("Cuenta lista", () => {
   test("sin titular en la URL no se queda cargando para siempre", async ({ page }) => {
     await page.goto("/registro/listo");
 
-    await expect(
-      page.getByRole("heading", { name: /no sabemos de qué cuenta/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /no sabemos de qué cuenta/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Iniciar sesión" })).toBeVisible();
   });
 });

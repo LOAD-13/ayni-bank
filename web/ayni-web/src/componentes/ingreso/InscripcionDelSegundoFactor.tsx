@@ -41,8 +41,8 @@ export function InscripcionDelSegundoFactor({ uri }: { uri: string }) {
     <div className="mt-4 rounded-[14px] border border-azul-200 bg-azul-050 p-5">
       <p className="text-[14px] font-bold text-azul-800">Activa tu segundo factor</p>
       <p className="mt-1.5 text-[13.5px] leading-[1.55] text-gris-700">
-        Escanea este código con Google Authenticator, Authy o Microsoft Authenticator. Es la
-        única vez que aparece.
+        Escanea este código con Google Authenticator, Authy o Microsoft Authenticator. Es la única
+        vez que aparece.
       </p>
 
       {imagen && (

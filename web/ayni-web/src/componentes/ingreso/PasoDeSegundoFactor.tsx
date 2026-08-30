@@ -40,10 +40,7 @@ export function PasoDeSegundoFactor({
   const [restantes, setRestantes] = useState(segundosHastaElSiguienteCodigo());
 
   useEffect(() => {
-    const temporizador = setInterval(
-      () => setRestantes(segundosHastaElSiguienteCodigo()),
-      1000,
-    );
+    const temporizador = setInterval(() => setRestantes(segundosHastaElSiguienteCodigo()), 1000);
     return () => clearInterval(temporizador);
   }, []);
 
@@ -117,8 +114,7 @@ export function PasoDeSegundoFactor({
         <InscripcionDelSegundoFactor uri={uriDeAprovisionamiento} />
       ) : (
         <p className="mt-2 max-w-[400px] text-[14.5px] leading-[1.55] text-gris-700">
-          Abre tu app de autenticación y escribe el código de 6 dígitos que aparece para Ayni
-          Bank.
+          Abre tu app de autenticación y escribe el código de 6 dígitos que aparece para Ayni Bank.
         </p>
       )}
 
@@ -192,8 +188,8 @@ export function PasoDeSegundoFactor({
 
       <p className="mt-6 flex items-start gap-2.5 rounded-[12px] bg-gris-100 p-4 text-[13px] leading-[1.5] text-gris-700">
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-gris-500" />
-        Nadie de Ayni Bank te pedirá este código por teléfono, correo ni mensaje. Si te lo
-        piden, no lo compartas.
+        Nadie de Ayni Bank te pedirá este código por teléfono, correo ni mensaje. Si te lo piden, no
+        lo compartas.
       </p>
     </>
   );

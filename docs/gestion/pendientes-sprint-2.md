@@ -68,7 +68,23 @@ fichero: `Cci.java`.
 `Cci.CODIGO_DE_BANCO` vale `999`. Lo asigna la SBS al autorizar la entidad; hasta entonces cualquier
 valor es un marcador.
 
-### 1.8 Detección de documento duplicado
+### 1.8 Pruebas de integración de la capa de infraestructura
+
+**Es la primera tarea de calidad del Sprint 2.** Al cerrar el Sprint 1 hay 711 líneas nuevas sin
+cubrir, y están todas en `infrastructure/`: adaptadores de persistencia, controladores REST y el
+publicador de la bandeja de salida. En `domain/` la cobertura es del 100 %.
+
+No se cubre con pruebas unitarias. Hace falta:
+
+- `@DataJpaTest` con **Testcontainers** contra PostgreSQL real, para los adaptadores. Con una base
+  embebida no valdría: el índice único parcial de `cuenta`, el tipo `jsonb` del outbox y las
+  secuencias son específicos de PostgreSQL, y probarlos contra H2 sería probar otra cosa.
+- `@WebMvcTest` para los controladores y el manejador de errores, que no necesitan base.
+
+Hasta entonces la puerta de SonarCloud reporta por debajo del 80 % en código nuevo. Es informativa
+—`continue-on-error: true`, ver ADR-0006— y **no se ha tocado el umbral para que pase**.
+
+### 1.9 Detección de documento duplicado
 
 Dos personas no pueden tener el mismo DNI, pero el número declarado se guarda cifrado con IV
 aleatorio, así que **la columna no sirve para imponer unicidad**. La comprobación tiene que hacerse

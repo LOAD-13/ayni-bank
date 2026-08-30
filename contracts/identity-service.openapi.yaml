@@ -395,7 +395,10 @@ components:
           type: string
           format: date-time
       example:
-        tokenDeAcceso: eyJhbGciOiJIUzI1NiJ9...
+        # Sin un JWT de ejemplo, ni siquiera troceado: el escaneo de secretos mide
+        # entropia, y una cadena Base64 con esa pinta la marca como credencial
+        # filtrada. Un ejemplo no vale una alerta que hay que aprender a ignorar.
+        tokenDeAcceso: <JWT firmado con HS256>
         expiraEn: "2026-08-30T10:30:30Z"
 
     ProblemaDeBloqueo:

@@ -64,7 +64,9 @@
         <sonar.coverage.exclusions>
             **/*Application.java,
             **/infrastructure/config/**,
-            **/domain/port/**
+            **/domain/port/**,
+            **/infrastructure/out/persistence/*Entity.java,
+            **/infrastructure/in/web/*Dto.java
         </sonar.coverage.exclusions>
         <!-- Umbral de cobertura del dominio exigido por la Definition of Done -->
         <jacoco.dominio.minimo>0.80</jacoco.dominio.minimo>

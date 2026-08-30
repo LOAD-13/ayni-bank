@@ -18,8 +18,8 @@ import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
 import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioAbierto;
-import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
+import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
@@ -100,7 +100,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
 
         Optional<Usuario> encontrado = usuarios.buscarPorCorreo(correo);
         if (encontrado.isEmpty()) {
-            return rechazarSinDelatarQueLaCuentaNoExiste(comando, momento);
+            return rechazarSinDelatarQueLaCuentaNoExiste(comando);
         }
 
         Usuario usuario = encontrado.get();
@@ -147,8 +147,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
      * el mismo razonamiento del registro, y el motivo de que ambos endpoints tarden lo
      * mismo respondan lo que respondan.
      */
-    private DesafioAbierto rechazarSinDelatarQueLaCuentaNoExiste(ComandoDeIngreso comando,
-                                                                Instant momento) {
+    private DesafioAbierto rechazarSinDelatarQueLaCuentaNoExiste(ComandoDeIngreso comando) {
         cifrador.cifrar(comando.contrasena());
         auditoria.registrar(TipoDeEventoDeAcceso.CREDENCIALES_INVALIDAS, null,
                 comando.cliente());

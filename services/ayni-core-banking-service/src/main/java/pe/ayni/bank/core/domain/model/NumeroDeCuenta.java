@@ -54,7 +54,7 @@ public record NumeroDeCuenta(String valor) {
      * un papel sin equivocarse.
      */
     public String formateado() {
-        return valor.replaceAll("(.{3})(.{7})(.{1})(.{3})", "$1-$2-$3-$4");
+        return valor.replaceAll("(.{3})(.{7})(.)(.{3})", "$1-$2-$3-$4");
     }
 
     /** Lo que se muestra en un listado: {@code ****3210}. */

@@ -95,7 +95,19 @@ public class GeneradorTotpRfc6238 implements GeneradorDeTotpPort {
                 + "&period=" + SEGUNDOS_POR_INTERVALO;
     }
 
-    /** El nucleo de la RFC 6238: HMAC del intervalo, truncado dinamico y modulo. */
+    /**
+     * El nucleo de la RFC 6238: HMAC del intervalo, truncado dinamico y modulo.
+     *
+     * <p><strong>Sobre el aviso de SHA-1.</strong> Los analizadores marcan cualquier uso de
+     * SHA-1 como algoritmo debil, y en el caso general tienen razon. Aqui no aplica, por dos
+     * motivos: SHA-1 no se usa como resumen para verificar integridad —donde las colisiones
+     * importan— sino <strong>dentro de un HMAC con clave secreta</strong>, construccion para
+     * la que no existe ataque practico conocido; y es lo que fija la RFC 6238 por defecto,
+     * de modo que cambiarlo dejaria los codigos ilegibles para Google Authenticator, Authy
+     * y el resto de aplicaciones. Se silencia el aviso con esta justificacion en lugar de
+     * dejarlo abierto, para que nadie tenga que volver a razonarlo.
+     */
+    @SuppressWarnings("java:S4790")
     private String calcular(byte[] clave, long intervalo) {
         try {
             Mac mac = Mac.getInstance(ALGORITMO_HMAC);

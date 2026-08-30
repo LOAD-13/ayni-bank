@@ -128,6 +128,39 @@ declaraciones que se «cubren» sin verificar nada.
 
 El umbral del 80 % se aplica al dominio. Ahí no hay excepciones.
 
+**Ampliación del 30 de agosto de 2026.** Se añaden dos patrones más, por el mismo criterio y no
+por conveniencia:
+
+```xml
+**/infrastructure/out/persistence/*Entity.java,
+**/infrastructure/in/web/*Dto.java
+```
+
+Las entidades JPA son campos con sus accesores y un constructor que el mapeador rellena; los DTO
+son *records* con una fábrica que copia valores. Una prueba unitaria sobre ellos comprueba que un
+`get` devuelve lo que puso el `set`, es decir, que Java funciona. Lo que sí hay que probar es que el
+**mapeo** entre entidad y dominio sea correcto, y eso vive en los mapeadores y adaptadores, que
+**no** están excluidos.
+
+### Lo que la puerta de SonarCloud sigue reportando en rojo, y por qué
+
+Al cerrar el Sprint 1, la cobertura de código nuevo queda en torno al 54 %, por debajo del 80 % que
+exige el *quality gate*. **No se ha tocado el umbral para que pase.**
+
+La razón es concreta y no se disimula: las 711 líneas sin cubrir están **todas** en
+`infrastructure/` —adaptadores de persistencia, controladores REST, el publicador de la bandeja de
+salida—. En `domain/` la cobertura es del 100 %, y eso es lo que la puerta bloqueante de JaCoCo
+exige y verifica.
+
+Cubrir esa capa no se hace con pruebas unitarias: hace falta `@DataJpaTest` contra una base real
+—Testcontainers— y `@WebMvcTest` para los controladores. Es trabajo legítimo y es la primera tarea
+de calidad del Sprint 2, anotada en [`pendientes-sprint-2.md`](../../gestion/pendientes-sprint-2.md).
+
+Mientras tanto, la puerta sigue **informativa** (`continue-on-error: true`), exactamente como este
+ADR decidió. Inflar la cobertura con pruebas que instancian una entidad para leer sus accesores
+haría pasar la puerta sin verificar nada, que es justo el fallo que este documento existe para
+evitar.
+
 ## Consecuencias
 
 **A favor.** El pipeline es honesto: lo que está en rojo está roto de verdad, y el equipo no

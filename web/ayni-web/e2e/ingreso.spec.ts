@@ -26,9 +26,7 @@ test.describe("Ingreso", () => {
     await expect(page.getByLabel("Correo electrónico")).toBeVisible();
     await expect(page.getByLabel("Recordar este dispositivo")).toBeVisible();
     await expect(page.getByRole("link", { name: /olvidaste tu contraseña/i })).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /biometría del dispositivo/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /biometría del dispositivo/i })).toBeVisible();
   });
 
   test("la contraseña se puede mostrar y volver a ocultar", async ({ page }) => {
@@ -82,9 +80,7 @@ test.describe("Ingreso", () => {
     await rellenarCredenciales(page);
 
     await expect(page.getByText("Activa tu segundo factor")).toBeVisible();
-    await expect(
-      page.getByRole("img", { name: /código qr para dar de alta/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("img", { name: /código qr para dar de alta/i })).toBeVisible();
 
     // Quien no puede escanear tiene que poder teclear el secreto: hay lectores que fallan
     // y escritorios sin cámara enfrente.

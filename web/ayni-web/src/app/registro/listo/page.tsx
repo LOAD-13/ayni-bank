@@ -47,9 +47,7 @@ export default async function PaginaDeCuentaLista({
           <EstadoDeLaCuenta usuarioId={titular} />
         ) : (
           <div className="rounded-[16px] border border-azul-200 bg-blanco p-8 text-center">
-            <h1 className="text-[22px] font-bold text-azul-800">
-              No sabemos de qué cuenta hablas
-            </h1>
+            <h1 className="text-[22px] font-bold text-azul-800">No sabemos de qué cuenta hablas</h1>
             <p className="mt-2 text-[14.5px] text-gris-700">
               Vuelve a entrar desde tu correo de bienvenida o inicia sesión.
             </p>
@@ -64,8 +62,8 @@ export default async function PaginaDeCuentaLista({
       </main>
 
       <footer className="px-5 pb-10 text-center text-[12px] text-gris-500">
-        Ayni Bank · Banca 100 % digital para personas naturales en Perú. Diseñado conforme al
-        marco normativo de la SBS.
+        Ayni Bank · Banca 100 % digital para personas naturales en Perú. Diseñado conforme al marco
+        normativo de la SBS.
       </footer>
     </div>
   );

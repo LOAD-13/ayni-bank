@@ -86,10 +86,7 @@ export async function presentarCredenciales(
   return pedir<DesafioDeSegundoFactor>("/api/v1/sesion", { correo, contrasena });
 }
 
-export async function verificarSegundoFactor(
-  desafioId: string,
-  codigo: string,
-): Promise<Sesion> {
+export async function verificarSegundoFactor(desafioId: string, codigo: string): Promise<Sesion> {
   return pedir<Sesion>("/api/v1/sesion/segundo-factor", { desafioId, codigo });
 }
 

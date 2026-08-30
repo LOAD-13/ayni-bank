@@ -25,13 +25,25 @@ public class NotificadorDeSeguridadPorEventos implements NotificadorDeSeguridadP
 
     @Override
     public void avisarIngresoPausado(CorreoElectronico correo) {
-        log.info("Pendiente de publicar por outbox: plantilla=INGRESO_PAUSADO "
-                + "destinatario={}", correo.enmascarado());
+        anotar("INGRESO_PAUSADO", correo);
     }
 
     @Override
     public void avisarSesionCerradaPorSeguridad(CorreoElectronico correo) {
-        log.info("Pendiente de publicar por outbox: plantilla=SESION_CERRADA_POR_SEGURIDAD "
-                + "destinatario={}", correo.enmascarado());
+        anotar("SESION_CERRADA_POR_SEGURIDAD", correo);
+    }
+
+    /**
+     * El enmascarado solo se calcula si el nivel esta activo.
+     *
+     * <p>Los argumentos de una llamada al log se evaluan siempre, aunque el nivel este
+     * apagado y la linea no llegue a escribirse. Con dos llamadas no importa; con una que
+     * se ejecute en cada intento fallido de ingreso, si.
+     */
+    private void anotar(String plantilla, CorreoElectronico correo) {
+        if (log.isInfoEnabled()) {
+            log.info("Pendiente de publicar por outbox: plantilla={} destinatario={}",
+                    plantilla, correo.enmascarado());
+        }
     }
 }
