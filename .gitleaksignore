@@ -1,22 +1,32 @@
 # Hallazgos de Gitleaks revisados uno por uno y descartados.
 #
-# Cada linea util es la huella exacta de un hallazgo: commit, fichero, regla y linea. Es
-# deliberadamente estrecho. Excluir un directorio entero taparia tambien lo que se filtre
-# manana; una huella solo tapa lo que ya se miro.
+# Cada linea util es la huella exacta de un hallazgo: commit, fichero, regla y linea.
+# Es deliberadamente estrecho: excluir un directorio entero taparia tambien lo que se
+# filtre manana, mientras que una huella solo tapa lo que ya se miro.
 #
 # Este fichero NO desactiva ninguna regla: el conjunto por defecto sigue entero.
 #
-# ATENCION al redactar estos comentarios: Gitleaks tambien escanea ESTE fichero. Citar
-# aqui el valor que se esta excluyendo crea un hallazgo nuevo, en esta misma linea. Se
-# describe que era, nunca se transcribe.
-
-# El contrato de identity traia como ejemplo un token de acceso con pinta de JWT real.
-# No era un secreto —una cadena inventada para documentar la forma del campo— pero su
-# entropia disparaba la regla `generic-api-key`. El valor ya se sustituyo por un marcador
-# en `contracts/identity-service.openapi.yaml`.
+# ─── Lo que hay que entender antes de tocar esto ──────────────────────────────
 #
-# La excepcion existe porque Gitleaks escanea el HISTORIAL del Pull Request, no su
-# resultado: el commit que introdujo la linea sigue ahi y seguiria marcandose. La
-# alternativa era reescribir la historia de una rama ya publicada, que es peor remedio
-# que la enfermedad.
+# Gitleaks escanea el HISTORIAL del Pull Request, no su resultado. Un commit que
+# alguna vez contuvo una cadena de alta entropia queda marcado para siempre, por
+# muchos commits posteriores que la limpien. Limpiar el fichero no borra el commit
+# que lo ensucio.
+#
+# Consecuencia practica: cada intento de arreglarlo con un commit nuevo deja el
+# anterior intacto. Y si el comentario que justifica la exclusion transcribe el
+# valor excluido, ese comentario genera un hallazgo propio. Paso: las dos huellas
+# de abajo son exactamente eso.
+#
+# Regla para quien venga despues: describe que era el valor, no lo transcribas.
+
+# 1. El contrato de identity traia como ejemplo un token de acceso con pinta de JWT
+#    real. No era un secreto —una cadena inventada para documentar la forma del
+#    campo— pero su entropia disparaba `generic-api-key`. Ya esta sustituido por un
+#    marcador en `contracts/identity-service.openapi.yaml`.
 ae57cd11aa5c2bb656807c6f21bbc264930c7ed2:contracts/identity-service.openapi.yaml:generic-api-key:398
+
+# 2. El comentario que justificaba la exclusion anterior citaba el valor literal, y
+#    Gitleaks escanea tambien este fichero. El hallazgo era la propia explicacion.
+#    Ya reescrita sin transcribirlo.
+161ef77c5a1fc2641c1e3fe6dd3cbe19f858966b:.gitleaksignore:generic-api-key:9
