@@ -33,6 +33,11 @@ public class RegistroController {
             @Valid @RequestBody SolicitudDeRegistroDto solicitud) {
 
         ResultadoDeRegistro resultado = registrarVisitante.registrar(new ComandoDeRegistro(
+                solicitud.nombres(),
+                solicitud.apellidos(),
+                solicitud.tipoDocumento(),
+                solicitud.numeroDocumento(),
+                solicitud.fechaNacimiento(),
                 solicitud.correo(),
                 solicitud.celular(),
                 solicitud.contrasena(),

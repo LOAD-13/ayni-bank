@@ -95,14 +95,26 @@ class CorreoElectronicoTest {
         @Test
         void ocultaElInteriorDeLaParteLocal() {
             assertThat(new CorreoElectronico("anaquispe@example.pe").enmascarado())
-                    .isEqualTo("a*******e@example.pe");
+                    .isEqualTo("a***e@example.pe");
         }
 
         @Test
         @DisplayName("oculta la parte local entera cuando es demasiado corta para revelar nada")
         void ocultaLaParteLocalCortaPorCompleto() {
             assertThat(new CorreoElectronico("ab@example.pe").enmascarado())
-                    .isEqualTo("**@example.pe");
+                    .isEqualTo("***@example.pe");
+        }
+
+        @Test
+        @DisplayName("la mascara mide siempre lo mismo: la longitud tambien es informacion")
+        void laMascaraNoRevelaLaLongitud() {
+            // Un asterisco por caracter oculto delata cuantos hay, y saber que una parte
+            // local mide diecisiete caracteres ayuda a quien intente adivinarla.
+            String corto = new CorreoElectronico("ana@example.pe").enmascarado();
+            String largo = new CorreoElectronico("anaquispebeatriz@example.pe").enmascarado();
+
+            assertThat(corto).isEqualTo("a***a@example.pe");
+            assertThat(largo).isEqualTo("a***z@example.pe").hasSameSizeAs(corto);
         }
 
         @Test

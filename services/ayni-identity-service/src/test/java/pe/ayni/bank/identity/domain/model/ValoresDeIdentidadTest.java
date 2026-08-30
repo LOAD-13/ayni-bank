@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -129,29 +130,32 @@ class ValoresDeIdentidadTest {
     @DisplayName("ComandoDeRegistro y ResultadoDeRegistro")
     class ComandoYResultado {
 
+        private ComandoDeRegistro comando(String correo, String celular, String contrasena) {
+            return new ComandoDeRegistro("Ana Lucia", "Quispe Mendoza", "DNI", "45678912",
+                    LocalDate.of(1998, 3, 14), correo, celular, contrasena, true);
+        }
+
         @Test
         @DisplayName("el comando lleva la contrasena en claro y su toString no la imprime")
         void elComandoNoFiltraLaContrasena() {
-            var comando = new ComandoDeRegistro(
-                    "ana@example.pe", "987654321", "Cont!rasena2026#", true);
+            var comando = comando("ana@example.pe", "987654321", "Cont!rasena2026#");
 
             assertThat(comando.toString())
                     .doesNotContain("Cont!rasena2026#")
                     .doesNotContain("ana@example.pe")
                     .doesNotContain("987654321")
+                    .doesNotContain("45678912")
+                    .doesNotContain("Quispe")
                     .contains("aceptaTerminos=true");
         }
 
         @Test
-        void elComandoExigeSusTresCampos() {
-            assertThatThrownBy(
-                    () -> new ComandoDeRegistro(null, "987654321", "clave", true))
+        void elComandoExigeSusTresCamposDeCredencial() {
+            assertThatThrownBy(() -> comando(null, "987654321", "clave"))
                     .isInstanceOf(NullPointerException.class);
-            assertThatThrownBy(
-                    () -> new ComandoDeRegistro("ana@example.pe", null, "clave", true))
+            assertThatThrownBy(() -> comando("ana@example.pe", null, "clave"))
                     .isInstanceOf(NullPointerException.class);
-            assertThatThrownBy(
-                    () -> new ComandoDeRegistro("ana@example.pe", "987654321", null, true))
+            assertThatThrownBy(() -> comando("ana@example.pe", "987654321", null))
                     .isInstanceOf(NullPointerException.class);
         }
 

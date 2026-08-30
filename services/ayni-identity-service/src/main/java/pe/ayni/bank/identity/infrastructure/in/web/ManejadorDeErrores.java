@@ -16,6 +16,12 @@ import org.springframework.web.context.request.WebRequest;
 
 import pe.ayni.bank.identity.domain.model.ConsentimientoNoOtorgadoException;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
+import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
+import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
+import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
+import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
+import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
+import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
 
 /**
  * Traduce las excepciones a {@code application/problem+json}, segun RFC 7807.
@@ -70,6 +76,75 @@ public class ManejadorDeErrores {
         return problema(HttpStatus.BAD_REQUEST, "consentimiento-obligatorio",
                 "Falta el consentimiento", excepcion.getMessage(),
                 List.of(new ErrorDeCampo("aceptaTerminos", excepcion.getMessage())), peticion);
+    }
+
+    /**
+     * HU-04, escenarios 2 y 3: correo desconocido, contrasena incorrecta o codigo invalido.
+     *
+     * <p>Los tres comparten manejador <strong>a proposito</strong>. Si el correo inexistente
+     * devolviera un tipo de problema distinto del de la contrasena incorrecta, el formulario
+     * de ingreso se convertiria en un comprobador de cuentas: bastaria comparar respuestas
+     * para saber quien es cliente de Ayni. El unico que se distingue es el segundo factor,
+     * y solo porque para llegar ahi ya hubo que acertar la contrasena.
+     */
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ProblemDetail alFallarLasCredenciales(CredencialesInvalidasException excepcion,
+                                                 WebRequest peticion) {
+        return problema(HttpStatus.UNAUTHORIZED, "credenciales-invalidas",
+                "No pudimos verificar tus datos", excepcion.getMessage(),
+                List.of(), peticion);
+    }
+
+    @ExceptionHandler(SegundoFactorInvalidoException.class)
+    public ProblemDetail alFallarElSegundoFactor(SegundoFactorInvalidoException excepcion,
+                                                 WebRequest peticion) {
+        return problema(HttpStatus.UNAUTHORIZED, "segundo-factor-invalido",
+                "El codigo no es valido", excepcion.getMessage(),
+                List.of(new ErrorDeCampo("codigo", excepcion.getMessage())), peticion);
+    }
+
+    /**
+     * Escenario 3: el ingreso esta pausado.
+     *
+     * <p>423 y no 429: no es que se hayan hecho demasiadas peticiones, es que este recurso
+     * concreto esta bloqueado. La espera restante va como extension del problema porque la
+     * pantalla aprobada muestra una cuenta atras.
+     */
+    @ExceptionHandler(CuentaBloqueadaException.class)
+    public ProblemDetail alEstarBloqueado(CuentaBloqueadaException excepcion,
+                                          WebRequest peticion) {
+        ProblemDetail detalle = problema(HttpStatus.LOCKED, "ingreso-pausado",
+                "Ingreso pausado por seguridad", excepcion.getMessage(),
+                List.of(), peticion);
+        detalle.setProperty("esperaSegundos", excepcion.esperaRestante().toSeconds());
+        return detalle;
+    }
+
+    /**
+     * La cuenta esta inhabilitada por decision de seguridad o de soporte.
+     *
+     * <p>403 y no 423: no es una pausa que se levante sola, es una negativa mientras alguien
+     * no intervenga. Por eso el mensaje dirige a soporte y no invita a reintentar.
+     */
+    @ExceptionHandler(CuentaInhabilitadaException.class)
+    public ProblemDetail alEstarInhabilitada(CuentaInhabilitadaException excepcion,
+                                             WebRequest peticion) {
+        return problema(HttpStatus.FORBIDDEN, "cuenta-inhabilitada",
+                "Tu cuenta esta inhabilitada", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /**
+     * Escenario 4 y sesion caducada. Comparten respuesta porque el cliente hace lo mismo en
+     * los dos casos —mandar al usuario a iniciar sesion— y porque decirle a quien reutilizo
+     * un token que se le detecto solo le informa de que ya no vale la pena insistir con ese.
+     * Al titular si se le avisa, por correo.
+     */
+    @ExceptionHandler({SesionExpiradaException.class,
+                       ReutilizacionDeRefreshTokenException.class})
+    public ProblemDetail alCaducarLaSesion(RuntimeException excepcion, WebRequest peticion) {
+        return problema(HttpStatus.UNAUTHORIZED, "sesion-expirada",
+                "Tu sesion ya no es valida",
+                "Vuelve a iniciar sesion para continuar.", List.of(), peticion);
     }
 
     /** Objetos de valor del dominio que rechazan su entrada. */

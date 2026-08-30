@@ -14,7 +14,16 @@ spring:
             - id: identity
               uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
               predicates:
-                - Path=/api/v1/registro/**,/api/v1/auth/**,/api/v1/usuarios/**
+                # `/api/v1/registro` sin `/**` ademas de con el, porque el comodin de
+                # Spring Cloud Gateway NO casa con la ruta desnuda: sin las dos formas,
+                # un POST a `/api/v1/registro` devuelve 404 y el de
+                # `/api/v1/registro/algo` funciona, que es de las cosas mas
+                # desconcertantes de depurar.
+                # `/api/v1/dev/**` encamina el disparador que aprueba una solicitud a
+                # mano mientras no exista el OCR. El endpoint al que llega lleva
+                # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
+                # resuelve a nada: el bean ni se crea. Se retira con HU-02.
+                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**
 
             - id: core-banking
               uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}

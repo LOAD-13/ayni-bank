@@ -44,6 +44,32 @@ spring:
         # bounded context se muda a su propia base, se cambia aqui.
         default_schema: identity
 
+# ─── Cifrado de datos personales en reposo ─────────────────────────────────
+# Clave AES-256 en Base64, 32 bytes. Cifra el numero de documento declarado, que
+# es dato sensible segun la Ley N.o 29733 (§5.2 del documento de diseño).
+#
+# El valor por defecto es de desarrollo y esta aqui para que el compose arranque
+# sin exportar nada, igual que la contrasena de la base. En staging y produccion
+# lo sobreescribe AYNI_CIFRADO_CLAVE, que llega como secreto y nunca al repo.
+# Generar una nueva:  openssl rand -base64 32
+ayni:
+  cifrado:
+    clave: ${AYNI_CIFRADO_CLAVE:YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
+  # ─── Firma del token de acceso ─────────────────────────────────────────
+  # Clave HS256 en Base64, mínimo 32 bytes. Es distinta de la de cifrado a
+  # propósito: firmar y cifrar son finalidades distintas, y una clave que sirve
+  # para las dos obliga a rotarlas juntas aunque solo se comprometa una.
+  jwt:
+    clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
+  cookies:
+    # En local la aplicación se sirve por HTTP, y una cookie `Secure` sencillamente
+    # no llegaría: el navegador la descarta sin avisar y el ingreso parecería
+    # funcionar hasta que la renovación falla. En staging y producción, con HTTPS
+    # por delante, esto va SIEMPRE en true.
+    seguras: ${AYNI_COOKIES_SEGURAS:false}
+
 server:
   port: 8081
 

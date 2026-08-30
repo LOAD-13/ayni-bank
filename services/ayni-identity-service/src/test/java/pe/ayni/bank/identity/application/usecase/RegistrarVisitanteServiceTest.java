@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
+import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.RequisitoDeContrasena;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
 import pe.ayni.bank.identity.domain.model.Usuario;
@@ -46,6 +48,10 @@ class RegistrarVisitanteServiceTest {
     private static final String CONTRASENA_VALIDA = "Cont!rasena2026#";
     private static final String CORREO = "ana.quispe@example.pe";
     private static final String CELULAR = "987654321";
+    private static final String NOMBRES = "Ana Lucia";
+    private static final String APELLIDOS = "Quispe Mendoza";
+    private static final String DNI = "45678912";
+    private static final LocalDate NACIMIENTO = LocalDate.of(1998, 3, 14);
 
     private RepositorioDeUsuariosFalso usuarios;
     private RepositorioDeSolicitudesFalso solicitudes;
@@ -64,7 +70,14 @@ class RegistrarVisitanteServiceTest {
     }
 
     private static ComandoDeRegistro comandoValido() {
-        return new ComandoDeRegistro(CORREO, CELULAR, CONTRASENA_VALIDA, true);
+        return comando(CORREO, CELULAR, CONTRASENA_VALIDA, true);
+    }
+
+    /** Un comando valido con los cuatro campos que cada prueba necesita variar. */
+    private static ComandoDeRegistro comando(String correo, String celular,
+                                             String contrasena, boolean aceptaTerminos) {
+        return new ComandoDeRegistro(NOMBRES, APELLIDOS, "DNI", DNI, NACIMIENTO,
+                correo, celular, contrasena, aceptaTerminos);
     }
 
     @Nested
@@ -92,8 +105,8 @@ class RegistrarVisitanteServiceTest {
 
         @Test
         void normalizaElCorreoAntesDeGuardarlo() {
-            servicio.registrar(new ComandoDeRegistro(
-                    "  Ana.Quispe@EXAMPLE.pe ", CELULAR, CONTRASENA_VALIDA, true));
+            servicio.registrar(
+                    comando("  Ana.Quispe@EXAMPLE.pe ", CELULAR, CONTRASENA_VALIDA, true));
 
             assertThat(usuarios.guardados.get(0).correo().valor()).isEqualTo(CORREO);
         }
@@ -205,7 +218,7 @@ class RegistrarVisitanteServiceTest {
         @Test
         void noCreaElUsuario() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro(CORREO, CELULAR, "corta", true)))
+                    comando(CORREO, CELULAR, "corta", true)))
                     .isInstanceOf(ContrasenaInvalidaException.class);
 
             assertThat(usuarios.guardados).isEmpty();
@@ -216,7 +229,7 @@ class RegistrarVisitanteServiceTest {
         @DisplayName("indica que requisito concreto incumple")
         void indicaElRequisitoIncumplido() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro(CORREO, CELULAR, "contrasenalarga1", true)))
+                    comando(CORREO, CELULAR, "contrasenalarga1", true)))
                     .isInstanceOfSatisfying(ContrasenaInvalidaException.class, e ->
                             assertThat(e.incumplidos()).containsExactlyInAnyOrder(
                                     RequisitoDeContrasena.MAYUSCULA,
@@ -227,7 +240,7 @@ class RegistrarVisitanteServiceTest {
         @DisplayName("falla antes de tocar el repositorio: no gasta una consulta")
         void fallaAntesDeConsultarElRepositorio() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro(CORREO, CELULAR, "corta", true)))
+                    comando(CORREO, CELULAR, "corta", true)))
                     .isInstanceOf(ContrasenaInvalidaException.class);
 
             assertThat(usuarios.vecesQueSeConsultoExistencia).isZero();
@@ -241,7 +254,7 @@ class RegistrarVisitanteServiceTest {
         @Test
         void noCreaElUsuario() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro(CORREO, CELULAR, CONTRASENA_VALIDA, false)))
+                    comando(CORREO, CELULAR, CONTRASENA_VALIDA, false)))
                     .isInstanceOf(ConsentimientoNoOtorgadoException.class)
                     .hasMessageContaining("aceptar los terminos");
 
@@ -258,7 +271,7 @@ class RegistrarVisitanteServiceTest {
         @Test
         void rechazaUnCorreoMalFormado() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro("sin-arroba", CELULAR, CONTRASENA_VALIDA, true)))
+                    comando("sin-arroba", CELULAR, CONTRASENA_VALIDA, true)))
                     .isInstanceOf(IllegalArgumentException.class);
 
             assertThat(usuarios.guardados).isEmpty();
@@ -267,10 +280,70 @@ class RegistrarVisitanteServiceTest {
         @Test
         void rechazaUnCelularQueNoEsMovilPeruano() {
             assertThatThrownBy(() -> servicio.registrar(
-                    new ComandoDeRegistro(CORREO, "12345678", CONTRASENA_VALIDA, true)))
+                    comando(CORREO, "12345678", CONTRASENA_VALIDA, true)))
                     .isInstanceOf(IllegalArgumentException.class);
 
             assertThat(usuarios.guardados).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("Identidad declarada · el termino de comparacion del OCR en HU-02")
+    class Identidad {
+
+        @Test
+        @DisplayName("se guarda en la solicitud, ya normalizada")
+        void seGuardaConLaSolicitud() {
+            servicio.registrar(comandoValido());
+
+            assertThat(solicitudes.identidades).hasSize(1);
+            var identidad = solicitudes.identidades.get(0);
+            assertThat(identidad.nombres()).isEqualTo(NOMBRES);
+            assertThat(identidad.apellidos()).isEqualTo(APELLIDOS);
+            assertThat(identidad.documento().numero()).isEqualTo(DNI);
+            assertThat(identidad.fechaNacimiento().valor()).isEqualTo(NACIMIENTO);
+        }
+
+        @Test
+        @DisplayName("el senuelo no guarda datos personales de una cuenta que no se creo")
+        void elSenueloNoConservaNada() {
+            usuarios.correosExistentes.add(CORREO);
+
+            servicio.registrar(comandoValido());
+
+            assertThat(solicitudes.senuelos).hasSize(1);
+            assertThat(solicitudes.identidades).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un menor de edad no puede abrir una cuenta a nombre propio")
+        void rechazaAlMenorDeEdad() {
+            LocalDate ayerCumplioDiecisiete = LocalDate.ofInstant(AHORA, ZoneOffset.UTC)
+                    .minusYears(17);
+
+            assertThatThrownBy(() -> servicio.registrar(new ComandoDeRegistro(
+                    NOMBRES, APELLIDOS, "DNI", DNI, ayerCumplioDiecisiete,
+                    CORREO, CELULAR, CONTRASENA_VALIDA, true)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("18");
+
+            assertThat(usuarios.guardados).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un documento invalido falla igual exista o no el correo")
+        void fallaIgualConElCorreoTomado() {
+            // Si la identidad se compusiera dentro de la rama del registro nuevo, este
+            // mismo comando daria 400 con el correo libre y 202 con el correo tomado, y
+            // esa diferencia volveria a delatar que cuentas existen. Ver ADR-0008.
+            usuarios.correosExistentes.add(CORREO);
+
+            assertThatThrownBy(() -> servicio.registrar(new ComandoDeRegistro(
+                    NOMBRES, APELLIDOS, "DNI", "123", NACIMIENTO,
+                    CORREO, CELULAR, CONTRASENA_VALIDA, true)))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThat(solicitudes.senuelos).isEmpty();
         }
     }
 
@@ -293,6 +366,11 @@ class RegistrarVisitanteServiceTest {
         }
 
         @Override
+        public Optional<Usuario> buscarPorId(UUID id) {
+            return guardados.stream().filter(u -> u.id().equals(id)).findFirst();
+        }
+
+        @Override
         public Usuario guardar(Usuario usuario) {
             guardados.add(usuario);
             return usuario;
@@ -303,11 +381,15 @@ class RegistrarVisitanteServiceTest {
             implements RepositorioDeSolicitudesPort {
         private final Map<UUID, UUID> reales = new HashMap<>();
         private final List<UUID> senuelos = new ArrayList<>();
+        private final List<UUID> aprobadas = new ArrayList<>();
+
+        private final List<IdentidadDeclarada> identidades = new ArrayList<>();
 
         @Override
-        public UUID abrirPara(UUID usuarioId) {
+        public UUID abrirPara(UUID usuarioId, IdentidadDeclarada identidad) {
             UUID id = UUID.randomUUID();
             reales.put(id, usuarioId);
+            identidades.add(identidad);
             return id;
         }
 
@@ -316,6 +398,21 @@ class RegistrarVisitanteServiceTest {
             UUID id = UUID.randomUUID();
             senuelos.add(id);
             return id;
+        }
+
+        @Override
+        public java.util.Optional<UUID> titularDe(UUID solicitudId) {
+            return java.util.Optional.ofNullable(reales.get(solicitudId));
+        }
+
+        @Override
+        public void marcarAprobada(UUID solicitudId) {
+            aprobadas.add(solicitudId);
+        }
+
+        @Override
+        public java.util.Optional<String> nombreDePilaDe(UUID usuarioId) {
+            return java.util.Optional.of("Ana");
         }
     }
 

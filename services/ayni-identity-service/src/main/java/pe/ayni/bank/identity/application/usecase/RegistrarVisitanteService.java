@@ -2,6 +2,7 @@ package pe.ayni.bank.identity.application.usecase;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,7 +17,11 @@ import pe.ayni.bank.identity.domain.model.Consentimiento;
 import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
+import pe.ayni.bank.identity.domain.model.DocumentoDeIdentidad;
+import pe.ayni.bank.identity.domain.model.FechaDeNacimiento;
+import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.RequisitoDeContrasena;
+import pe.ayni.bank.identity.domain.model.TipoDocumento;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
 import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.in.RegistrarVisitanteUseCase;
@@ -81,6 +86,12 @@ public class RegistrarVisitanteService implements RegistrarVisitanteUseCase {
         CorreoElectronico correo = new CorreoElectronico(comando.correo());
         Celular celular = new Celular(comando.celular());
 
+        // La identidad se compone antes de mirar si el correo existe, y no despues. Si se
+        // compusiera dentro de la rama del registro nuevo, un documento mal formado seria
+        // un 400 cuando el correo esta libre y un 202 cuando ya esta tomado: la diferencia
+        // volveria a delatar que cuentas existen, por la puerta de atras. Ver ADR-0008.
+        IdentidadDeclarada identidad = componerIdentidad(comando, momento);
+
         // 2. A partir de aqui, la respuesta es identica exista o no el correo.
         if (usuarios.existeCorreo(correo)) {
             return responderSinDelatarQueLaCuentaExiste(correo, comando.contrasena());
@@ -90,7 +101,7 @@ public class RegistrarVisitanteService implements RegistrarVisitanteUseCase {
         Usuario usuario = usuarios.guardar(Usuario.registrar(
                 UUID.randomUUID(), correo, celular, contrasena, consentimiento, momento));
 
-        UUID solicitudId = solicitudes.abrirPara(usuario.id());
+        UUID solicitudId = solicitudes.abrirPara(usuario.id(), identidad);
         notificador.enviarBienvenida(correo);
 
         // El correo va enmascarado. Un log de aplicacion lo leen operaciones, soporte y
@@ -99,6 +110,24 @@ public class RegistrarVisitanteService implements RegistrarVisitanteUseCase {
                 usuario.id(), correo.enmascarado());
 
         return ResultadoDeRegistro.aceptado(solicitudId);
+    }
+
+    /**
+     * Convierte los datos de identidad en objetos de valor ya validados.
+     *
+     * <p>La mayoria de edad se comprueba contra el {@code Clock} inyectado y no contra
+     * {@code LocalDate.now()}: si dependiera del reloj del sistema, la prueba que verifica
+     * el limite de los dieciocho anos dejaria de valer al dia siguiente de escribirla.
+     */
+    private IdentidadDeclarada componerIdentidad(ComandoDeRegistro comando, Instant momento) {
+        LocalDate hoy = LocalDate.ofInstant(momento, reloj.getZone());
+
+        return new IdentidadDeclarada(
+                comando.nombres(),
+                comando.apellidos(),
+                new DocumentoDeIdentidad(
+                        TipoDocumento.de(comando.tipoDocumento()), comando.numeroDocumento()),
+                FechaDeNacimiento.de(comando.fechaNacimiento(), hoy));
     }
 
     /**

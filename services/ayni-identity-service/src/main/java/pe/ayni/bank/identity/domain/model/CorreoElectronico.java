@@ -45,9 +45,21 @@ public record CorreoElectronico(String valor) {
         int arroba = valor.indexOf('@');
         String local = valor.substring(0, arroba);
         String dominio = valor.substring(arroba);
+
         if (local.length() <= 2) {
-            return "*".repeat(local.length()) + dominio;
+            return MASCARA + dominio;
         }
-        return local.charAt(0) + "*".repeat(local.length() - 2) + local.charAt(local.length() - 1) + dominio;
+        return local.charAt(0) + MASCARA + local.charAt(local.length() - 1) + dominio;
     }
+
+    /**
+     * Siempre tres asteriscos, sea cual sea el correo.
+     *
+     * <p>Antes se repetia un asterisco por cada caracter oculto, y eso revelaba la longitud
+     * exacta de la parte local: quien vea {@code a***************e@example.pe} sabe que
+     * tiene diecisiete caracteres, que es informacion util para adivinarla y que no hacia
+     * falta dar. Con longitud fija, dos correos distintos del mismo dominio se enmascaran
+     * igual. De paso, es lo unico que se puede enseñar en pantalla sin que parezca roto.
+     */
+    private static final String MASCARA = "***";
 }

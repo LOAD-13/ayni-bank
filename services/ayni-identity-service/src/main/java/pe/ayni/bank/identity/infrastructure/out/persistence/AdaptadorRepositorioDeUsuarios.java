@@ -2,6 +2,7 @@ package pe.ayni.bank.identity.infrastructure.out.persistence;
 
 import java.time.Clock;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
@@ -29,6 +30,11 @@ public class AdaptadorRepositorioDeUsuarios implements RepositorioDeUsuariosPort
     @Override
     public Optional<Usuario> buscarPorCorreo(CorreoElectronico correo) {
         return repositorio.findByCorreo(correo.valor()).map(MapeadorDeUsuario::aDominio);
+    }
+
+    @Override
+    public Optional<Usuario> buscarPorId(UUID id) {
+        return repositorio.findById(id).map(MapeadorDeUsuario::aDominio);
     }
 
     @Override
