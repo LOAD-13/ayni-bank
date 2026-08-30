@@ -1,0 +1,146 @@
+/* Sistema de diseño de Ayni Bank.
+ *
+ * Traducción literal de `docs/marca/design-tokens.md`, que es la fuente de
+ * verdad. Los nombres de `:root` son exactamente los del documento; el bloque
+ * `@theme inline` los expone a Tailwind sin duplicar ningún valor, de modo que
+ * cambiar un color se hace en un solo sitio.
+ *
+ * Ningún componente escribe un hexadecimal. Si aparece uno, la revisión de
+ * código lo rechaza. */
+
+:root {
+  /* ── Marca ─────────────────────────────────────────────────────────── */
+  --ayni-azul: #064475;
+  --ayni-dorado: #c59e41;
+
+  /* ── Azul (primario) ───────────────────────────────────────────────── */
+  --azul-900: #02223b;
+  --azul-800: #043457;
+  --azul-700: #064475;
+  --azul-600: #0a5a96;
+  --azul-500: #1276be;
+  --azul-400: #4c9bd6;
+  --azul-300: #8cbee6;
+  --azul-200: #c0dcf2;
+  --azul-100: #e4eff9;
+  --azul-050: #f3f8fc;
+
+  /* ── Dorado (acento) ───────────────────────────────────────────────── */
+  /* El dorado NUNCA se usa para texto sobre fondo claro: `--dorado-500`
+   * sobre blanco da 2.52:1 y no cumple ni AA. Para texto de acento se usa
+   * `--dorado-700`, que da 4.89:1. axe-core lo verifica en CI. */
+  --dorado-800: #6b541b;
+  --dorado-700: #8a6d24;
+  --dorado-600: #a8862f;
+  --dorado-500: #c59e41;
+  --dorado-400: #d6b76d;
+  --dorado-300: #e5cf9c;
+  --dorado-200: #f1e4c6;
+  --dorado-100: #faf4e7;
+
+  /* ── Neutros ───────────────────────────────────────────────────────── */
+  --gris-900: #111820;
+  --gris-700: #374151;
+  --gris-500: #6b7280;
+  --gris-300: #d1d5db;
+  --gris-100: #f3f4f6;
+  --blanco: #ffffff;
+
+  /* ── Semánticos ────────────────────────────────────────────────────── */
+  /* En una interfaz bancaria el verde y el rojo señalan abono y cargo, pero
+   * nunca se usan solos: siempre acompañados de signo (+ / −) y etiqueta
+   * textual, porque el color por sí solo no es accesible. */
+  --exito: #0f7a52;
+  --error: #b3261e;
+  --aviso: #8a6d24;
+  --info: #0a5a96;
+
+  /* ── Tipografía ────────────────────────────────────────────────────── */
+  --txt-display: 2.5rem; /* 40 px */
+  --txt-h1: 2rem; /* 32 px */
+  --txt-h2: 1.5rem; /* 24 px */
+  --txt-h3: 1.25rem; /* 20 px */
+  --txt-body: 1rem; /* 16 px */
+  --txt-small: 0.875rem; /* 14 px */
+  --txt-caption: 0.75rem; /* 12 px */
+
+  /* ── Radios ────────────────────────────────────────────────────────── */
+  --radio-sm: 6px;
+  --radio-md: 12px;
+  --radio-lg: 20px;
+  --radio-full: 9999px;
+
+  /* ── Sombras ───────────────────────────────────────────────────────── */
+  --sombra-sm: 0 1px 2px rgba(6, 68, 117, 0.08);
+  --sombra-md: 0 4px 12px rgba(6, 68, 117, 0.1);
+  --sombra-lg: 0 12px 32px rgba(6, 68, 117, 0.14);
+}
+
+/* Expone los tokens como utilidades de Tailwind (`bg-azul-700`, `text-exito`,
+ * `rounded-md`, `shadow-md`…). `inline` hace que la utilidad referencie la
+ * variable en lugar de copiar su valor: la definición sigue viviendo arriba. */
+@theme inline {
+  /* `--fuente-inter` la inyecta next/font en <html> desde el layout. La cadena
+   * de reserva evita que la pagina caiga en una serif si la fuente no carga. */
+  --font-sans:
+    var(--fuente-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-ayni-azul: var(--ayni-azul);
+  --color-ayni-dorado: var(--ayni-dorado);
+
+  --color-azul-900: var(--azul-900);
+  --color-azul-800: var(--azul-800);
+  --color-azul-700: var(--azul-700);
+  --color-azul-600: var(--azul-600);
+  --color-azul-500: var(--azul-500);
+  --color-azul-400: var(--azul-400);
+  --color-azul-300: var(--azul-300);
+  --color-azul-200: var(--azul-200);
+  --color-azul-100: var(--azul-100);
+  --color-azul-050: var(--azul-050);
+
+  --color-dorado-800: var(--dorado-800);
+  --color-dorado-700: var(--dorado-700);
+  --color-dorado-600: var(--dorado-600);
+  --color-dorado-500: var(--dorado-500);
+  --color-dorado-400: var(--dorado-400);
+  --color-dorado-300: var(--dorado-300);
+  --color-dorado-200: var(--dorado-200);
+  --color-dorado-100: var(--dorado-100);
+
+  --color-gris-900: var(--gris-900);
+  --color-gris-700: var(--gris-700);
+  --color-gris-500: var(--gris-500);
+  --color-gris-300: var(--gris-300);
+  --color-gris-100: var(--gris-100);
+  --color-blanco: var(--blanco);
+
+  --color-exito: var(--exito);
+  --color-error: var(--error);
+  --color-aviso: var(--aviso);
+  --color-info: var(--info);
+
+  --text-display: var(--txt-display);
+  --text-display--line-height: 1.15;
+  --text-h1: var(--txt-h1);
+  --text-h1--line-height: 1.2;
+  --text-h2: var(--txt-h2);
+  --text-h2--line-height: 1.3;
+  --text-h3: var(--txt-h3);
+  --text-h3--line-height: 1.4;
+  --text-body: var(--txt-body);
+  --text-body--line-height: 1.6;
+  --text-small: var(--txt-small);
+  --text-small--line-height: 1.5;
+  --text-caption: var(--txt-caption);
+  --text-caption--line-height: 1.4;
+
+  --radius-sm: var(--radio-sm);
+  --radius-md: var(--radio-md);
+  --radius-lg: var(--radio-lg);
+  --radius-full: var(--radio-full);
+
+  --shadow-sm: var(--sombra-sm);
+  --shadow-md: var(--sombra-md);
+  --shadow-lg: var(--sombra-lg);
+}

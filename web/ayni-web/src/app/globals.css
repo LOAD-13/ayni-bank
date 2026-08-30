@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/* La aplicación se sirve solo en tema claro por ahora. El modo oscuro llega
+ * con HU-17 (accesibilidad), donde se revisan los contrastes de la paleta
+ * invertida uno por uno; declararlo antes sería afirmar una accesibilidad que
+ * nadie ha medido. */
+
+body {
+  background: var(--blanco);
+  color: var(--gris-900);
+  font-size: var(--txt-body);
+  line-height: 1.6;
+}
+
+/* Los importes se muestran siempre con cifras tabulares, para que las columnas
+ * de números queden alineadas en estados de cuenta y listados de movimientos. */
+.cifra {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* El foco visible no se elimina nunca: es el único indicador de posición para
+ * quien navega con teclado. WCAG 2.1 AA, criterio 2.4.7. */
+:focus-visible {
+  outline: 2px solid var(--azul-600);
+  outline-offset: 2px;
+}
