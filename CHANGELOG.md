@@ -48,6 +48,9 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
 - El umbral de cobertura del dominio estaba declarado en el POM pero ningún plugin lo leía: faltaba
   la ejecución `jacoco:check`, la única que rompe el build.
 - El job de imágenes cancelaba el resto de la matriz al primer fallo, ocultando los demás.
+- La matriz de imágenes componía la ruta del Dockerfile a partir del nombre del servicio, de modo
+  que `ayni-web` —la única imagen que no vive bajo `services/`— quedaba sin construir ni escanear.
+  Ahora cada entrada declara su ruta.
 - El health check de `ayni-web` daba el contenedor por caído: Node escucha solo en IPv4 y dentro del
   contenedor `localhost` resuelve antes a `::1`.
 - Loki publicaba un puerto en el host que nadie usaba —Grafana lo consulta por la red interna— y que
@@ -63,3 +66,6 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
   de la aplicación. La imagen queda sin hallazgos críticos ni altos.
 - Fijado `postcss` por encima de la versión que arrastra Next 15, que acumulaba una vulnerabilidad
   alta de XSS y tres de lectura arbitraria de ficheros.
+- Elevado OpenSSL en las imágenes de los cuatro servicios Java: `eclipse-temurin:21-jre-alpine` pasó
+  a Alpine 3.24.1 con OpenSSL 3.5.7-r0 y arrastraba CVE-2026-14456. Es deriva de la imagen base, no
+  de las dependencias: Trivy informaba cero hallazgos en los jar.
