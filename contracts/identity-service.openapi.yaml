@@ -1,0 +1,206 @@
+openapi: 3.0.3
+
+# Contrato del ayni-identity-service.
+#
+# Este fichero es la fuente de verdad de la API, no su documentacion. Vive en
+# `contracts/` porque lo consumen tanto la aplicacion web como los servicios que
+# hablan con identity, y porque un cambio aqui debe pasar por revision de Pull
+# Request igual que un cambio de codigo.
+#
+# Crece historia a historia. Hoy cubre HU-01; HU-04 anadira autenticacion.
+
+info:
+  title: Ayni Identity Service
+  version: 0.1.0
+  description: |
+    Registro, autenticacion y orquestacion del onboarding de Ayni Bank.
+
+    **Todas las respuestas de error usan `application/problem+json`**, segun
+    RFC 7807. Un cuerpo de error con forma propia obliga a cada cliente a
+    aprender un formato distinto por servicio.
+  license:
+    name: Propietario
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local, a traves del gateway
+  - url: https://staging.ayni.pe/api/v1
+    description: Staging
+
+tags:
+  - name: onboarding
+    description: Alta de nuevos clientes
+
+paths:
+  /registro:
+    post:
+      tags: [onboarding]
+      operationId: registrarVisitante
+      summary: Registra un visitante e inicia su solicitud de onboarding
+      description: |
+        Crea un usuario en estado `PENDIENTE_VERIFICACION` y abre su solicitud
+        de onboarding.
+
+        **La respuesta es deliberadamente indistinguible cuando el correo ya
+        esta registrado.** Devolver 409, o un mensaje distinto, convertiria este
+        endpoint en un oraculo para averiguar que correos tienen cuenta en Ayni:
+        basta recorrer una lista filtrada de otro sitio para saber quien es
+        cliente del banco. Por eso, ante un correo ya existente, el servicio no
+        crea nada, devuelve un `solicitudId` que no corresponde a ninguna
+        solicitud real y notifica por correo al titular legitimo de que alguien
+        intento registrarse con su direccion.
+
+        Los errores de formato (400) si son explicitos: indicar que el celular
+        debe empezar en 9 no revela nada sobre quien es cliente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudRegistro"
+      responses:
+        "202":
+          description: |
+            Solicitud aceptada. Se devuelve 202 y no 201 porque el alta no
+            termina aqui: el usuario existe pero no puede operar hasta superar
+            la verificacion de identidad.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RespuestaRegistro"
+        "400":
+          description: El cuerpo no cumple las validaciones de formato
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "429":
+          description: |
+            Demasiadas solicitudes desde el mismo origen. El limite lo aplica el
+            gateway y es lo que impide recorrer el endpoint en masa pese a que
+            las respuestas sean indistinguibles.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+components:
+  schemas:
+    SolicitudRegistro:
+      type: object
+      required: [correo, celular, contrasena, aceptaTerminos]
+      additionalProperties: false
+      properties:
+        correo:
+          type: string
+          format: email
+          maxLength: 254
+          description: Se normaliza a minusculas antes de comprobar unicidad.
+          example: ana.quispe@example.pe
+        celular:
+          type: string
+          pattern: "^9[0-9]{8}$"
+          description: Nueve digitos que empiezan en 9, formato movil peruano.
+          example: "987654321"
+        contrasena:
+          type: string
+          minLength: 12
+          maxLength: 128
+          format: password
+          description: |
+            Minimo 12 caracteres con mayuscula, minuscula, digito y simbolo. Se
+            almacena con Argon2id; nunca en claro ni con un hash reversible, y
+            nunca aparece en un log.
+          example: "Cont!rasena2026#"
+        aceptaTerminos:
+          type: boolean
+          description: |
+            Debe ser `true`. El consentimiento al tratamiento de datos
+            personales exige la Ley N.o 29733 y no puede venir marcado por
+            defecto en la interfaz.
+      example:
+        correo: ana.quispe@example.pe
+        celular: "987654321"
+        contrasena: "Cont!rasena2026#"
+        aceptaTerminos: true
+
+    RespuestaRegistro:
+      type: object
+      required: [solicitudId, estado, mensaje]
+      properties:
+        solicitudId:
+          type: string
+          format: uuid
+          description: |
+            Identificador de la solicitud de onboarding, con el que continua el
+            flujo de verificacion de identidad. Opaco a proposito: no se deriva
+            del correo ni del identificador del usuario.
+          example: 6b1f9c2a-0d3e-4a7b-8c11-5f2e9a4d7c31
+        estado:
+          type: string
+          enum: [PENDIENTE_VERIFICACION]
+          description: |
+            Unico valor posible en esta respuesta. Se devuelve igualmente
+            cuando el correo ya existia, porque cualquier variacion delataria
+            la existencia de la cuenta.
+        mensaje:
+          type: string
+          description: |
+            Texto neutro que la interfaz muestra tal cual. La redaccion aprobada
+            en el prototipo es la que no afirma ni niega que el correo exista.
+          example: Si el correo esta disponible, te enviaremos un enlace de verificacion.
+
+    Problema:
+      type: object
+      description: Error segun RFC 7807.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://ayni.pe/problemas/limite-de-peticiones
+        title:
+          type: string
+          example: Demasiadas solicitudes
+        status:
+          type: integer
+          example: 429
+        detail:
+          type: string
+          description: |
+            Explicacion orientada a la persona. Nunca incluye datos de otro
+            usuario, ni rastros internos, ni nada que permita deducir si un
+            correo esta registrado.
+        instance:
+          type: string
+          format: uri
+          example: /api/v1/registro
+
+    ProblemaValidacion:
+      allOf:
+        - $ref: "#/components/schemas/Problema"
+        - type: object
+          properties:
+            errores:
+              type: array
+              description: Un elemento por campo que incumple su validacion.
+              items:
+                type: object
+                required: [campo, mensaje]
+                properties:
+                  campo:
+                    type: string
+                    example: celular
+                  mensaje:
+                    type: string
+                    example: El celular debe tener nueve digitos y empezar en 9.
+          example:
+            type: https://ayni.pe/problemas/validacion
+            title: Los datos enviados no son validos
+            status: 400
+            instance: /api/v1/registro
+            errores:
+              - campo: contrasena
+                mensaje: La contrasena debe tener al menos 12 caracteres.
+              - campo: aceptaTerminos
+                mensaje: Debes aceptar los terminos y la politica de datos personales.

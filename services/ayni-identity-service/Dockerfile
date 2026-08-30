@@ -16,7 +16,16 @@ COPY services/ayni-identity-service/src services/ayni-identity-service/src
 RUN mvn -B -pl services/ayni-identity-service -am clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S ayni && adduser -S ayni -G ayni
+
+# La base trae Alpine 3.24.1 con OpenSSL 3.5.7-r0, que arrastra CVE-2026-14456
+# (ALTA, agotamiento de memoria en el servidor QUIC), corregida en 3.5.8-r0 y ya
+# disponible en el repositorio de Alpine 3.24.
+#
+# No es una vulnerabilidad de la aplicacion: Trivy informa cero hallazgos en
+# app.jar. Es deriva de la imagen base, que se actualiza por su cuenta y puede
+# volver a moverse. Al elevar la etiqueta de la base, volver a escanear y
+# comprobar si esta linea ya sobra.
+RUN apk upgrade --no-cache libcrypto3 libssl3 openssl     && addgroup -S ayni && adduser -S ayni -G ayni
 WORKDIR /app
 COPY --from=build /build/services/ayni-identity-service/target/*.jar app.jar
 RUN chown -R ayni:ayni /app

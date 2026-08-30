@@ -39,6 +39,12 @@
              comprobar si esta linea ya sobra. -->
         <postgresql.version>42.7.13</postgresql.version>
         <archunit.version>1.3.0</archunit.version>
+        <!-- Spring Boot no gestiona Bouncy Castle: no forma parte de su BOM.
+             Lo necesita Argon2PasswordEncoder, que delega en el toda la
+             derivacion de la contraseña. Se fija aqui, en el padre, para que
+             los cuatro servicios usen la misma version y no aparezcan dos en
+             el mismo classpath. -->
+        <bouncycastle.version>1.85.2</bouncycastle.version>
         <jacoco.version>0.8.12</jacoco.version>
         <sonar.version>5.0.0.4389</sonar.version>
         <!-- Excluidas del calculo de cobertura: clases de arranque de Spring Boot,
@@ -61,6 +67,11 @@
                 <artifactId>archunit-junit5</artifactId>
                 <version>${archunit.version}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>${bouncycastle.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

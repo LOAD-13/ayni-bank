@@ -25,9 +25,24 @@ spring:
     # registro, queremos enterarnos, no que los de por buenos en silencio.
     baseline-on-migrate: false
 
-  # ddl-auto no existe aqui a proposito. El esquema lo define Flyway y solo
-  # Flyway; que un ORM altere tablas por su cuenta es inaceptable en un
-  # sistema financiero. Ver §4.5 del documento de diseño.
+  jpa:
+    hibernate:
+      # `none` explicito, no por omision. Spring Boot solo elige `create-drop`
+      # con bases embebidas, asi que hoy el valor por defecto ya seria `none`;
+      # se escribe igualmente porque de esta linea depende que un ORM no altere
+      # el esquema de un sistema financiero, y eso no se deja a un valor por
+      # defecto que otra version puede cambiar. Ver §4.5 del documento de diseño.
+      ddl-auto: none
+    # Sin esto, Hibernate mantiene la sesion abierta durante todo el renderizado
+    # de la respuesta: las consultas perezosas se disparan fuera de la
+    # transaccion, la conexion se retiene de mas y el problema aparece bajo
+    # carga, no en desarrollo. Spring Boot lo avisa al arrancar por algo.
+    open-in-view: false
+    properties:
+      hibernate:
+        # Las entidades no escriben el schema en cada @Table. Si manana el
+        # bounded context se muda a su propia base, se cambia aqui.
+        default_schema: identity
 
 server:
   port: 8081

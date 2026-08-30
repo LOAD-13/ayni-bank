@@ -196,7 +196,8 @@ reproducibles en local. Dos acciones concretas salen de aquí:
 
 - **`ayni-web` sale del `docker-compose` del Sprint 0.** El directorio `web/` está vacío: andamiar
   Next.js implica configurar lint, formato, tipos, pruebas y axe-core, que es trabajo de una
-  Historia propia y no del entorno reproducible. Se reincorpora al levantar la aplicación web.
+  Historia propia y no del entorno reproducible. Se reincorporó en el Sprint 1 con
+  [`AYNI-120`](sprint-1.md), que es donde se hizo ese trabajo.
 - **Las puertas de calidad se activan de forma escalonada.** Ver
   [ADR-0006](../../arquitectura/adr/0006-activacion-escalonada-de-las-puertas-de-calidad.md).
 

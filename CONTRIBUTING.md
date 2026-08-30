@@ -151,6 +151,22 @@ python -m venv .venv-check
 ruff check . && mypy --strict src/ && pytest -q
 ```
 
+**Aplicación web.** El job `Web · calidad y accesibilidad` ejecuta estos seis pasos, en este orden.
+Ejecútalos todos: pasar `test` y fallar `format:check` es una ronda de CI perdida por un espacio.
+
+```bash
+cd web/ayni-web
+npm ci
+npm run lint && npm run format:check && npm run typecheck
+npm run test -- --coverage
+npm run test:a11y
+npm run build
+```
+
+`npm ci`, no `npm install`: instala exactamente lo que fija el lockfile y falla si `package.json`
+y el lockfile discrepan, que es lo que hace el CI. `npm install` los reconciliaría en silencio y el
+fallo aparecería solo allí.
+
 **Vulnerabilidades de contenedor.** No hace falta Docker: Trivy analiza el jar directamente y
 detecta las mismas dependencias que encontraría dentro de la imagen.
 
@@ -163,7 +179,16 @@ trivy rootfs --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-co
 Usa **la misma versión de Trivy que el pipeline** (hoy 0.74.0) o los resultados no serán
 comparables.
 
-### Dos causas de fallo que no son culpa tuya
+### Tres causas de fallo que no son culpa tuya
+
+- **Trivy falla en el sistema operativo de la imagen base y no en tu código.** Distínguelo por el
+  informe: si la fila `app/app.jar` marca `0` y los hallazgos están en `libcrypto3`, `libssl3` o
+  cualquier paquete de Alpine, es que la imagen base se actualizó por su cuenta. Las bases se
+  reconstruyen sin avisar y arrastran lo que traiga su distribución ese día. Se corrige con un
+  `apk upgrade` del paquete concreto en la etapa de ejecución del Dockerfile, con su comentario y su
+  recordatorio de revisar si sobra al elevar la base. **No se silencia con `.trivyignore`**: eso
+  convierte un aviso real en ruido permanente.
+
 
 - **`429 Too Many Requests` de Maven Central.** Los cinco jobs de imagen descienden el árbol de
   dependencias a la vez y Central corta. Es transitorio: **Re-run failed jobs**. Si el job

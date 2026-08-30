@@ -202,23 +202,35 @@ services:
       retries: 5
     networks: [ayni]
 
-  # ayni-web se reincorpora al andamiar la aplicacion Next.js. Mientras `web/`
-  # este vacio, declararlo aqui hace fallar `docker compose up` entero: Compose
-  # intenta construir un contexto sin Dockerfile y aborta antes de levantar nada.
-  # Ver la seccion «Alcance ajustado» de docs/gestion/sprint-backlog/sprint-0.md
-  #
-  # ayni-web:
-  #   build:
-  #     context: ../..
-  #     dockerfile: web/ayni-web/Dockerfile
-  #   container_name: ayni-web
-  #   restart: unless-stopped
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:8080
-  #   ports: ["3000:3000"]
-  #   depends_on:
-  #     ayni-gateway: { condition: service_started }
-  #   networks: [ayni]
+  ayni-web:
+    build:
+      context: ../..
+      dockerfile: web/ayni-web/Dockerfile
+    container_name: ayni-web
+    restart: unless-stopped
+    environment:
+      # La URL la resuelve el NAVEGADOR, no el contenedor: por eso es localhost
+      # y no ayni-gateway. Un nombre de servicio de Compose no existe fuera de
+      # la red de Docker, y el navegador vive fuera.
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    # El puerto del host es parametrizable: en Windows, Hyper-V reserva rangos
+    # dinamicos que suelen tragarse el bloque 3000 entero y que ademas cambian
+    # en cada reinicio. Ver la nota sobre AYNI_WEB_PORT en .env.example.
+    ports: ["${AYNI_WEB_PORT:-3000}:3000"]
+    # service_started y no service_healthy: la web sirve la landing publica sin
+    # necesitar el backend. Bloquear su arranque hasta que el gateway este sano
+    # convertiria una caida del backend en una pagina que ni siquiera carga.
+    depends_on:
+      ayni-gateway: { condition: service_started }
+    healthcheck:
+      # 127.0.0.1 y no localhost: Node escucha solo en IPv4 y `localhost`
+      # resuelve antes a ::1 dentro del contenedor. Ver la nota del Dockerfile.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [ayni]
 
   # ─────────────────────────── Observabilidad ───────────────────────────
 
@@ -242,7 +254,7 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ../observability/grafana:/etc/grafana/provisioning:ro
-    ports: ["3001:3000"]
+    ports: ["${AYNI_GRAFANA_PORT:-3001}:3000"]
     depends_on: [prometheus]
     networks: [ayni]
 
@@ -253,7 +265,16 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki-data:/loki
-    ports: ["3100:3100"]
+    # Sin puerto publicado en el host a proposito. Los logs se consultan desde
+    # Grafana, que llega a Loki por la red interna (`http://loki:3100`), de modo
+    # que exponerlo fuera no habilita ningun uso y si añade superficie.
+    #
+    # Ademas evita un fallo concreto: en Windows, Hyper-V reserva rangos de
+    # puertos dinamicos que cambian en cada reinicio, y cuando el 3100 cae
+    # dentro del rango excluido `docker compose up` aborta entero con
+    # «bind: An attempt was made to access a socket in a way forbidden by its
+    # access permissions». El equipo trabaja en Windows.
+    expose: ["3100"]
     networks: [ayni]
 
 networks:

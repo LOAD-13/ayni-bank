@@ -1,6 +1,6 @@
 # Sprint Backlog — Sprint 1 · Esqueleto Ambulante
 
-**24 de agosto – 6 de septiembre de 2026** · 2 semanas · 5 ítems · 42 puntos
+**24 de agosto – 6 de septiembre de 2026** · 2 semanas · 6 ítems · 45 puntos
 
 ## Sprint Goal
 
@@ -20,11 +20,18 @@ KYC simulado por el real sin tocar la integración.
 
 ## Capacidad
 
-120 h disponibles · Comprometido: **126 h** · **Holgura negativa: −5 %**
+120 h disponibles · Comprometido: **138 h** · **Holgura negativa: −15 %**
 
-**El sprint está sobrecomprometido a conciencia.** `AYNI-119` entró después de la planificación
-porque los mockups son el entregable evaluado de la sesión 4 y no admitían aplazamiento. Se decidió
-añadirlo sin retirar ningún ítem.
+**El sprint está sobrecomprometido a conciencia, y dos veces.**
+
+`AYNI-119` entró después de la planificación porque los mockups son el entregable evaluado de la
+sesión 4 y no admitían aplazamiento. Se decidió añadirlo sin retirar ningún ítem.
+
+`AYNI-120` entró más tarde todavía, al empezar HU-01: el Sprint 0 dejó `web/ayni-web/` vacío y
+`contracts/` sin contenido, de modo que la subtarea `AYNI-75` —el formulario de registro— no tenía
+dónde vivir. No es alcance nuevo, es alcance que se descubrió pendiente. Que aparezca ahora y no en
+la planificación es material de retrospectiva: **el Sprint 0 se dio por cerrado con un habilitador
+sin hacer**, y nadie lo detectó hasta tropezar con él.
 
 El candidato natural a moverse era `AYNI-31` (13 pts), pero es el que monta staging y la Definition
 of Done de este sprint exige demostrar el flujo **sobre staging, no en local**. Sacarlo obligaba a
@@ -36,6 +43,22 @@ mala estimación.
 ---
 
 ## Ítems y plan técnico
+
+### `AYNI-120` · T-11 · Andamiaje de la aplicación web y contrato de identity [3 pts]
+
+Habilitador de `AYNI-12`. No entrega valor observable por el cliente: entrega el sitio donde
+`AYNI-75` puede existir.
+
+| # | Subtarea | Est. |
+|---|---|---|
+| 1 | Andamiar `ayni-web` con Next.js 15, React 19, TypeScript y Tailwind 4 | 2h |
+| 2 | Traducir los tokens de marca a `src/styles/tokens.css` y exponerlos a Tailwind | 2h |
+| 3 | Implementar los seis scripts que exige el job `web` del pipeline | 3h |
+| 4 | Dockerfile ARM64 sobre la salida `standalone` y reincorporación al compose | 3h |
+| 5 | Contrato OpenAPI de `POST /api/v1/registro` con errores RFC 7807 | 2h |
+
+**Ningún componente escribe un hexadecimal.** La paleta vive en un solo fichero, derivado de
+`docs/marca/design-tokens.md`, y se consume como utilidades de Tailwind.
 
 ### `AYNI-119` · T-10 · Prototipo interactivo y biblioteca de componentes [8 pts]
 

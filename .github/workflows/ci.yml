@@ -196,7 +196,8 @@ jobs:
     # (Sprint 0, AYNI-38) este job se omite en lugar de fallar.
     if: |
       always() && !failure() && !cancelled() &&
-      (needs.cambios.outputs.java == 'true' || needs.cambios.outputs.python == 'true')
+      (needs.cambios.outputs.java == 'true' || needs.cambios.outputs.python == 'true' ||
+       needs.cambios.outputs.web == 'true')
     runs-on: ubuntu-latest
     strategy:
       # fail-fast: false porque con el valor por omision, el primer servicio que
@@ -208,13 +209,23 @@ jobs:
       # la vez desde la misma IP y Maven Central responde 429. Escalonarlos es
       # mas lento por ronda y mucho mas rapido en total: no hay que repetirla.
       max-parallel: 2
+      # `dockerfile` explicito y no derivado del nombre: ayni-web no vive bajo
+      # services/, y componer la ruta con una plantilla dejaria fuera la unica
+      # imagen que no sigue el patron. Es exactamente lo que paso al anadirla.
       matrix:
-        servicio:
-          - ayni-gateway
-          - ayni-identity-service
-          - ayni-core-banking-service
-          - ayni-notification-service
-          - ayni-kyc-service
+        include:
+          - servicio: ayni-gateway
+            dockerfile: services/ayni-gateway/Dockerfile
+          - servicio: ayni-identity-service
+            dockerfile: services/ayni-identity-service/Dockerfile
+          - servicio: ayni-core-banking-service
+            dockerfile: services/ayni-core-banking-service/Dockerfile
+          - servicio: ayni-notification-service
+            dockerfile: services/ayni-notification-service/Dockerfile
+          - servicio: ayni-kyc-service
+            dockerfile: services/ayni-kyc-service/Dockerfile
+          - servicio: ayni-web
+            dockerfile: web/ayni-web/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -225,7 +236,7 @@ jobs:
         with:
           # El Dockerfile necesita la raiz como contexto: referencia el pom.xml padre
           context: .
-          file: services/${{ matrix.servicio }}/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: false
           load: true
           tags: ayni/${{ matrix.servicio }}:ci
@@ -239,6 +250,10 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+          # Solo vulnerabilidades. El escaner de secretos recorre cada capa
+          # buscando credenciales, que ya cubre Gitleaks sobre el repositorio, y
+          # multiplica por tres el tiempo de cada job de esta matriz.
+          scanners: vuln
 
   # ── 7. Puerta única que las reglas de rama exigen ───────────────────────
   ci-ok:

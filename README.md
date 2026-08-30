@@ -158,6 +158,7 @@ se carga además el histórico de tipo de cambio de ejemplo.
 
 | Servicio | URL |
 |---|---|
+| Aplicación web | http://localhost:3000 |
 | API Gateway | http://localhost:8080 |
 | Health check del gateway | http://localhost:8080/actuator/health |
 | Servicio de verificación de identidad | http://localhost:8000/health |
@@ -165,6 +166,12 @@ se carga además el histórico de tipo de cambio de ejemplo.
 | Panel de RabbitMQ | http://localhost:15672 |
 | Grafana | http://localhost:3001 |
 | Prometheus | http://localhost:9090 |
+
+**Si trabajas en Windows y `up` aborta con «bind: An attempt was made to access a socket in a way
+forbidden by its access permissions»**, Hyper-V tiene reservado ese puerto. Los rangos reservados
+cambian en cada reinicio. Consúltalos con `netsh interface ipv4 show excludedportrange protocol=tcp`
+y ajusta `AYNI_WEB_PORT` y `AYNI_GRAFANA_PORT` en tu `.env` local; son las dos únicas URL de la tabla
+que caen en el bloque afectado.
 
 Para detener y limpiar, volúmenes incluidos:
 
