@@ -1,0 +1,17 @@
+# Hallazgos de Gitleaks revisados uno por uno y descartados.
+#
+# Cada linea es la huella exacta de un hallazgo: commit, fichero, regla y linea. Es
+# deliberadamente estrecho. Excluir un directorio entero taparia tambien lo que se filtre
+# manana; una huella solo tapa lo que ya se miro.
+#
+# Este fichero NO desactiva ninguna regla: el conjunto por defecto sigue entero.
+
+# El contrato de identity llevaba `tokenDeAcceso: eyJhbGciOiJIUzI1NiJ9...` como ejemplo de
+# la respuesta de sesion. No es un secreto —es una cadena inventada para documentar la
+# forma del campo— pero tiene la entropia de un JWT real y `generic-api-key` la marca.
+#
+# El valor ya se sustituyo por un marcador. Esta excepcion existe porque Gitleaks escanea
+# el HISTORIAL del Pull Request, no su resultado: el commit que introdujo la linea sigue
+# ahi y seguiria marcandose. La alternativa era reescribir la historia de una rama ya
+# publicada, que es peor remedio que la enfermedad.
+ae57cd11aa5c2bb656807c6f21bbc264930c7ed2:contracts/identity-service.openapi.yaml:generic-api-key:398
