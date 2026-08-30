@@ -38,6 +38,17 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
 - Puertos publicados de la web y de Grafana parametrizables, para poder esquivar los rangos que
   Hyper-V reserva en Windows y que cambian en cada reinicio.
 
+- **Registro de usuario (HU-01).** Dominio de identidad sin framework —correo, celular, política de
+  contraseñas, consentimiento y estados del usuario—, derivación con Argon2id sobre los parámetros de
+  OWASP, persistencia JPA con su mapeador, y `POST /api/v1/registro` con errores en formato RFC 7807.
+- Respuesta indistinguible cuando el correo ya está registrado, incluida la paridad de tiempos de
+  respuesta. Ver [ADR-0008](docs/arquitectura/adr/0008-respuesta-indistinguible-en-el-registro.md).
+- Migración de `usuario`, `persona` y `solicitud_onboarding` en el schema `identity`.
+- Rutas del gateway hacia los tres servicios de negocio y CORS restringido a los orígenes de la
+  aplicación web. Hasta ahora el gateway no enrutaba nada.
+- Documento de funcionalidades pendientes de la landing, que registra qué promete cada enlace, qué
+  historia lo cubre y qué queda fuera del alcance declarado en el Acta.
+
 ### Corregido
 - El `.env` de la raíz no se cargaba: Compose lo busca junto al fichero compose, de modo que las
   variables quedaban vacías y PostgreSQL no arrancaba. Documentado `--env-file .env`.
@@ -51,6 +62,11 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
 - La matriz de imágenes componía la ruta del Dockerfile a partir del nombre del servicio, de modo
   que `ayni-web` —la única imagen que no vive bajo `services/`— quedaba sin construir ni escanear.
   Ahora cada entrada declara su ruta.
+- El `.dockerignore` de la raíz excluía `**/out/`, pensado para la exportación de Next.js, y con ello
+  borraba del contexto de construcción el paquete `domain/port/out/` de los servicios Java. El código
+  compilaba en local y fallaba dentro de la imagen.
+- El gateway arrastraba `spring-cloud-gateway-server`, declarado obsoleto y retirado en la próxima
+  versión mayor.
 - El health check de `ayni-web` daba el contenedor por caído: Node escucha solo en IPv4 y dentro del
   contenedor `localhost` resuelve antes a `::1`.
 - Loki publicaba un puerto en el host que nadie usaba —Grafana lo consulta por la red interna— y que
