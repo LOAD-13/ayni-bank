@@ -150,6 +150,13 @@ services:
     environment:
       <<: *java-env
       AYNI_KYC_SERVICE_URL: http://ayni-kyc-service:8000
+      # Clave AES-256 que cifra el numero de documento declarado. El valor por
+      # defecto repite el de application.yml a proposito: compose exporta la
+      # variable vacia cuando no esta en el .env, y una cadena vacia NO activa el
+      # valor por defecto de Spring —lo sustituye—, con lo que el servicio no
+      # arrancaria. En staging y produccion llega como secreto desde el .env.
+      # Generar una nueva:  openssl rand -base64 32
+      AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
