@@ -43,13 +43,70 @@ Conventional Commits no es una formalidad: es lo que mantiene este archivo con s
   OWASP, persistencia JPA con su mapeador, y `POST /api/v1/registro` con errores en formato RFC 7807.
 - Respuesta indistinguible cuando el correo ya está registrado, incluida la paridad de tiempos de
   respuesta. Ver [ADR-0008](docs/arquitectura/adr/0008-respuesta-indistinguible-en-el-registro.md).
+- **Identidad declarada en el registro.** Nombres, apellidos, tipo y número de documento y fecha de
+  nacimiento se guardan en la solicitud de onboarding como término de comparación del OCR de HU-02;
+  el número va cifrado con AES-256-GCM y nunca se devuelve ni se registra en un log. Incluye la
+  comprobación de mayoría de edad. Ver
+  [ADR-0009](docs/arquitectura/adr/0009-identidad-declarada-antes-del-ocr.md).
+- **Landing pública y formulario de registro**, construidos sobre las pantallas aprobadas en pen.dev,
+  con la página de funcionalidad pendiente para todo destino que aún no existe.
+- Verificación automática del frontend con Playwright sobre navegador real: reflujo entre 360 y
+  3440 px, comportamiento ante el zoom, enlaces sin destinos rotos, accesibilidad WCAG 2.1 AA y el
+  comportamiento del formulario de registro.
 - Migración de `usuario`, `persona` y `solicitud_onboarding` en el schema `identity`.
 - Rutas del gateway hacia los tres servicios de negocio y CORS restringido a los orígenes de la
   aplicación web. Hasta ahora el gateway no enrutaba nada.
 - Documento de funcionalidades pendientes de la landing, que registra qué promete cada enlace, qué
   historia lo cubre y qué queda fuera del alcance declarado en el Acta.
 
+- **Inicio de sesión seguro (HU-04).** Dos pasos —credenciales y segundo factor— con TOTP
+  según RFC 6238 implementado sobre javax.crypto y contrastado con el vector oficial de la
+  especificación. Token de acceso JWT de 15 minutos, token de renovación rotativo de 7 días
+  en cookie HttpOnly con SameSite=Strict, y detección de reutilización que invalida la
+  familia entera de la sesión. Bloqueo progresivo tras cinco intentos fallidos, con techo de
+  una hora para que nadie pueda dejar fuera al titular fallando a propósito. Pista de
+  auditoría con IP y agente de usuario en tabla propia, no en los logs.
+- Alta del segundo factor en el primer ingreso, con el QR generado en el navegador para que
+  el secreto no viaje además como imagen.
+- **Apertura automática de cuenta de ahorro (HU-05, esqueleto).** Dominio contable con
+  importes en BigDecimal y redondeo HALF_EVEN, cuentas sin columna de saldo —es la suma de
+  sus asientos por partida doble—, número de cuenta y CCI de 20 dígitos con sus dígitos de
+  control. La cuenta se abre al oír por RabbitMQ que la solicitud quedó aprobada, y el
+  evento CuentaAperturada se escribe en la bandeja de salida dentro del mismo COMMIT
+  (ADR-0003). Idempotente frente a la reentrega del mismo evento.
+- Pantalla final del onboarding con el saludo por nombre, la tarjeta de la cuenta, el CCI copiable,
+  la TREA leída del catálogo —no escrita en la pantalla— y la proyección de rendimiento calculada a
+  partir de ella.
+- Endpoint de aprobación manual bajo perfil `dev`, que ocupa el lugar del OCR hasta HU-02, y su ruta
+  en el gateway. Ambos se retiran con HU-02.
+- Contrato OpenAPI ampliado con los tres endpoints de sesión.
+- Pruebas de aceptación en Gherkin, en castellano, con los escenarios de HU-01 tal como los aprobó el
+  docente. Se ejecutan en el mismo `mvn test` que el resto.
+- Verificación con Playwright del ingreso, de la pantalla final del onboarding y del reflujo de
+  `/ingresar` entre 360 y 3440 px.
+- Componente `LogotipoAyni`, que pinta la versión oscura del logotipo con una máscara CSS.
+- Documento de pendientes para el Sprint 2, con los huecos que no están mapeados en Jira.
+- ADR-0010 (segundo factor TOTP y sesión rotativa) y ADR-0011 (el saldo se deriva de los asientos).
+- Contrato OpenAPI ampliado con los tres endpoints de sesión.
+- Verificación del ingreso y de la pantalla final del onboarding con Playwright, y del reflujo
+  de `/ingresar` entre 360 y 3440 px.
+
 ### Corregido
+- **Surefire no ejecutaba la suite de Cucumber**: solo recoge clases con `Test` en el nombre, de modo
+  que los escenarios de las historias existían y el build pasaba en verde sin comprobar ninguno.
+- El logotipo era invisible sobre fondo claro. El texto «AYNI Bank» se exportó de pen.dev en blanco
+  porque en el prototipo siempre va sobre azul; no era un fallo de maquetación sino de material, y
+  por eso ninguna prueba lo detectaba.
+- La cookie del token de renovación llevaba el prefijo `__Host-`, que exige `Secure`. En local, sobre
+  HTTP, el navegador la descartaba sin avisar: el ingreso respondía 200 y la renovación fallaba
+  después sin motivo aparente. El nombre ahora depende del entorno.
+- El correo enmascarado repetía un asterisco por carácter oculto, revelando la longitud exacta de la
+  parte local. Ahora la máscara mide siempre lo mismo.
+- Las clases de `core-banking` estaban en `pe.ayni.bank.corebanking` y no en `pe.ayni.bank.core`, de
+  modo que quedaban fuera del escaneo de Spring y de las reglas de ArchUnit, que pasaban en vacío.
+- La prueba de reflujo medía el primer titular de la página, que usa `clamp()` a propósito. Una
+  tipografía fluida no es el defecto que busca: lo que delata el escalado es que cambie un tamaño
+  fijo. Ahora mide `body`.
 - El `.env` de la raíz no se cargaba: Compose lo busca junto al fichero compose, de modo que las
   variables quedaban vacías y PostgreSQL no arrancaba. Documentado `--env-file .env`.
 - Los contextos de construcción del `docker-compose` apuntaban al directorio de cada servicio en

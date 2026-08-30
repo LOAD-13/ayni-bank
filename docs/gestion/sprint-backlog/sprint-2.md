@@ -9,7 +9,7 @@
 
 ## Capacidad
 
-120 h disponibles · Comprometido: 99 h
+120 h disponibles · Comprometido: 103 h
 
 ---
 
@@ -29,7 +29,25 @@
 | 10 | Envolver la llamada a `kyc-service` con Resilience4j | 3h |
 | 11 | Implementar el límite de tres intentos y la derivación a revisión manual | 3h |
 | 12 | Pantalla de captura de DNI con guía visual de encuadre | 6h |
-| 13 | Feature de Cucumber con los cinco escenarios | 4h |
+| 13 | Carga del DNI desde archivo como alternativa a la cámara | 4h |
+| 14 | Feature de Cucumber con los cinco escenarios | 4h |
+
+**Sobre la subtarea 13.** La pidió el docente de forma explícita, planteando el caso de un equipo con
+cámara de mala calidad —con la que el OCR no alcanza su umbral de confianza— o directamente sin
+cámara.
+
+No es un extra: depender de una sola vía de entrada deja fuera a los equipos de escritorio sin
+cámara, a quien tiene una cámara insuficiente y a quien ya conserva un escaneo de su documento.
+Además incumpliría el criterio de **WCAG 2.1 AA sobre múltiples formas de completar una tarea**, que
+el proyecto comprometió en su SLA.
+
+El botón de subida va **junto a la captura y con el mismo peso visual**, no escondido tras un enlace
+secundario. Ambas vías terminan en MinIO con URL pre-firmada y el `kyc-service` recibe únicamente la
+clave del objeto: para el OCR, una foto tomada y un archivo subido son la misma entrada. El tipo de
+archivo se valida por contenido y no por extensión, porque un `.jpg` renombrado no es una imagen.
+
+Esto sube `AYNI-13` de 46 h a **50 h**, y el sprint de 99 h a **103 h** sobre 120 disponibles. Sigue
+cabiendo.
 
 ### `AYNI-14` · HU-03 · Verificación biométrica facial [13 pts]
 

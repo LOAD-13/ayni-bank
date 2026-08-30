@@ -152,3 +152,83 @@ Aplica la de [`DEFINITION_OF_DONE.md`](../../../DEFINITION_OF_DONE.md).
 
 **Adicional para este sprint:** el flujo completo debe demostrarse en vivo sobre **staging**, no en
 local. Un esqueleto ambulante que solo camina en la máquina de un desarrollador no prueba nada.
+
+---
+
+## Cierre del sprint · 30 de agosto de 2026
+
+### Qué se entregó
+
+| Ítem | Pts | Estado |
+|---|---|---|
+| `AYNI-120` · Andamiaje web y contratos | 3 | ✅ |
+| `AYNI-119` · Mockups en pen.dev | 5 | ✅ |
+| `AYNI-12` · HU-01 · Registro de usuario | 5 | ✅ |
+| `AYNI-15` · HU-04 · Inicio de sesión con segundo factor | 8 | ✅ |
+| `AYNI-16` · HU-05 · Apertura de cuenta (esqueleto) | 8 | ✅ |
+| `AYNI-31` · HU-20 · Despliegue continuo | 13 | ➡️ movido al Sprint 2 |
+
+**29 de 42 puntos entregados.** Los 13 restantes se movieron, no se perdieron.
+
+### El objetivo del sprint se cumplió
+
+El recorrido completo está verificado contra la infraestructura real, no simulado:
+
+```
+registro por el gateway ....... 202
+aprobación (perfil dev) ....... 202  → solicitud APROBADA, usuario ACTIVO
+evento por RabbitMQ ........... CuentaAperturada, publicado desde la bandeja de salida
+cuenta abierta ................ ACTIVA PEN · CCI 999-001-0110-0000-0004-14 · saldo 0.00
+idempotencia .................. reenviar el mismo evento no abre una segunda cuenta
+```
+
+Cuatro servicios encadenados —web, gateway, identity, core-banking— más PostgreSQL y RabbitMQ. El
+riesgo que este sprint existía para descartar queda descartado: **los servicios se entienden**.
+
+### Por qué se movió `AYNI-31`
+
+La Definition of Done exigía demostrar el flujo sobre staging. Staging no existe porque requiere
+registrar un *self-hosted runner* en la Raspberry Pi, que es trabajo de máquina y no de código: sin
+él, GitHub Actions no tiene dónde ejecutarse, porque la Pi está detrás de un router doméstico sin IP
+pública.
+
+**Mover el ítem no compromete el objetivo del sprint**, que es validar la integración, y eso se
+demuestra sobre `docker compose`. Lo que sí obliga es a relajar la condición de «sobre staging» para
+esta revisión concreta. Decisión del PO, tomada el 30 de agosto.
+
+Se recomienda **partirlo en dos** al replanificarlo: el workflow (código, sin dependencias) y el
+registro del runner (hardware). Así los 13 puntos dejan de estar bloqueados en bloque.
+
+### Alcance añadido durante el sprint
+
+Tres cosas que no estaban planificadas y entraron por decisión del PO:
+
+1. **Identidad declarada en el registro** (ADR-0009). Los datos que el formulario aprobado ya pedía
+   dejaron de descartarse: se guardan cifrados como término de comparación del OCR de HU-02. Incluye
+   la comprobación de mayoría de edad.
+2. **Alta del segundo factor.** HU-04 daba por hecho que el MFA estaba configurado, pero ninguna
+   historia lo configuraba. Sin ello, el escenario 1 era inalcanzable. Ver ADR-0010.
+3. **Pantalla final del onboarding.** Es el resultado visible de HU-05: si la cuenta se abre y nadie
+   la ve, el esqueleto ambulante no se puede demostrar en la revisión.
+
+### Deuda que se lleva el Sprint 2
+
+Catalogada en [`pendientes-sprint-2.md`](../pendientes-sprint-2.md). Lo que más pesa:
+
+- El disparador de aprobación bajo perfil `dev` sustituye al OCR y hay que retirarlo con HU-02.
+- `identity` publica sin bandeja de salida; `core-banking` sí la usa. Se cierra con HU-13.
+- Los endpoints de consulta toman el titular de la ruta y no del token. Se cierra con HU-07.
+- El botón «Entrar con la biometría del dispositivo» está en el prototipo y **no tiene historia**.
+
+### Para la retrospectiva
+
+- **Sobrecompromiso al 138 %.** Se sabía de antemano y se registró. El resultado —29 de 42— confirma
+  que la capacidad era la que era. Conviene no repetirlo sin retirar algo a cambio.
+- **Dos huecos de planificación** aparecieron construyendo, no planificando: el andamiaje web que el
+  Sprint 0 dio por cerrado, y el alta del segundo factor que HU-04 daba por hecha. Ambos se
+  detectaron al tropezar con ellos. Merece la pena revisar las HUs buscando premisas no cubiertas
+  antes de comprometerlas.
+- **El prototipo y las historias discrepan en varios puntos** (intentos de bloqueo, reenvío de
+  código). Manda Jira, pero el prototipo hay que corregirlo o quedará documentando algo que no es.
+- **`mvn test` en local puede pasar mientras el build limpio falla.** Costó una tarde. Para dar algo
+  por bueno: `./mvnw clean verify`.
