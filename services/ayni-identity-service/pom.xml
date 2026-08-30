@@ -53,6 +53,20 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
         </dependency>
+        <!-- Firma y verificacion del token de acceso. Se trae Nimbus a secas y no
+             `spring-boot-starter-oauth2-resource-server`, que arrastraria la cadena
+             de filtros de Spring Security entera por el mismo motivo explicado
+             arriba. La version la gestiona el BOM de Spring Boot. -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+        </dependency>
+        <!-- Publica el evento que abre la cuenta en core-banking. Es la pieza que
+             convierte cinco servicios sueltos en un esqueleto ambulante. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -70,6 +84,27 @@
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Pruebas de aceptacion en Gherkin. Los escenarios que el docente
+             aprobo en la HU se ejecutan tal cual estan escritos, en castellano;
+             si alguien cambia el comportamiento sin actualizar la historia, la
+             prueba falla y la discrepancia sale a la luz en el build. -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Sin este artefacto, JUnit 5 descubre los motores pero no expone la
+             anotacion @Suite con la que se seleccionan las carpetas de features. -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
