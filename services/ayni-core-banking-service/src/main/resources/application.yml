@@ -25,9 +25,44 @@ spring:
     # registro, queremos enterarnos, no que los de por buenos en silencio.
     baseline-on-migrate: false
 
-  # ddl-auto no existe aqui a proposito. El esquema lo define Flyway y solo
-  # Flyway; que un ORM altere tablas por su cuenta es inaceptable en un
-  # sistema financiero. Ver §4.5 del documento de diseño.
+  jpa:
+    hibernate:
+      # `none` explicito. El esquema lo define Flyway y solo Flyway; que un ORM
+      # altere tablas por su cuenta es inaceptable en un sistema financiero.
+      # Ver §4.5 del documento de diseño.
+      ddl-auto: none
+    # Sin esto, Hibernate mantiene la sesion abierta durante todo el renderizado
+    # de la respuesta y las consultas perezosas se disparan fuera de la
+    # transaccion. El problema aparece bajo carga, no en desarrollo.
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: core
+
+  # ─── Mensajeria ──────────────────────────────────────────────────────────
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:ayni}
+    password: ${SPRING_RABBITMQ_PASSWORD:cambiar_en_local}
+    listener:
+      simple:
+        # Si el mensaje falla, se reintenta unas cuantas veces con espera
+        # creciente y despues se descarta en lugar de volver a la cola para
+        # siempre. Un mensaje envenenado en bucle satura el servicio y esconde
+        # todos los demas; lo que queda en el outbox permite reprocesarlo a mano.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 2s
+          multiplier: 2
+
+ayni:
+  productos:
+    # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
+    # constante en el codigo porque es un dato del catalogo, no una regla.
+    ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
 
 server:
   port: 8082

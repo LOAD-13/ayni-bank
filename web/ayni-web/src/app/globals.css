@@ -26,3 +26,17 @@ body {
   outline: 2px solid var(--azul-600);
   outline-offset: 2px;
 }
+
+/* Dentro de un campo de formulario, sin embargo, ese contorno se dibujaba sobre
+ * el <input> y quedaba un recuadro dentro del marco del campo: dos cajas
+ * concéntricas que se leen como un error de maquetación. Aquí el indicador pasa
+ * al marco, que cambia de color y gana un halo. Sigue siendo perfectamente
+ * visible —y sigue cumpliendo el criterio 2.4.7—, pero sin caja añadida. */
+.campo:has(:focus-visible) {
+  border-color: var(--azul-600);
+  box-shadow: 0 0 0 3px var(--azul-200);
+}
+
+.campo :focus-visible {
+  outline: none;
+}

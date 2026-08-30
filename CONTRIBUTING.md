@@ -179,6 +179,40 @@ trivy rootfs --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-co
 Usa **la misma versión de Trivy que el pipeline** (hoy 0.74.0) o los resultados no serán
 comparables.
 
+### Para dar algo por bueno: `clean verify`, no `test`
+
+`./mvnw test` reutiliza clases ya compiladas. Si añades un método a un puerto y no actualizas los
+dobles de prueba que lo implementan, **la compilación incremental no se entera y el build pasa en
+verde**; el error solo aparece en Docker, que compila desde cero. Antes de entregar nada:
+
+```bash
+./mvnw clean verify
+```
+
+Lo mismo vale para los contenedores: `docker compose up -d --build` reconstruye la imagen pero **no
+siempre reemplaza el contenedor en marcha**. Si estás depurando y el cambio no aparece, no estás
+loco:
+
+```bash
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --build --force-recreate <servicio>
+```
+
+### Dos reglas que ArchUnit hace cumplir y sorprenden
+
+- **Nada anidado dentro de una interfaz de `domain.port`.** Un `record` o una excepción declarados
+  ahí dentro incumplen la nomenclatura (`...Port`, `...UseCase`) y rompen el build. Van en
+  `domain.model`.
+- **Las clases tienen que estar bajo el paquete del servicio.** Si las pones fuera, ArchUnit no las
+  escanea, sus reglas pasan en vacío y Spring tampoco las registra. El build queda verde y nada
+  funciona.
+
+### Las suites de aceptación necesitan estar en `includes`
+
+Surefire solo ejecuta clases con `Test` en el nombre. La suite de Cucumber se llama
+`PruebasDeAceptacion`, así que está declarada explícitamente en el `pom.xml` del padre. Si añades
+otra con un nombre distinto, añádela ahí también: si no, existe y no se ejecuta, y el build pasa sin
+haber comprobado ni un escenario.
+
 ### Tres causas de fallo que no son culpa tuya
 
 - **Trivy falla en el sistema operativo de la imagen base y no en tu código.** Distínguelo por el

@@ -2,6 +2,50 @@ spring:
   application:
     name: ayni-gateway
 
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # El navegador habla SOLO con el gateway. Ningun servicio publica puerto en el
+          # host, y eso no es una comodidad: es lo que garantiza que la validacion del
+          # JWT, el CORS y la limitacion de tasa no se puedan esquivar llamando
+          # directamente al servicio de detras.
+          routes:
+            - id: identity
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                # `/api/v1/registro` sin `/**` ademas de con el, porque el comodin de
+                # Spring Cloud Gateway NO casa con la ruta desnuda: sin las dos formas,
+                # un POST a `/api/v1/registro` devuelve 404 y el de
+                # `/api/v1/registro/algo` funciona, que es de las cosas mas
+                # desconcertantes de depurar.
+                # `/api/v1/dev/**` encamina el disparador que aprueba una solicitud a
+                # mano mientras no exista el OCR. El endpoint al que llega lleva
+                # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
+                # resuelve a nada: el bean ni se crea. Se retira con HU-02.
+                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**
+
+            - id: core-banking
+              uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              predicates:
+                - Path=/api/v1/cuentas/**,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
+
+            - id: kyc
+              uri: ${AYNI_KYC_URI:http://ayni-kyc-service:8000}
+              predicates:
+                - Path=/api/v1/kyc/**
+
+          globalcors:
+            cors-configurations:
+              "[/**]":
+                # Lista explicita de origenes, nunca `*`. Con comodin no se pueden enviar
+                # credenciales, y el refresh token viaja en cookie HttpOnly.
+                allowedOrigins: ${AYNI_ORIGENES_PERMITIDOS:http://localhost:3000,http://localhost:3500}
+                allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+                allowedHeaders: ["*"]
+                allowCredentials: true
+                maxAge: 3600
+
 server:
   port: 8080
 

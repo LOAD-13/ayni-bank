@@ -120,6 +120,14 @@ services:
       dockerfile: services/ayni-gateway/Dockerfile
     container_name: ayni-gateway
     ports: ["8080:8080"]
+    environment:
+      <<: *java-env
+      # Origenes que el navegador puede usar contra la API. Se derivan del puerto
+      # publicado de la web, que es parametrizable por los rangos que Hyper-V reserva
+      # en Windows: si se cambia AYNI_WEB_PORT y no se cambia esto, el navegador
+      # empieza a recibir errores de CORS que no dicen que la causa es el puerto.
+      AYNI_ORIGENES_PERMITIDOS: >-
+        http://localhost:${AYNI_WEB_PORT:-3000},http://127.0.0.1:${AYNI_WEB_PORT:-3000}
     # service_healthy, no service_started: el health check de estos servicios
     # incluye el estado de la base de datos, asi que esperar a que esten sanos
     # verifica que Flyway aplico sus migraciones. Con service_started el gateway
@@ -142,6 +150,13 @@ services:
     environment:
       <<: *java-env
       AYNI_KYC_SERVICE_URL: http://ayni-kyc-service:8000
+      # Clave AES-256 que cifra el numero de documento declarado. El valor por
+      # defecto repite el de application.yml a proposito: compose exporta la
+      # variable vacia cuando no esta en el .env, y una cadena vacia NO activa el
+      # valor por defecto de Spring —lo sustituye—, con lo que el servicio no
+      # arrancaria. En staging y produccion llega como secreto desde el .env.
+      # Generar una nueva:  openssl rand -base64 32
+      AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

@@ -7,7 +7,8 @@ openapi: 3.0.3
 # hablan con identity, y porque un cambio aqui debe pasar por revision de Pull
 # Request igual que un cambio de codigo.
 #
-# Crece historia a historia. Hoy cubre HU-01; HU-04 anadira autenticacion.
+# Crece historia a historia. Hoy cubre HU-01 (registro) y HU-04 (ingreso con
+# segundo factor).
 
 info:
   title: Ayni Identity Service
@@ -30,6 +31,8 @@ servers:
 tags:
   - name: onboarding
     description: Alta de nuevos clientes
+  - name: Sesion
+    description: Ingreso, segundo factor y renovacion de la sesion
 
 paths:
   /registro:
@@ -84,13 +87,202 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problema"
 
+  /sesion:
+    post:
+      summary: Paso 1 del ingreso · credenciales
+      description: |
+        Valida correo y contrasena y devuelve un desafio de segundo factor. **No
+        emite ningun token todavia**: el ingreso no termina hasta el paso 2.
+
+        La respuesta es identica cuando el correo no existe y cuando la
+        contrasena es incorrecta, y ademas ambas tardan lo mismo, porque el
+        servicio deriva la contrasena tambien en el primer caso. Distinguirlas
+        —por el cuerpo o por el cronometro— convertiria este endpoint en un
+        comprobador de cuentas. Es el mismo criterio de ADR-0008.
+      operationId: presentarCredenciales
+      tags: [Sesion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credenciales"
+      responses:
+        "200":
+          description: Credenciales correctas. Falta el segundo factor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesafioDeSegundoFactor"
+        "400":
+          description: El cuerpo no cumple las validaciones de formato
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "401":
+          description: |
+            Correo desconocido o contrasena incorrecta. El cuerpo es el mismo en
+            los dos casos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "403":
+          description: La cuenta esta inhabilitada por decision de seguridad
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "423":
+          description: |
+            Ingreso pausado tras cinco intentos fallidos. El cuerpo incluye la
+            extension `esperaSegundos`, que es lo que la pantalla usa para pintar
+            la cuenta atras.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaDeBloqueo"
+
+  /sesion/segundo-factor:
+    post:
+      summary: Paso 2 del ingreso · codigo TOTP
+      description: |
+        Canjea el desafio por una sesion. El token de acceso viaja en el cuerpo;
+        el de renovacion, **solo en una cookie `HttpOnly`** que JavaScript no
+        puede leer. Ese reparto es deliberado: lo de vida larga donde un XSS no
+        alcanza, lo de vida corta donde el cliente lo necesita para la cabecera
+        `Authorization`.
+
+        Un desafio se canjea una sola vez y caduca a los dos minutos.
+      operationId: verificarSegundoFactor
+      tags: [Sesion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudDeSegundoFactor"
+      responses:
+        "200":
+          description: Ingreso completado
+          headers:
+            Set-Cookie:
+              description: |
+                Token de renovacion. `HttpOnly`, `Secure`, `SameSite=Strict` y
+                `Path=/`, con vigencia de siete dias.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sesion"
+        "401":
+          description: El desafio no existe, caduco, o el codigo no es valido
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "423":
+          description: Ingreso pausado por intentos fallidos
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaDeBloqueo"
+
+  /sesion/renovacion:
+    post:
+      summary: Renueva la sesion rotando el token
+      description: |
+        Consume el token de la cookie y emite otro de la misma familia. La
+        caducidad **se hereda, no se reinicia**: una sesion renovada cada seis
+        dias tiene que morir igualmente a los siete.
+
+        Presentar un token ya consumido no puede ocurrir en un uso normal —cada
+        uno se usa exactamente una vez—, asi que se interpreta como que existe
+        una copia: se invalida la familia entera, se avisa al titular por correo
+        y ambas partes tienen que autenticarse de nuevo. Escenario 4 de HU-04.
+      operationId: renovarSesion
+      tags: [Sesion]
+      responses:
+        "200":
+          description: Sesion renovada
+          headers:
+            Set-Cookie:
+              description: El token rotado, con la caducidad heredada.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sesion"
+        "401":
+          description: |
+            La cookie falta, caduco, o se detecto la reutilizacion de un token.
+            Los tres devuelven lo mismo: el cliente hace lo mismo en los tres
+            casos, y detallar la reutilizacion solo informaria a quien la
+            provoco. Al titular si se le avisa, por correo.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
 components:
   schemas:
     SolicitudRegistro:
       type: object
-      required: [correo, celular, contrasena, aceptaTerminos]
+      required:
+        [
+          nombres,
+          apellidos,
+          tipoDocumento,
+          numeroDocumento,
+          fechaNacimiento,
+          correo,
+          celular,
+          contrasena,
+          aceptaTerminos,
+        ]
       additionalProperties: false
+      description: |
+        Los datos de identidad se declaran aqui aunque HU-02 vaya a leerlos del
+        documento con OCR, y no es una duplicidad: lo declarado es el termino de
+        comparacion. Un OCR que lee mal una foto borrosa produce datos plausibles
+        pero equivocados, y sin nada contra lo que contrastarlos la identidad
+        falsa se crea en silencio. Con las dos lecturas la discrepancia salta y la
+        solicitud se deriva a revision manual.
       properties:
+        nombres:
+          type: string
+          maxLength: 80
+          description: Tal como los escribe la persona. Se recortan los espacios sobrantes.
+          example: Ana Lucia
+        apellidos:
+          type: string
+          maxLength: 120
+          description: Los dos apellidos juntos. HU-02 los separa a partir del documento.
+          example: Quispe Mendoza
+        tipoDocumento:
+          type: string
+          enum: [DNI, CE, PASAPORTE]
+          example: DNI
+        numeroDocumento:
+          type: string
+          maxLength: 20
+          description: |
+            El formato depende del tipo: ocho digitos para el DNI, de nueve a doce
+            caracteres para el carne de extranjeria, de seis a doce para el
+            pasaporte. Se guarda cifrado con AES-256-GCM y nunca se devuelve por
+            la API ni aparece en un log; para mostrarlo se usan los cuatro
+            ultimos digitos.
+          example: "45678912"
+        fechaNacimiento:
+          type: string
+          format: date
+          description: |
+            Debe corresponder a una persona de 18 anos o mas: en el Peru no se
+            puede celebrar un contrato bancario a nombre propio antes de esa edad.
+          example: "1998-03-14"
         correo:
           type: string
           format: email
@@ -119,10 +311,108 @@ components:
             personales exige la Ley N.o 29733 y no puede venir marcado por
             defecto en la interfaz.
       example:
+        nombres: Ana Lucia
+        apellidos: Quispe Mendoza
+        tipoDocumento: DNI
+        numeroDocumento: "45678912"
+        fechaNacimiento: "1998-03-14"
         correo: ana.quispe@example.pe
         celular: "987654321"
         contrasena: "Cont!rasena2026#"
         aceptaTerminos: true
+
+    Credenciales:
+      type: object
+      required: [correo, contrasena]
+      additionalProperties: false
+      properties:
+        correo:
+          type: string
+          example: ana.quispe@example.pe
+        contrasena:
+          type: string
+          format: password
+          description: |
+            No se valida su formato aqui a proposito. Rechazar una contrasena
+            corta con un 400 la distinguiria de una bien formada pero incorrecta,
+            que devuelve 401, y esa diferencia vuelve a delatar cuentas.
+      example:
+        correo: ana.quispe@example.pe
+        contrasena: "Cont!rasena2026#"
+
+    DesafioDeSegundoFactor:
+      type: object
+      required: [desafioId, requiereInscripcion]
+      properties:
+        desafioId:
+          type: string
+          format: uuid
+          description: Vale de dos minutos que canjea el paso 2.
+        requiereInscripcion:
+          type: boolean
+          description: |
+            `true` la primera vez que alguien entra: aun no tiene segundo factor
+            y hay que darlo de alta antes de continuar.
+        uriDeAprovisionamiento:
+          type: string
+          nullable: true
+          description: |
+            URI `otpauth://` con el que la pantalla pinta el codigo QR. **Lleva
+            el secreto dentro**, asi que solo aparece mientras la inscripcion no
+            este confirmada y nunca se registra en un log. Nulo en cuanto el
+            segundo factor queda confirmado.
+          example: otpauth://totp/Ayni%20Bank%3Aana%40example.pe?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Ayni%20Bank&algorithm=SHA1&digits=6&period=30
+
+    SolicitudDeSegundoFactor:
+      type: object
+      required: [desafioId, codigo]
+      additionalProperties: false
+      properties:
+        desafioId:
+          type: string
+          format: uuid
+        codigo:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: |
+            Los seis digitos que muestra la aplicacion de autenticacion. Se
+            admite la ventana anterior y la siguiente, de treinta segundos cada
+            una: entre leer el codigo y teclearlo pasan segundos, y los relojes
+            de los moviles no van sincronizados al milisegundo.
+          example: "049713"
+
+    Sesion:
+      type: object
+      required: [tokenDeAcceso, expiraEn]
+      properties:
+        tokenDeAcceso:
+          type: string
+          description: |
+            JWT firmado con HS256, valido quince minutos. Lleva el identificador
+            del usuario y su estado, nada mas: un JWT va firmado pero no cifrado,
+            y cualquiera que lo intercepte lee su contenido.
+        expiraEn:
+          type: string
+          format: date-time
+      example:
+        # Sin un JWT de ejemplo, ni siquiera troceado: el escaneo de secretos mide
+        # entropia, y una cadena Base64 con esa pinta la marca como credencial
+        # filtrada. Un ejemplo no vale una alerta que hay que aprender a ignorar.
+        tokenDeAcceso: <JWT firmado con HS256>
+        expiraEn: "2026-08-30T10:30:30Z"
+
+    ProblemaDeBloqueo:
+      allOf:
+        - $ref: "#/components/schemas/Problema"
+        - type: object
+          properties:
+            esperaSegundos:
+              type: integer
+              description: |
+                Lo que falta para poder reintentar. Decirlo no debilita nada:
+                quien esta bloqueado ya lo sabe, y ocultarlo solo consigue que
+                reintente a ciegas.
+              example: 277
 
     RespuestaRegistro:
       type: object

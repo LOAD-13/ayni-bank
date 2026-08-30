@@ -274,10 +274,22 @@ Al hablar el protocolo de S3, migrar a AWS S3 real es cambiar la URL del endpoin
 Tres schemas en una misma instancia de PostgreSQL. **Ningún servicio lee tablas de otro.**
 
 - **`identity`** — `usuario`, `persona`, `direccion`, `rol`, `permiso`, `usuario_rol`,
-  `rol_permiso`, `solicitud_onboarding`, `documento_kyc`, `refresh_token`, `evento_auditoria`.
-- **`core`** — `cliente` (proyección local), `producto`, `tasa_producto`, `cuenta`, `transaccion`,
-  `asiento_contable`, `devengo_interes`, `tarjeta`, `control_tarjeta`, `transferencia`,
-  `beneficiario`, `tipo_cambio`, `outbox_event`.
+  `rol_permiso`, `solicitud_onboarding`, `documento_kyc`, `refresh_token`, `evento_auditoria`,
+  `segundo_factor`, `control_de_acceso`, `desafio_segundo_factor`.
+  El contador de intentos fallidos vive en `control_de_acceso` y no en `usuario`: cambia en cada
+  intento, y no tiene sentido escribir sobre el registro de identidad de alguien cada vez que un
+  atacante prueba una contraseña.
+  `solicitud_onboarding` guarda además la **identidad declarada** en el paso 1 —columnas con sufijo
+  `_declarado`—, que es el término de comparación del OCR en HU-02. Lo declarado y lo verificado no
+  comparten fila: `persona` solo se escribe cuando las dos lecturas concuerdan. Ver
+  [ADR-0009](adr/0009-identidad-declarada-antes-del-ocr.md).
+- **`core`** — `cliente` (proyección local), `producto`, `tasa_producto`, `cuenta`, `asiento`,
+  `devengo_interes`, `tarjeta`, `control_tarjeta`, `transferencia`, `beneficiario`, `tipo_cambio`,
+  `outbox`, `operacion_idempotente`.
+  **`cuenta` no tiene columna de saldo**: el saldo es la suma de sus asientos, y esa es la decisión
+  que sostiene todo el modelo contable. Ver [ADR-0011](adr/0011-saldo-derivado-de-asientos.md).
+  `operacion_idempotente` recuerda qué eventos ya se procesaron: RabbitMQ entrega «al menos una
+  vez», y un mismo evento repetido no puede abrir dos cuentas.
 - **`notification`** — `plantilla`, `notificacion`, `intento_envio`.
 
 Aproximadamente 25 tablas, normalizadas a 3FN.
@@ -321,13 +333,35 @@ el ORM altere el esquema por su cuenta en producción es inaceptable en un siste
 - **JWT de acceso de 15 minutos** más **refresh token rotativo** de 7 días en cookie
   `HttpOnly; Secure; SameSite=Strict`. La rotación implica que reutilizar un refresh delata el robo
   y provoca la invalidación de toda la familia de tokens.
-- **MFA por TOTP** para operaciones sensibles: transferir, revelar PAN, cambiar contraseña.
-- Bloqueo progresivo tras intentos fallidos y limitación de tasa en el gateway.
+- **MFA por TOTP** (RFC 6238, seis dígitos, ventana de 30 s con una de tolerancia) para el ingreso y
+  para operaciones sensibles: transferir, revelar PAN, cambiar contraseña. El secreto se da de alta
+  en el primer ingreso, nunca en el registro, y solo después de validar la contraseña: el URI
+  `otpauth://` lleva el secreto dentro. Ver
+  [ADR-0010](adr/0010-segundo-factor-totp-y-sesion-rotativa.md).
+- **El ingreso son dos peticiones**, no una: credenciales y segundo factor. Entre ambas media un
+  desafío de dos minutos, para que la segunda pantalla no tenga que reenviar la contraseña.
+- **Reparto de los tokens**: el de acceso viaja en el cuerpo —el cliente lo necesita para la cabecera
+  `Authorization`—; el de renovación, **solo en la cookie**. Lo de vida larga donde un XSS no llega,
+  lo de vida corta donde el script lo necesita. De la base solo se guarda la huella SHA-256 del token
+  de renovación.
+- Bloqueo progresivo tras cinco intentos fallidos: cinco minutos que se duplican, con **techo de una
+  hora**. Sin techo, fallar a propósito dejaría al titular sin acceso durante semanas. El contador
+  solo se limpia al completar el ingreso entero, no al acertar la contraseña.
+- **Correo desconocido y contraseña incorrecta responden lo mismo y tardan lo mismo.** Es
+  [ADR-0008](adr/0008-respuesta-indistinguible-en-el-registro.md) aplicado al ingreso. El estado
+  `BLOQUEADO` se comprueba después de la contraseña, por el mismo motivo.
+- `PENDIENTE_VERIFICACION` y `EN_REVISION` pueden iniciar sesión pero no operar; `BLOQUEADO` no
+  entra. Autenticar y autorizar son cosas distintas.
+- Limitación de tasa en el gateway.
 
 ### 5.2 Cifrado
 
 - En reposo, **AES-256-GCM** para PAN, número de documento y semilla TOTP. Claves fuera del código,
-  inyectadas por entorno.
+  inyectadas por entorno (`AYNI_CIFRADO_CLAVE` en `identity`).
+  El vector de inicialización es aleatorio en cada cifrado y el criptograma lleva prefijo de
+  esquema (`v1:`) para poder rotar la clave. Consecuencia a tener presente: una columna cifrada así
+  **no sirve para buscar ni para imponer unicidad**; junto a ella se guardan los cuatro últimos
+  dígitos en claro para poder mostrar y localizar sin descifrar.
 - En tránsito, TLS en todas las comunicaciones, incluidas las internas.
 - MinIO con cifrado del lado del servidor.
 
