@@ -1,32 +1,46 @@
-/* Pagina de espera del andamiaje.
+import type { Metadata } from "next";
+
+import { CierreFinal, PiePagina } from "@/componentes/landing/CierreYPie";
+import { FranjaCifras } from "@/componentes/landing/FranjaCifras";
+import { Hero } from "@/componentes/landing/Hero";
+import { SeccionApp } from "@/componentes/landing/SeccionApp";
+import { SeccionAyni } from "@/componentes/landing/SeccionAyni";
+import { SeccionComoFunciona } from "@/componentes/landing/SeccionComoFunciona";
+import { SeccionComparativa } from "@/componentes/landing/SeccionComparativa";
+import { SeccionCuenta } from "@/componentes/landing/SeccionCuenta";
+import { SeccionProductos } from "@/componentes/landing/SeccionProductos";
+import { SeccionSeguridad } from "@/componentes/landing/SeccionSeguridad";
+
+export const metadata: Metadata = {
+  title: "Banca digital sin comisión de mantenimiento",
+  description: "Cuenta de ahorro con devengo diario, sin comisión de mantenimiento y sin agencias.",
+};
+
+/**
+ * Landing pública.
  *
- * La landing publica real (HU con su diseno aprobado en el prototipo) llega en
- * su propia historia. Lo que esta pagina demuestra hoy es que la cadena de
- * tokens funciona de punta a punta: `docs/marca/design-tokens.md` ->
- * `src/styles/tokens.css` -> utilidades de Tailwind -> pagina renderizada.
- * Ni un solo hexadecimal escrito aqui. */
-
-export default function Home() {
+ * Reconstruida sección por sección a partir del diseño aprobado en pen.dev. El export de
+ * la herramienta es un lienzo de 1440 px con posiciones absolutas: sirve como
+ * especificación —textos, colores, imágenes y proporciones—, pero no como código, porque
+ * un lienzo de posiciones fijas no puede refluir. Las imágenes sí se reutilizan tal cual:
+ * viven en `public/pen/`.
+ */
+export default function Landing() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-6 px-6 py-16">
-      <p className="text-caption font-semibold tracking-widest text-dorado-700 uppercase">
-        Banco peruano
-      </p>
-
-      <h1 className="text-h1 font-bold text-azul-700 sm:text-display">Ayni Bank</h1>
-
-      <p className="text-body text-gris-700">
-        Banca 100 % digital para personas naturales en Peru. Sin comision de mantenimiento y con
-        cuenta remunerada de devengo diario.
-      </p>
-
-      <div className="rounded-md border border-azul-200 bg-azul-050 p-6 shadow-sm">
-        <h2 className="text-h3 font-semibold text-azul-800">Aplicacion en construccion</h2>
-        <p className="mt-2 text-small text-gris-700">
-          El andamiaje esta listo. Las pantallas del prototipo se implementan historia a historia,
-          empezando por el registro.
-        </p>
-      </div>
-    </main>
+    <>
+      <main>
+        <Hero />
+        <FranjaCifras />
+        <SeccionCuenta />
+        <SeccionAyni />
+        <SeccionApp />
+        <SeccionSeguridad />
+        <SeccionProductos />
+        <SeccionComoFunciona />
+        <SeccionComparativa />
+        <CierreFinal />
+      </main>
+      <PiePagina />
+    </>
   );
 }

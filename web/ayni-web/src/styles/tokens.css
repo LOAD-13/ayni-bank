@@ -74,6 +74,22 @@
   --sombra-sm: 0 1px 2px rgba(6, 68, 117, 0.08);
   --sombra-md: 0 4px 12px rgba(6, 68, 117, 0.1);
   --sombra-lg: 0 12px 32px rgba(6, 68, 117, 0.14);
+
+  /* ── Paleta extendida del prototipo ────────────────────────────────── */
+  /* El diseño aprobado en pen.dev introduce estos tonos, que no estaban en la
+   * paleta base de `design-tokens.md`. Se incorporan aquí en lugar de escribirlos
+   * sueltos en los componentes: son parte de la identidad tanto como los demás, y
+   * repetidos a mano acaban divergiendo entre pantallas. */
+  --noche: #011526; /* Fondo de la franja de cifras */
+  --azul-tarjeta: #0a2b47; /* Tarjetas y distintivos flotantes sobre fotografía */
+  --oro: #f2c75c; /* Acento brillante del prototipo: distintivos y CTA */
+  --oro-claro: #f7d680; /* Inicio del degradado del CTA primario */
+  --texto-nav: #dce9f5; /* Enlaces de la barra sobre fondo oscuro */
+  --texto-bajada: #c4daec; /* Párrafo de entrada del hero */
+  --texto-tenue: #a9c4dc; /* Sellos de confianza */
+  --texto-franja: #7fa4c4; /* Etiquetas de la franja de cifras */
+  --texto-pildora: #eaf3fb;
+  --verde-rendimiento: #5fd3a0; /* Ganancia del día. Nunca solo color: va con signo + */
 }
 
 /* Expone los tokens como utilidades de Tailwind (`bg-azul-700`, `text-exito`,
@@ -114,6 +130,17 @@
   --color-gris-300: var(--gris-300);
   --color-gris-100: var(--gris-100);
   --color-blanco: var(--blanco);
+
+  --color-noche: var(--noche);
+  --color-azul-tarjeta: var(--azul-tarjeta);
+  --color-oro: var(--oro);
+  --color-oro-claro: var(--oro-claro);
+  --color-texto-nav: var(--texto-nav);
+  --color-texto-bajada: var(--texto-bajada);
+  --color-texto-tenue: var(--texto-tenue);
+  --color-texto-franja: var(--texto-franja);
+  --color-texto-pildora: var(--texto-pildora);
+  --color-verde-rendimiento: var(--verde-rendimiento);
 
   --color-exito: var(--exito);
   --color-error: var(--error);
