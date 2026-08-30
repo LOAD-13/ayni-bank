@@ -71,7 +71,7 @@ test.describe("Ingreso", () => {
           desafioId: "3f1c2b90-0000-4000-8000-000000000002",
           requiereInscripcion: true,
           uriDeAprovisionamiento:
-            "otpauth://totp/Ayni?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Ayni",
+            "otpauth://totp/Ayni?secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&issuer=Ayni",
         }),
       }),
     );
@@ -85,7 +85,7 @@ test.describe("Ingreso", () => {
     // Quien no puede escanear tiene que poder teclear el secreto: hay lectores que fallan
     // y escritorios sin cámara enfrente.
     await page.getByRole("button", { name: "No puedo escanearlo" }).click();
-    await expect(page.getByText("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")).toBeVisible();
+    await expect(page.getByText("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")).toBeVisible();
   });
 
   test("pegar el código entero lo reparte entre las seis casillas", async ({ page }) => {

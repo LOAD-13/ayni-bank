@@ -223,7 +223,7 @@ class SesionControllerTest {
 
             return requiereInscripcion
                     ? DesafioAbierto.conInscripcion(UUID.randomUUID(),
-                            "otpauth://totp/Ayni?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
+                            "otpauth://totp/Ayni?secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                     : DesafioAbierto.paraQuienYaTieneSegundoFactor(UUID.randomUUID());
         }
 

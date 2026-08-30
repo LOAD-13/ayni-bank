@@ -30,3 +30,9 @@ ae57cd11aa5c2bb656807c6f21bbc264930c7ed2:contracts/identity-service.openapi.yaml
 #    Gitleaks escanea tambien este fichero. El hallazgo era la propia explicacion.
 #    Ya reescrita sin transcribirlo.
 161ef77c5a1fc2641c1e3fe6dd3cbe19f858966b:.gitleaksignore:generic-api-key:9
+
+# 3. Un doble de prueba devolvia un URI otpauth con un secreto Base32 de alta entropia.
+#    Era un valor inventado para una prueba, no una credencial. Ya sustituido en el codigo
+#    por una cadena de entropia cero que sigue siendo Base32 valido y por tanto sirve
+#    igual como fixture.
+8b01d93f2d9351d718a6c23cbf336d164ebe5271:services/ayni-identity-service/src/test/java/pe/ayni/bank/identity/infrastructure/in/web/SesionControllerTest.java:generic-api-key:226
