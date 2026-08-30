@@ -27,9 +27,13 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- `spring-cloud-starter-gateway` a secas arrastra el artefacto
+             spring-cloud-gateway-server, que Spring Cloud declara obsoleto y retira
+             en la proxima version mayor: el propio arranque lo avisa por log. Este
+             es su sustituto para la variante reactiva, que es la que usamos. -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-gateway</artifactId>
+            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
     </dependencies>
 

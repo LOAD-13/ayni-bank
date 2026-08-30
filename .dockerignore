@@ -14,13 +14,19 @@
 .gitattributes
 .gitignore
 
-# Artefactos de construccion
+# Artefactos de construccion.
+#
+# Los patrones de la aplicacion web van con su ruta completa, NO como `**/out/` ni
+# `**/dist/`. Un `**/out/` generico tambien excluye
+# `services/*/src/main/java/**/domain/port/out/`, que es el paquete de puertos de
+# salida de la arquitectura hexagonal: el codigo compila en local y falla dentro de
+# la imagen con «package does not exist», sin que nada explique por que.
 **/target/
 **/node_modules/
-**/.next/
-**/out/
 **/coverage/
-**/dist/
+web/ayni-web/.next/
+web/ayni-web/out/
+web/ayni-web/dist/
 
 # Caches de herramientas
 **/__pycache__/
