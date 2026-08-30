@@ -140,11 +140,11 @@ class UsuarioTest {
         void noEsIgualANadaQueNoSeaUnUsuario() {
             Usuario usuario = unUsuarioRecienRegistrado();
 
-            // `equals` recibe Object, asi que hay que invocarlo directamente: comparar un
-            // Usuario con un String desde assertThat compara tipos incompatibles, y eso
-            // casi siempre es un error de la prueba y no lo que se quiere afirmar.
+            // `equals` se invoca directamente y no a traves de `isNotEqualTo`: comparar un
+            // Usuario con un String desde el aserto es comparar tipos incompatibles, cosa
+            // que casi siempre delata un error de la prueba y no una intencion.
             assertThat(usuario.equals("no soy un usuario")).isFalse();
-            assertThat(usuario).isEqualTo(usuario);
+            assertThat(usuario.equals(null)).isFalse();
         }
     }
 
