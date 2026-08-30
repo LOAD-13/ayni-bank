@@ -19,12 +19,39 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <!-- Acceso a datos: JDBC puro. JPA llegara con la primera entidad
-             persistida; hoy solo se necesita el DataSource que Flyway usa
-             para aplicar las migraciones al arrancar. -->
+        <!-- Validacion declarativa de los DTO de entrada (@Email, @Pattern,
+             @AssertTrue). Es una dependencia aparte desde Spring Boot 3: no
+             viene dentro de starter-web. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- JPA. Sustituye a starter-jdbc, que solo servia para que Flyway
+             tuviera un DataSource cuando no habia entidades. El starter incluye
+             JDBC, de modo que Flyway sigue funcionando igual.
+
+             `ddl-auto` NO se activa: el esquema lo define Flyway y solo Flyway.
+             Ver §4.5 del documento de diseño. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Solo `spring-security-crypto`, no `spring-boot-starter-security`.
+             Aqui hace falta unicamente Argon2PasswordEncoder para HU-01;
+             traerse el starter activaria la cadena de filtros completa, que
+             cerraria los endpoints de actuator y rompería los health checks del
+             compose antes de que exista una sola regla de autorizacion. La
+             seguridad web entra con HU-04, que es donde se configura. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+        <!-- Argon2PasswordEncoder delega en Bouncy Castle: sin esta
+             dependencia el bean se construye y falla en la primera llamada
+             con NoClassDefFoundError, no al arrancar. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
