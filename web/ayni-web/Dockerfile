@@ -26,8 +26,11 @@ FROM node:20-alpine
 
 # Dos saneamientos que Trivy exige, y que conviene entender antes de tocarlos:
 #
-# 1. `apk upgrade` sobre libcrypto3/libssl3. La base trae OpenSSL 3.5.6, con
-#    CVE-2026-14456 y CVE-2026-45447 (ambas ALTAS), corregidas en 3.5.8-r0.
+# 1. `apk upgrade` del arbol completo. La base arrastra paquetes de Alpine con
+#    CVE ya corregidas aguas arriba —OpenSSL ayer, libexpat hoy— y la lista
+#    cambia sola porque la base de datos de Trivy se actualiza a diario. Se
+#    actualiza todo en vez de fijar paquetes a mano: fijarlos obliga a editar
+#    cinco Dockerfiles cada vez que sale una CVE nueva. Ver el riesgo R-16.
 #
 # 2. Borrar npm. La imagen oficial de Node deja instalado el CLI de npm, y su
 #    arbol de dependencias arrastra 20 avisos —una CRITICA en node-tar y 19
@@ -37,7 +40,7 @@ FROM node:20-alpine
 #    de modo que aqui es superficie de ataque sin funcion.
 #
 # Al elevar la imagen base, volver a escanear y comprobar si estas lineas sobran.
-RUN apk upgrade --no-cache libcrypto3 libssl3 \
+RUN apk upgrade --no-cache \
     && rm -rf /usr/local/lib/node_modules/npm \
     /usr/local/bin/npm /usr/local/bin/npx \
     && addgroup -S ayni && adduser -S ayni -G ayni
