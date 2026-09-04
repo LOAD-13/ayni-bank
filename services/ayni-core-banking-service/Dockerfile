@@ -17,15 +17,21 @@ RUN mvn -B -pl services/ayni-core-banking-service -am clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 
-# La base trae Alpine 3.24.1 con OpenSSL 3.5.7-r0, que arrastra CVE-2026-14456
-# (ALTA, agotamiento de memoria en el servidor QUIC), corregida en 3.5.8-r0 y ya
-# disponible en el repositorio de Alpine 3.24.
+# La imagen base arrastra paquetes de Alpine con CVE conocidas y ya corregidas
+# aguas arriba. Hoy son libexpat 2.8.3-r0 —CVE-2026-66046 y CVE-2026-76641,
+# ambas ALTAS, resueltas en 2.8.4-r0— y antes fue OpenSSL. La lista cambia sola:
+# la base de datos de Trivy se actualiza a diario y aparecen avisos nuevos sin
+# que este repositorio toque una linea.
 #
-# No es una vulnerabilidad de la aplicacion: Trivy informa cero hallazgos en
-# app.jar. Es deriva de la imagen base, que se actualiza por su cuenta y puede
-# volver a moverse. Al elevar la etiqueta de la base, volver a escanear y
-# comprobar si esta linea ya sobra.
-RUN apk upgrade --no-cache libcrypto3 libssl3 openssl     && addgroup -S ayni && adduser -S ayni -G ayni
+# Por eso se actualiza el arbol completo en lugar de una lista de paquetes
+# fijada a mano. Fijarla obliga a editar cinco Dockerfiles cada vez que sale una
+# CVE nueva, y a enterarse cuando la integracion ya esta en rojo. Ver el riesgo
+# R-16 de la matriz.
+#
+# Ninguna de estas vulnerabilidades es de la aplicacion: Trivy informa cero
+# hallazgos en app.jar.
+RUN apk upgrade --no-cache \
+    && addgroup -S ayni && adduser -S ayni -G ayni
 WORKDIR /app
 COPY --from=build /build/services/ayni-core-banking-service/target/*.jar app.jar
 RUN chown -R ayni:ayni /app
