@@ -260,6 +260,10 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+          # Excepciones evaluadas una a una, con su justificacion y su fecha de
+          # caducidad. Al vencer, Trivy vuelve a bloquear por si solo: la
+          # excepcion no se puede olvidar. Ver el fichero para el detalle.
+          trivyignores: .trivyignore.yaml
           # Solo vulnerabilidades. El escaner de secretos recorre cada capa
           # buscando credenciales, que ya cubre Gitleaks sobre el repositorio, y
           # multiplica por tres el tiempo de cada job de esta matriz.
