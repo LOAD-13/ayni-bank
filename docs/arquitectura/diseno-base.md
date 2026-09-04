@@ -464,7 +464,8 @@ Se emplea la revisión de 2023 (nueve características).
 |---|---|
 | Disponibilidad mensual | 99.5 % |
 | Latencia de API | p95 < 500 ms · p99 < 1 s |
-| Onboarding KYC completo | < 90 s |
+| Onboarding KYC · **procesamiento de la plataforma** | < 90 s |
+| Onboarding KYC · **tiempo total del solicitante** | < 5 min (mediana) · < 8 min (p90) |
 | Transferencia interna | < 3 s |
 | Tasa de error | < 0.1 % |
 | RPO / RTO | 24 h / 4 h |

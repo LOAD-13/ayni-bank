@@ -30,7 +30,7 @@ banco sin comisiones, donde el dinero de la comunidad rinde para la comunidad, e
 
 | Situación actual en Perú | Qué hace Ayni |
 |---|---|
-| Abrir una cuenta exige ir a una agencia en horario bancario | Onboarding completo desde el navegador en **menos de 90 segundos** |
+| Abrir una cuenta exige ir a una agencia en horario bancario | Onboarding completo desde el navegador en **menos de 5 minutos**, 24 horas los 7 días |
 | Las cuentas de ahorro rinden en torno al **0.5% TREA**, por debajo de la inflación | Cuenta remunerada con **devengo diario** y TREA publicada de forma transparente |
 | La comisión de mantenimiento penaliza proporcionalmente más a los saldos pequeños | **Cero comisión de mantenimiento**, por lo que TREA = TEA |
 | La verificación de identidad es manual y sin trazabilidad | KYC con OCR del DNI, prueba de vivacidad y cotejo biométrico, **todo auditado** |
