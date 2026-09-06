@@ -1,0 +1,386 @@
+openapi: 3.0.3
+info:
+  title: KYC Service API
+  version: 1.0.0
+  description: API para verificación de identidad mediante análisis de documentos
+  contact:
+    name: LOAD-13 Team
+    email: team@ayni-bank.com
+  license:
+    name: Proprietary
+    url: https://ayni-bank.com
+
+servers:
+  - url: http://localhost:8081
+    description: Development environment
+  - url: https://kyc-service-staging.ayni-bank.com
+    description: Staging environment
+  - url: https://kyc-service.ayni-bank.com
+    description: Production environment
+
+tags:
+  - name: Verification
+    description: Identity verification operations
+
+paths:
+  /kyc/verify:
+    post:
+      tags:
+        - Verification
+      summary: Iniciar verificación de identidad
+      description: Inicia un proceso de verificación de identidad basado en un documento de identidad subido a MinIO. La verificación se realiza de forma asincrónica.
+      operationId: startVerification
+      requestBody:
+        required: true
+        description: Datos de solicitud de verificación
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationRequest'
+            example:
+              identityDocumentKey: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '202':
+          description: Verificación aceptada y en proceso (procesamiento async)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
+              example:
+                verificationId: "660e8400-e29b-41d4-a716-446655440000"
+                status: "pending"
+        '400':
+          description: Solicitud inválida (identityDocumentKey faltante o formato incorrecto)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "BAD_REQUEST"
+                message: "identityDocumentKey is required and must be a valid UUID"
+                timestamp: "2026-09-06T10:30:00Z"
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "INTERNAL_SERVER_ERROR"
+                message: "An unexpected error occurred while processing your request"
+                timestamp: "2026-09-06T10:30:00Z"
+
+  /kyc/verify/{verificationId}:
+    get:
+      tags:
+        - Verification
+      summary: Consultar estado de verificación
+      description: Obtiene el estado actual de un proceso de verificación. El estado puede ser "pending", "approved" o "rejected".
+      operationId: getVerificationStatus
+      parameters:
+        - name: verificationId
+          in: path
+          description: Identificador único de la verificación
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "660e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Estado actual de la verificación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationStatus'
+              example:
+                verificationId: "660e8400-e29b-41d4-a716-446655440000"
+                status: "approved"
+                confidence: 95.5
+        '404':
+          description: Verificación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "NOT_FOUND"
+                message: "Verification with ID 660e8400-e29b-41d4-a716-446655440000 not found"
+                timestamp: "2026-09-06T10:30:00Z"
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /kyc/verify/{verificationId}/result:
+    get:
+      tags:
+        - Verification
+      summary: Obtener resultado detallado de verificación
+      description: Obtiene el resultado completo de una verificación, incluyendo los datos extraídos del documento. Solo está disponible cuando el estado es "approved" o "rejected".
+      operationId: getVerificationResult
+      parameters:
+        - name: verificationId
+          in: path
+          description: Identificador único de la verificación
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "660e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Resultado completo de la verificación con datos extraídos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+              example:
+                verificationId: "660e8400-e29b-41d4-a716-446655440000"
+                status: "approved"
+                confidence: 95.5
+                extractedData:
+                  dni: "12345678A"
+                  firstName: "Juan"
+                  lastName: "Pérez García"
+                  dateOfBirth: "1990-05-15"
+                  gender: "M"
+        '400':
+          description: Verificación aún en proceso o no existe resultado disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "VERIFICATION_PENDING"
+                message: "Verification is still in progress. Please check back later."
+                timestamp: "2026-09-06T10:30:00Z"
+        '404':
+          description: Verificación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: "NOT_FOUND"
+                message: "Verification with ID 660e8400-e29b-41d4-a716-446655440000 not found"
+                timestamp: "2026-09-06T10:30:00Z"
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    VerificationRequest:
+      type: object
+      title: Verificación Request
+      description: Solicitud para iniciar una verificación de identidad
+      required:
+        - identityDocumentKey
+      properties:
+        identityDocumentKey:
+          type: string
+          format: uuid
+          description: Clave/identificador del documento de identidad almacenado en MinIO. Este documento debe haber sido subido previamente al bucket de MinIO designado.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    VerificationResponse:
+      type: object
+      title: Verificación Response
+      description: Respuesta inicial después de aceptar una solicitud de verificación
+      required:
+        - verificationId
+        - status
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+          description: Identificador único asignado a esta verificación. Usar este ID para consultar el estado y obtener resultados posteriormente.
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum:
+            - pending
+          description: Estado inicial de la verificación. El estado será "pending" mientras se procesa.
+          example: "pending"
+
+    VerificationStatus:
+      type: object
+      title: Verificación Status
+      description: Estado actual de una verificación
+      required:
+        - verificationId
+        - status
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+          description: Identificador único de la verificación
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+          description: Estado actual - pending (en proceso), approved (verificación exitosa), rejected (verificación fallida)
+          example: "approved"
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Nivel de confianza del resultado (0-100). Solo presente cuando status es "approved" o "rejected".
+          example: 95.5
+        rejectionReason:
+          type: string
+          description: Razón del rechazo cuando status es "rejected". Ejemplos - DOCUMENT_NOT_READABLE, INVALID_DOCUMENT, SUSPECTED_FRAUD, etc.
+          enum:
+            - DOCUMENT_NOT_READABLE
+            - INVALID_DOCUMENT
+            - SUSPECTED_FRAUD
+            - DOCUMENT_EXPIRED
+            - QUALITY_CHECK_FAILED
+          example: "DOCUMENT_NOT_READABLE"
+
+    VerificationResult:
+      type: object
+      title: Verificación Result
+      description: Resultado completo de una verificación, incluyendo datos extraídos
+      required:
+        - verificationId
+        - status
+        - confidence
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+          description: Identificador único de la verificación
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum:
+            - approved
+            - rejected
+          description: Estado final de la verificación
+          example: "approved"
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Nivel de confianza del resultado (0-100)
+          example: 95.5
+        extractedData:
+          $ref: '#/components/schemas/ExtractedIdentityData'
+        rejectionReason:
+          type: string
+          description: Razón del rechazo cuando status es "rejected"
+          enum:
+            - DOCUMENT_NOT_READABLE
+            - INVALID_DOCUMENT
+            - SUSPECTED_FRAUD
+            - DOCUMENT_EXPIRED
+            - QUALITY_CHECK_FAILED
+          example: null
+
+    ExtractedIdentityData:
+      type: object
+      title: Extracted Identity Data
+      description: Datos de identidad extraídos del documento mediante OCR y validación
+      required:
+        - dni
+        - firstName
+        - lastName
+        - dateOfBirth
+        - gender
+      properties:
+        dni:
+          type: string
+          description: Número de Documento Nacional de Identidad (DNI) del solicitante
+          example: "12345678A"
+        firstName:
+          type: string
+          description: Nombre(s) del solicitante tal como aparece en el documento
+          example: "Juan"
+        lastName:
+          type: string
+          description: Apellido(s) del solicitante tal como aparecen en el documento
+          example: "Pérez García"
+        dateOfBirth:
+          type: string
+          format: date
+          description: Fecha de nacimiento en formato ISO 8601 (YYYY-MM-DD)
+          example: "1990-05-15"
+        gender:
+          type: string
+          enum:
+            - M
+            - F
+            - O
+          description: Género del solicitante (M=Masculino, F=Femenino, O=Otro/No especificado)
+          example: "M"
+
+    ErrorResponse:
+      type: object
+      title: Error Response
+      description: Respuesta de error estándar
+      required:
+        - code
+        - message
+        - timestamp
+      properties:
+        code:
+          type: string
+          description: Código de error único para clasificación programática
+          example: "INTERNAL_SERVER_ERROR"
+        message:
+          type: string
+          description: Mensaje de error legible por humanos
+          example: "An unexpected error occurred while processing your request"
+        timestamp:
+          type: string
+          format: date-time
+          description: Marca de tiempo (ISO 8601) cuando ocurrió el error
+          example: "2026-09-06T10:30:00Z"
+        details:
+          type: object
+          description: Información adicional de debugging (solo en desarrollo)
+          nullable: true
+          example: null
+
+  responses:
+    BadRequest:
+      description: Solicitud inválida - parámetros faltantes o formato incorrecto
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Autenticación mediante JWT bearer token (implementado en versiones futuras)
+
+security: []
