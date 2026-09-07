@@ -4,7 +4,12 @@ Los MRZ de prueba se construyen calculando sus propios checksums con la
 funcion interna _checksum, en vez de copiar valores calculados a mano: un
 error de calculo manual invalidaria el test silenciosamente.
 """
-from src.infrastructure.vision.mrz_td1 import _checksum, encontrar_lineas_mrz, parsear_mrz
+from src.infrastructure.vision.mrz_td1 import (
+    _checksum,
+    encontrar_lineas_mrz,
+    parsear_mrz,
+    validar_digito_verificador,
+)
 
 
 def _construir_mrz_valido() -> tuple[str, str, str]:
@@ -85,3 +90,53 @@ def test_debe_retornar_none_cuando_no_hay_tres_lineas_con_forma_de_mrz() -> None
 
     # Cuando / Entonces
     assert encontrar_lineas_mrz(texto_ocr) is None
+
+
+# --- AYNI-13 subtarea 6: validar el digito verificador del numero de DNI ---
+# El DNI peruano no tiene un digito verificador oficial propio (ver
+# ADR-0016); se reutiliza el del numero de documento dentro del MRZ, que si
+# es un estandar oficial (ICAO 9303).
+
+
+def test_debe_validar_el_digito_verificador_cuando_es_correcto() -> None:
+    # Dado: mismo numero de documento usado en _construir_mrz_valido
+    numero_doc_con_relleno = "87654321<"
+    digito_correcto = str(_checksum(numero_doc_con_relleno))
+
+    # Cuando / Entonces
+    assert validar_digito_verificador(numero_doc_con_relleno, digito_correcto) is True
+
+
+def test_debe_rechazar_el_digito_verificador_cuando_no_coincide_con_el_numero() -> None:
+    # Dado
+    numero_doc_con_relleno = "87654321<"
+    digito_incorrecto = str((_checksum(numero_doc_con_relleno) + 1) % 10)
+
+    # Cuando / Entonces
+    assert validar_digito_verificador(numero_doc_con_relleno, digito_incorrecto) is False
+
+
+def test_debe_rechazar_cuando_el_digito_verificador_no_es_numerico() -> None:
+    assert validar_digito_verificador("87654321<", "<") is False
+
+
+def test_numero_documento_verificado_es_independiente_de_los_otros_checksums() -> None:
+    """El digito verificador del numero de DNI (subtarea 6) debe poder
+    evaluarse aislado: si otro campo del MRZ (ej. fecha de caducidad) se
+    leyo mal, el numero de documento puede seguir siendo confiable."""
+    # Dado: el MRZ valido, pero con el DIGITO VERIFICADOR de la fecha de
+    # caducidad alterado (la fecha en si sigue siendo valida, solo el
+    # checksum en la posicion 15 de linea2 -indice 14- no coincide)
+    linea1, linea2, linea3 = _construir_mrz_valido()
+    digito_original = linea2[14]
+    digito_alterado = str((int(digito_original) + 1) % 10)
+    linea2_con_error = linea2[:14] + digito_alterado + linea2[15:]
+
+    # Cuando
+    resultado = parsear_mrz(linea1, linea2_con_error, linea3)
+
+    # Entonces: el numero de documento sigue verificado pese al otro error
+    assert resultado is not None
+    assert resultado.numero_documento_verificado is True
+    assert resultado.fecha_caducidad_verificada is False
+    assert resultado.todos_los_checksums_validos is False

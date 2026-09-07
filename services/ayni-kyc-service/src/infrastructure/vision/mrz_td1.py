@@ -36,9 +36,24 @@ def _checksum(campo: str) -> int:
     return total % 10
 
 
+def validar_digito_verificador(campo: str, digito_control: str) -> bool:
+    """Valida un digito verificador ICAO 9303 (algoritmo modulo 10, pesos
+    ciclicos 7-3-1). El DNI peruano no publica un digito verificador propio
+    para sus 8 digitos (ver ADR-0016); el unico oficial es este, el que trae
+    el numero de documento dentro del MRZ del reverso.
+    """
+    return digito_control.isdigit() and _checksum(campo) == int(digito_control)
+
+
 @dataclass(frozen=True)
 class DatosMrz:
-    """Datos extraidos y validados de la MRZ (formato TD1)."""
+    """Datos extraidos y validados de la MRZ (formato TD1).
+
+    Los cuatro checksums se exponen por separado (no solo el compuesto) para
+    que el llamador pueda distinguir, por ejemplo, un numero de documento
+    verificado de una fecha de caducidad mal leida (subtarea 6 de AYNI-13
+    solo necesita el primero).
+    """
 
     numero_documento: str
     fecha_nacimiento: date
@@ -47,7 +62,19 @@ class DatosMrz:
     nacionalidad: str
     apellidos: str
     nombres: str
-    todos_los_checksums_validos: bool
+    numero_documento_verificado: bool
+    fecha_nacimiento_verificada: bool
+    fecha_caducidad_verificada: bool
+    checksum_compuesto_valido: bool
+
+    @property
+    def todos_los_checksums_validos(self) -> bool:
+        return (
+            self.numero_documento_verificado
+            and self.fecha_nacimiento_verificada
+            and self.fecha_caducidad_verificada
+            and self.checksum_compuesto_valido
+        )
 
 
 def _fecha_desde_yymmdd(yymmdd: str, es_fecha_nacimiento: bool) -> date | None:
@@ -101,17 +128,6 @@ def parsear_mrz(linea1: str, linea2: str, linea3: str) -> DatosMrz | None:
 
     campo_compuesto = linea1[5:30] + linea2[0:7] + linea2[8:15] + linea2[18:29]
 
-    checksums_validos = (
-        checksum_documento.isdigit()
-        and _checksum(numero_documento_crudo) == int(checksum_documento)
-        and checksum_nacimiento.isdigit()
-        and _checksum(fecha_nacimiento_cruda) == int(checksum_nacimiento)
-        and checksum_caducidad.isdigit()
-        and _checksum(fecha_caducidad_cruda) == int(checksum_caducidad)
-        and linea2[29].isdigit()
-        and _checksum(campo_compuesto) == int(linea2[29])
-    )
-
     return DatosMrz(
         numero_documento=numero_documento,
         fecha_nacimiento=fecha_nacimiento,
@@ -120,7 +136,10 @@ def parsear_mrz(linea1: str, linea2: str, linea3: str) -> DatosMrz | None:
         nacionalidad=nacionalidad,
         apellidos=apellidos,
         nombres=nombres,
-        todos_los_checksums_validos=checksums_validos,
+        numero_documento_verificado=validar_digito_verificador(numero_documento_crudo, checksum_documento),
+        fecha_nacimiento_verificada=validar_digito_verificador(fecha_nacimiento_cruda, checksum_nacimiento),
+        fecha_caducidad_verificada=validar_digito_verificador(fecha_caducidad_cruda, checksum_caducidad),
+        checksum_compuesto_valido=validar_digito_verificador(campo_compuesto, linea2[29]),
     )
 
 
