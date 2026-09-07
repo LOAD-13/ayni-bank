@@ -24,3 +24,21 @@ class ResultadoCotejoFacial:
     def __post_init__(self) -> None:
         if not 0.0 <= self.similitud <= 1.0:
             raise ValueError("La similitud debe estar entre 0.0 y 1.0")
+
+
+@dataclass(frozen=True)
+class ResultadoValidacionCalidad:
+    """Resultado de validar nitidez, reflejos y encuadre de una foto de documento.
+
+    Distingue cual de los tres controles fallo (util para logs internos y
+    para guiar al usuario en la subtarea 12), aunque el contrato publico
+    solo exponga un motivo generico QUALITY_CHECK_FAILED.
+    """
+
+    es_nitida: bool
+    sin_reflejos: bool
+    bien_encuadrada: bool
+
+    @property
+    def es_valida(self) -> bool:
+        return self.es_nitida and self.sin_reflejos and self.bien_encuadrada
