@@ -116,6 +116,32 @@
             <artifactId>swagger-annotations-jakarta</artifactId>
             <version>2.2.27</version>
         </dependency>
+        <!-- Genera URLs pre-firmadas hacia el bucket de documentos KYC
+             (AYNI-13 subtarea 7). La firma es local (HMAC), no hace ninguna
+             llamada de red a MinIO. Sin BOM de Spring Boot que la gestione:
+             version fijada a mano, igual que swagger-annotations-jakarta.
+
+             okhttp (transitiva) es Kotlin Multiplatform desde su version 5.x:
+             el artefacto "com.squareup.okhttp3:okhttp" que resuelve Maven es
+             solo metadata KMP, sin clases (Maven no entiende Gradle Module
+             Metadata para elegir la variante JVM). Se excluye y se declara
+             "okhttp-jvm" a mano, que es el jar real con las clases. -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>9.0.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp-jvm</artifactId>
+            <version>5.3.2</version>
+        </dependency>
     </dependencies>
 
     <build>

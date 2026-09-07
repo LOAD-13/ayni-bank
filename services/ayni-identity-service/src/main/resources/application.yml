@@ -70,6 +70,15 @@ ayni:
     # por delante, esto va SIEMPRE en true.
     seguras: ${AYNI_COOKIES_SEGURAS:false}
 
+  # ─── Almacen de objetos (documentos KYC) ───────────────────────────────
+  # El bucket ya existe: lo crea minio-init en docker-compose.yml, privado
+  # (mc anonymous set none). Ver diseno-base.md §4.1.
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:ayni_minio}
+    secret-key: ${MINIO_SECRET_KEY:cambiar_en_local}
+    bucket-kyc: ayni-kyc-documentos
+
 server:
   port: 8081
 

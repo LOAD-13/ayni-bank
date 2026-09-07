@@ -157,10 +157,15 @@ services:
       # arrancaria. En staging y produccion llega como secreto desde el .env.
       # Generar una nueva:  openssl rand -base64 32
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+    # minio-init crea el bucket ayni-kyc-documentos y termina. Sin esta
+    # dependencia hay una condicion de carrera: identity-service podria
+    # generar una URL pre-firmada de subida (AYNI-13 subtarea 7) contra un
+    # bucket que todavia no existe. Mismo criterio que ya usa ayni-kyc-service.
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
 
   ayni-core-banking-service:
     <<: *java-common

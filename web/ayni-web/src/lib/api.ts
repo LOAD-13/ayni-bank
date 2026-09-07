@@ -136,6 +136,69 @@ export async function registrar(solicitud: SolicitudDeRegistro): Promise<Respues
   return pedir<RespuestaDeRegistro>("/api/v1/registro", solicitud);
 }
 
+/** Que cara/imagen del proceso de verificacion se esta subiendo · HU-02. */
+export type TipoDeDocumentoKyc = "ANVERSO" | "REVERSO" | "SELFIE";
+
+export interface UrlDeSubida {
+  /** URL pre-firmada de subida (PUT). El navegador sube el archivo directamente aqui. */
+  url: string;
+  /** Momento en que la URL deja de ser valida (5 minutos despues de emitida). */
+  expiraEn: string;
+}
+
+/**
+ * Pide la URL con la que subir un documento KYC directamente a MinIO.
+ *
+ * No sube nada todavia: solo firma el destino. El PUT real lo hace
+ * {@link subirDocumento}, con el archivo elegido por la persona.
+ */
+export async function solicitarUrlDeSubida(
+  solicitudId: string,
+  tipoDocumento: TipoDeDocumentoKyc,
+  extension: string,
+): Promise<UrlDeSubida> {
+  return pedir<UrlDeSubida>(`/api/v1/solicitudes/${solicitudId}/documentos/url-de-subida`, {
+    tipoDocumento,
+    extension,
+  });
+}
+
+/**
+ * Sube el archivo directamente a MinIO con la URL pre-firmada.
+ *
+ * A diferencia de {@link pedir}, esta llamada NO pasa por el gateway ni lleva
+ * `credentials`/`Content-Type: application/json`: la URL ya trae su propia
+ * autorizacion firmada, y el cuerpo es el archivo, no JSON. Ver diseno-base.md
+ * §3.4-3.5: "las imagenes no atraviesan la API".
+ */
+export async function subirDocumento(urlDeSubida: string, archivo: File): Promise<void> {
+  let respuesta: Response;
+
+  try {
+    respuesta = await fetch(urlDeSubida, {
+      method: "PUT",
+      headers: { "Content-Type": archivo.type },
+      body: archivo,
+    });
+  } catch {
+    throw new ErrorDeApi(
+      {
+        title: "No pudimos subir el documento",
+        detail: "Revisa tu conexión e inténtalo de nuevo.",
+        status: 0,
+      },
+      0,
+    );
+  }
+
+  if (!respuesta.ok) {
+    throw new ErrorDeApi(
+      { title: "No pudimos subir el documento", status: respuesta.status },
+      respuesta.status,
+    );
+  }
+}
+
 /**
  * Una petición POST con su manejo de errores, común a todo.
  *
