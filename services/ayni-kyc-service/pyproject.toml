@@ -20,6 +20,11 @@ disallow_untyped_defs = true
 module = ["prometheus_fastapi_instrumentator.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# opencv-python-headless no publica stubs de tipos completos.
+module = ["cv2.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
