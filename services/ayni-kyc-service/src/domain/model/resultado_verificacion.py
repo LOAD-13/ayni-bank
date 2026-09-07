@@ -4,6 +4,7 @@ Sin dependencias de FastAPI ni de ninguna libreria de vision: el dominio
 define QUE se verifica, no COMO se implementa.
 """
 from dataclasses import dataclass
+from datetime import date
 from enum import Enum
 
 
@@ -42,3 +43,30 @@ class ResultadoValidacionCalidad:
     @property
     def es_valida(self) -> bool:
         return self.es_nitida and self.sin_reflejos and self.bien_encuadrada
+
+
+class FuenteDatosIdentidad(str, Enum):
+    """De donde salieron los datos: MRZ (confiable, con checksum) o heuristicas
+    de texto libre sobre el anverso (fallback, sin forma de validar la lectura)."""
+
+    MRZ = "MRZ"
+    HEURISTICA_ANVERSO = "HEURISTICA_ANVERSO"
+
+
+@dataclass(frozen=True)
+class DatosIdentidadExtraidos:
+    """Datos de identidad extraidos del DNI por OCR (subtarea 5 de AYNI-13).
+
+    `confiable` distingue si vinieron del MRZ con checksums validos (se puede
+    confiar en la lectura) o de heuristicas sobre el anverso (fallback sin
+    forma de validar que el OCR leyo bien - ver ADR-0009 sobre lecturas
+    plausibles pero erroneas).
+    """
+
+    dni: str
+    nombres: str
+    apellidos: str
+    fecha_nacimiento: date
+    sexo: str
+    fuente: FuenteDatosIdentidad
+    confiable: bool

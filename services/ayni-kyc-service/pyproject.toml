@@ -21,8 +21,13 @@ module = ["prometheus_fastapi_instrumentator.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-# opencv-python-headless no publica stubs de tipos completos.
+# opencv-contrib-python no publica stubs de tipos completos.
 module = ["cv2.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# paddleocr no publica stubs de tipos ni marcador py.typed.
+module = ["paddleocr.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

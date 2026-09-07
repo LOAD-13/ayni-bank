@@ -1,7 +1,11 @@
 """Puertos del dominio. La implementacion vive en infrastructure."""
 from typing import Protocol
 
-from src.domain.model.resultado_verificacion import ResultadoCotejoFacial, ResultadoValidacionCalidad
+from src.domain.model.resultado_verificacion import (
+    DatosIdentidadExtraidos,
+    ResultadoCotejoFacial,
+    ResultadoValidacionCalidad,
+)
 
 
 class DetectorDocumentoPort(Protocol):
@@ -14,6 +18,14 @@ class ValidadorCalidadPort(Protocol):
     """Valida nitidez, reflejos y encuadre de la foto de un documento."""
 
     def validar(self, clave_objeto: str) -> ResultadoValidacionCalidad: ...
+
+
+class ExtractorDatosPort(Protocol):
+    """Extrae los datos de identidad del DNI (anverso y reverso) mediante OCR."""
+
+    def extraer(
+        self, clave_objeto_anverso: str, clave_objeto_reverso: str
+    ) -> DatosIdentidadExtraidos | None: ...
 
 
 class CotejadorFacialPort(Protocol):
