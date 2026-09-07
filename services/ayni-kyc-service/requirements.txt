@@ -9,11 +9,20 @@ python-multipart==0.0.32
 minio==7.2.9
 # 8.x es la primera serie compatible con starlette 1.x
 prometheus-fastapi-instrumentator==8.1.0
-# headless: sin dependencias de GUI/X11, correcto para un contenedor servidor.
-# Se fija en la serie 4.x (no 5.x) para evitar cambios de API mayores.
-opencv-python-headless==4.14.0.94
-# opencv-python-headless exige numpy>=2. Se fija 2.0.2 (no una serie mas
-# reciente): numpy>=2.1 rompe la resolucion de NDArray en mypy 1.11.2, que es
-# la version de mypy fijada en requirements-dev.txt. Al subir mypy, revisar
-# si esta version de numpy ya puede subir tambien.
+# paddlex[ocr-core] (dependencia de paddleocr) fija opencv-contrib-python
+# EXACTAMENTE en 4.10.0.84 (con "=="), sin margen de version. No se puede usar
+# opencv-python-headless aqui: paddlex instala su propio opencv-contrib-python
+# de todas formas, y tener dos paquetes de opencv distintos deja cual "gana"
+# al azar segun el orden de instalacion (ver ADR-0014). No es headless, pero
+# nuestro codigo (subtareas 3-4) es compatible sin cambios: se verifico
+# manualmente contra esta version exacta antes de fijarla.
+opencv-contrib-python==4.10.0.84
+# numpy==2.0.2, no una serie mas reciente: numpy>=2.1 rompe la resolucion de
+# NDArray en mypy 1.11.2, que es la version de mypy fijada en
+# requirements-dev.txt. Al subir mypy, revisar si esta version de numpy ya
+# puede subir tambien.
 numpy==2.0.2
+# OCR de anverso y reverso del DNI (subtarea 5 de AYNI-13). paddlepaddle es el
+# framework de deep learning que paddleocr usa como backend.
+paddlepaddle==3.3.1
+paddleocr==3.7.0
