@@ -81,10 +81,13 @@ exactamente con lo usado en el código.
 ## Alternativas evaluadas
 
 **Testcontainers con un MinIO real para probar el adaptador.** Se descartó para esta subtarea:
-`getPresignedObjectUrl` firma en local (HMAC-SHA256, sin llamada de red a MinIO), así que un
-contenedor real no verificaría nada que un test contra `MinioClient` con credenciales de
-prueba no verifique ya (mismo patrón que `EmisorDeTokensJwtTest`, que prueba firma JWT sin
-infraestructura externa). Testcontainers encaja mejor cuando exista una subida real end-to-end
+el cálculo de la firma en sí es local (HMAC-SHA256); la única llamada de red que
+`getPresignedObjectUrl` podría hacer es para resolver la región del bucket, y se evita
+fijándola explícitamente en el `MinioClient` (`.region("us-east-1")`, ver ADR-0018 §Corrección).
+Con la región fijada, un contenedor real no verificaría nada que un test contra `MinioClient`
+con credenciales de prueba no verifique ya (mismo patrón que `EmisorDeTokensJwtTest`, que
+prueba firma JWT sin infraestructura externa). Testcontainers encaja mejor cuando exista una
+subida real end-to-end
 que probar (subtareas 12/13).
 
 **Reutilizar `SolicitudNoAprobableException`.** Habría evitado una quinta excepción de dominio

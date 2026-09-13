@@ -11,4 +11,12 @@ import pe.ayni.bank.identity.domain.model.UrlDeSubida;
 public interface AlmacenDeDocumentosPort {
 
     UrlDeSubida generarUrlDeSubida(String claveDeObjeto, String tipoDeContenido);
+
+    /**
+     * SHA-256 del objeto ya subido, en hexadecimal minuscula. Permite
+     * detectar alteracion del objeto (diseno-base.md §4.1). No persiste en
+     * base de datos todavia: eso llega con la tabla {@code documento_kyc}
+     * (AYNI-13 subtarea 9).
+     */
+    String calcularHash(String claveDeObjeto);
 }

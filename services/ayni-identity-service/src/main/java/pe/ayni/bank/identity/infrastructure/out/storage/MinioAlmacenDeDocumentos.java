@@ -1,9 +1,15 @@
 package pe.ayni.bank.identity.infrastructure.out.storage;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.concurrent.TimeUnit;
 
+import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.Http;
 import io.minio.MinioClient;
@@ -19,9 +25,13 @@ import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
  * Firma URLs pre-firmadas contra MinIO (compatible S3). Migrar a AWS S3 real
  * es cambiar {@code ayni.minio.endpoint} — ver diseno-base.md §4.1.
  *
- * <p>La firma es local (HMAC-SHA256): {@code getPresignedObjectUrl} no hace
- * ninguna llamada de red a MinIO, asi que el unico fallo realista es una
- * configuracion invalida de credenciales, no una caida del servidor.
+ * <p>El calculo de la firma en si es local (HMAC-SHA256), pero
+ * {@code getPresignedObjectUrl} SI necesita conocer la region del bucket:
+ * sin fijarla explicitamente en el {@code MinioClient} (ver
+ * {@code ConfiguracionDeMinio}), el SDK la resuelve con una llamada de red
+ * (GetBucketLocation) antes de firmar. Con la region fijada, no hay
+ * round-trip y el unico fallo realista es una configuracion invalida de
+ * credenciales, no una caida del servidor.
  */
 @Component
 public class MinioAlmacenDeDocumentos implements AlmacenDeDocumentosPort {
@@ -54,6 +64,18 @@ public class MinioAlmacenDeDocumentos implements AlmacenDeDocumentosPort {
             return new UrlDeSubida(url, reloj.instant().plus(VIGENCIA));
         } catch (MinioException e) {
             throw new IllegalStateException("No se pudo generar la URL de subida.", e);
+        }
+    }
+
+    @Override
+    public String calcularHash(String claveDeObjeto) {
+        try (InputStream flujo = minioClient.getObject(
+                GetObjectArgs.builder().bucket(bucket).object(claveDeObjeto).build())) {
+            byte[] contenido = flujo.readAllBytes();
+            byte[] resumen = MessageDigest.getInstance("SHA-256").digest(contenido);
+            return HexFormat.of().formatHex(resumen);
+        } catch (MinioException | IOException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("No se pudo calcular el hash del documento.", e);
         }
     }
 }

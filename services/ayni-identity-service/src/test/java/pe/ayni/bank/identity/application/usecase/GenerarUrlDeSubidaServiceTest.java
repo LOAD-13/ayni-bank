@@ -127,5 +127,10 @@ class GenerarUrlDeSubidaServiceTest {
             ultimoTipoDeContenido = tipoDeContenido;
             return urlDevuelta;
         }
+
+        @Override
+        public String calcularHash(String claveDeObjeto) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
     }
 }

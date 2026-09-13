@@ -17,6 +17,10 @@ public class ConfiguracionDeMinio {
         return MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
+                // Sin region explicita, el SDK la resuelve con una llamada de
+                // red al construir/firmar (GetBucketLocation). MinIO no es
+                // multi-region: fijarla evita ese round-trip en cada firma.
+                .region("us-east-1")
                 .build();
     }
 }
