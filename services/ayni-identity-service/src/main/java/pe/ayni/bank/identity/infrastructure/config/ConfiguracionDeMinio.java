@@ -14,6 +14,18 @@ public class ConfiguracionDeMinio {
             @Value("${ayni.minio.endpoint}") String endpoint,
             @Value("${ayni.minio.access-key}") String accessKey,
             @Value("${ayni.minio.secret-key}") String secretKey) {
+        return construir(endpoint, accessKey, secretKey);
+    }
+
+    @Bean
+    public MinioClient minioClientPublico(
+            @Value("${ayni.minio.endpoint-publico}") String endpointPublico,
+            @Value("${ayni.minio.access-key}") String accessKey,
+            @Value("${ayni.minio.secret-key}") String secretKey) {
+        return construir(endpointPublico, accessKey, secretKey);
+    }
+
+    private MinioClient construir(String endpoint, String accessKey, String secretKey) {
         return MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)

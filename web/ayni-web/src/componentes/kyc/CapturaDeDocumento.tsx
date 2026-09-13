@@ -1,6 +1,14 @@
 "use client";
 
-import { Camera, FileUp, RotateCcw, TriangleAlert, Upload } from "lucide-react";
+import {
+  Camera,
+  FileImage,
+  FileUp,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+  Upload,
+} from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Boton } from "@/componentes/Boton";
@@ -18,17 +26,12 @@ import {
  */
 const PROPORCION_DNI = 85.6 / 53.98;
 
-/**
- * Extensiones que acepta `POST .../documentos/url-de-subida` (ver
- * `SolicitudDeUrlDeSubidaDto` en el backend). No hay un límite de tamaño documentado en
- * ningún lado del diseño — 10 MB es un tope de sentido común para una foto de documento,
- * no un requisito de negocio, y se documenta así en el ADR-0023.
- */
 const TIPOS_ACEPTADOS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
+  "application/pdf": "pdf",
 };
-const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024;
+const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
 
 type Medio = "camara" | "archivo";
 type Fase =
@@ -40,6 +43,10 @@ interface Props {
   /** «Anverso» o «Reverso», para los textos de la pantalla. */
   cara: string;
   onCompletado: () => void;
+}
+
+function formatearTamano(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**
@@ -70,7 +77,13 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
 
   const [medio, setMedio] = useState<Medio>("camara");
   const [fase, setFase] = useState<Fase>("pidiendo-permiso");
-  const [foto, setFoto] = useState<{ blob: Blob; url: string; extension: string } | null>(null);
+  const [foto, setFoto] = useState<{
+    blob: Blob;
+    url: string;
+    extension: string;
+    nombre: string;
+    tamanoBytes: number;
+  } | null>(null);
   const [errorDeArchivo, setErrorDeArchivo] = useState<string | null>(null);
   const [errorDeSubida, setErrorDeSubida] = useState<string | null>(null);
 
@@ -140,7 +153,13 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        setFoto({ blob, url: URL.createObjectURL(blob), extension: "jpg" });
+        setFoto({
+          blob,
+          url: URL.createObjectURL(blob),
+          extension: "jpg",
+          nombre: `${tipoDocumento.toLowerCase()}.jpg`,
+          tamanoBytes: blob.size,
+        });
         setErrorDeSubida(null);
         setFase("revisando");
       },
@@ -155,17 +174,23 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
 
     const extension = TIPOS_ACEPTADOS[archivo.type];
     if (!extension) {
-      setErrorDeArchivo("El archivo debe ser una foto JPG o PNG.");
+      setErrorDeArchivo("El archivo debe ser una foto JPG, PNG o un PDF.");
       return;
     }
     if (archivo.size > TAMANO_MAXIMO_BYTES) {
-      setErrorDeArchivo("El archivo pesa demasiado. El máximo es 10 MB.");
+      setErrorDeArchivo("El archivo pesa demasiado. El máximo es 5 MB.");
       return;
     }
 
     setErrorDeArchivo(null);
     setErrorDeSubida(null);
-    setFoto({ blob: archivo, url: URL.createObjectURL(archivo), extension });
+    setFoto({
+      blob: archivo,
+      url: URL.createObjectURL(archivo),
+      extension,
+      nombre: archivo.name,
+      tamanoBytes: archivo.size,
+    });
     setFase("revisando");
   }
 
@@ -211,6 +236,12 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
         </p>
       </div>
 
+      <p className="flex items-start gap-2.5 rounded-[12px] border border-azul-200 bg-azul-050 p-4 text-[12.5px] text-azul-800">
+        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
+        La imagen se transmite y se guarda cifrada. Se usa solo para verificar tu identidad y puedes
+        pedir su eliminación en cualquier momento (Ley N.º 29733).
+      </p>
+
       {errorDeSubida && (
         <p
           role="alert"
@@ -221,14 +252,24 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
         </p>
       )}
 
-      {medio === "archivo" && fase === "eligiendo-archivo" ? (
+      {medio === "archivo" && fase === "eligiendo-archivo" && (
         <SelectorDeArchivo
           idDeInput={idDeInput}
           inputRef={inputArchivoRef}
           error={errorDeArchivo}
           onArchivo={archivoElegido}
         />
-      ) : (
+      )}
+
+      {medio === "archivo" && (fase === "revisando" || fase === "subiendo") && foto && (
+        <TarjetaDeArchivoCargado
+          nombre={foto.nombre}
+          tamanoBytes={foto.tamanoBytes}
+          subiendo={fase === "subiendo"}
+        />
+      )}
+
+      {medio === "camara" && (
         <div
           role="status"
           aria-live="polite"
@@ -314,7 +355,7 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
             className="sm:flex-1"
           >
             <RotateCcw aria-hidden="true" className="h-4 w-4" />
-            {medio === "camara" ? "Volver a tomar" : "Elegir otro archivo"}
+            {medio === "camara" ? "Volver a tomar" : "Cambiar"}
           </Boton>
           <Boton onClick={usarEstaImagen} cargando={fase === "subiendo"} className="sm:flex-1">
             Usar esta foto
@@ -374,12 +415,12 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
         <p className="text-[14.5px] font-semibold text-azul-800">
           Arrastra tu archivo aquí o haz clic para elegirlo
         </p>
-        <p className="text-[12.5px] text-gris-500">Formatos JPG o PNG, hasta 10 MB</p>
+        <p className="text-[12.5px] text-gris-500">JPG, PNG o PDF · máximo 5 MB</p>
         <input
           ref={inputRef}
           id={idDeInput}
           type="file"
-          accept="image/jpeg,image/png"
+          accept="image/jpeg,image/png,application/pdf"
           onChange={(e) => onArchivo(e.target.files)}
           className="sr-only"
         />
@@ -389,6 +430,30 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+interface TarjetaDeArchivoCargadoProps {
+  nombre: string;
+  tamanoBytes: number;
+  subiendo: boolean;
+}
+
+function TarjetaDeArchivoCargado({ nombre, tamanoBytes, subiendo }: TarjetaDeArchivoCargadoProps) {
+  return (
+    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
+      <div className="flex w-full max-w-[420px] items-center gap-3 rounded-[12px] border border-gris-300 bg-blanco p-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-azul-100">
+          <FileImage aria-hidden="true" className="h-5 w-5 text-azul-600" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13.5px] font-semibold text-gris-900">{nombre}</p>
+          <p className="text-[12px] text-gris-500">
+            {formatearTamano(tamanoBytes)} · {subiendo ? "subiendo…" : "cargado correctamente"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

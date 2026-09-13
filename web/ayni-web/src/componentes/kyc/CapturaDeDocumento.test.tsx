@@ -224,10 +224,27 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
       await renderizarConCamaraLista();
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
 
-      await usuario.upload(screen.getByLabelText(/arrastra tu archivo/i), archivoDePrueba());
+      await usuario.upload(
+        screen.getByLabelText(/arrastra tu archivo/i),
+        archivoDePrueba({ nombre: "dni-anverso.jpg" }),
+      );
 
-      expect(await screen.findByAltText(/foto del dni/i)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /elegir otro archivo/i })).toBeInTheDocument();
+      expect(await screen.findByText("dni-anverso.jpg")).toBeInTheDocument();
+      expect(screen.getByText(/cargado correctamente/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cambiar" })).toBeInTheDocument();
+    });
+
+    it("un PDF también es válido — el mockup de diseño lo pide explícitamente", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      await usuario.upload(
+        screen.getByLabelText(/arrastra tu archivo/i),
+        archivoDePrueba({ nombre: "dni.pdf", tipo: "application/pdf" }),
+      );
+
+      expect(await screen.findByText("dni.pdf")).toBeInTheDocument();
     });
 
     it("rechaza un tipo de archivo que el backend no acepta", async () => {
@@ -236,27 +253,29 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
 
       // `fireEvent` y no `userEvent.upload`: éste último respeta el `accept` del input y
-      // ni siquiera aplicaría un PDF, pero soltar un archivo arrastrado no pasa por esa
+      // ni siquiera aplicaría un Word, pero soltar un archivo arrastrado no pasa por esa
       // validación del navegador — y es justo el camino que la validación propia cubre.
       fireEvent.change(screen.getByLabelText(/arrastra tu archivo/i), {
-        target: { files: [archivoDePrueba({ nombre: "dni.pdf", tipo: "application/pdf" })] },
+        target: {
+          files: [archivoDePrueba({ nombre: "dni.docx", tipo: "application/msword" })],
+        },
       });
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg o png/i);
-      expect(screen.queryByAltText(/foto del dni/i)).not.toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg, png o un pdf/i);
+      expect(screen.queryByText("dni.docx")).not.toBeInTheDocument();
     });
 
-    it("rechaza un archivo que pesa más de 10 MB", async () => {
+    it("rechaza un archivo que pesa más de 5 MB", async () => {
       const usuario = userEvent.setup();
       await renderizarConCamaraLista();
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
 
       await usuario.upload(
         screen.getByLabelText(/arrastra tu archivo/i),
-        archivoDePrueba({ bytes: 11 * 1024 * 1024 }),
+        archivoDePrueba({ bytes: 6 * 1024 * 1024 }),
       );
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(/10 mb/i);
+      expect(await screen.findByRole("alert")).toHaveTextContent(/5 mb/i);
     });
 
     it("sube el archivo elegido con su propia extensión", async () => {

@@ -48,7 +48,7 @@ class MinioAlmacenDeDocumentosTest {
                 .build();
 
         private final MinioAlmacenDeDocumentos almacen = new MinioAlmacenDeDocumentos(
-                minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
+                minioClient, minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
 
         @Test
         @DisplayName("la URL apunta al bucket y al objeto pedidos, con el metodo PUT firmado")
@@ -68,6 +68,25 @@ class MinioAlmacenDeDocumentosTest {
 
             assertThat(resultado.expiraEn()).isEqualTo(AHORA.plusSeconds(300));
             assertThat(resultado.url()).contains("X-Amz-Expires=300");
+        }
+
+        @Test
+        @DisplayName("firma con el cliente publico, no con el interno — el navegador no resuelve el host de Docker")
+        void firmaConElClientePublicoYNoConElInterno() {
+            MinioClient clienteInterno = MinioClient.builder()
+                    .endpoint("http://minio-interno-no-existe:9000")
+                    .credentials("ayni_minio", "cambiar_en_local")
+                    .region("us-east-1")
+                    .build();
+            MinioAlmacenDeDocumentos almacenConClientesDistintos = new MinioAlmacenDeDocumentos(
+                    clienteInterno, minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
+
+            UrlDeSubida resultado =
+                    almacenConClientesDistintos.generarUrlDeSubida("kyc/abc/anverso-x.jpg", "image/jpeg");
+
+            assertThat(resultado.url())
+                    .contains("localhost:9000")
+                    .doesNotContain("minio-interno-no-existe");
         }
     }
 
@@ -92,7 +111,7 @@ class MinioAlmacenDeDocumentosTest {
         @BeforeEach
         void construirAlmacen() {
             almacen = new MinioAlmacenDeDocumentos(
-                    minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
+                    minioClient, minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
         }
 
         @Test

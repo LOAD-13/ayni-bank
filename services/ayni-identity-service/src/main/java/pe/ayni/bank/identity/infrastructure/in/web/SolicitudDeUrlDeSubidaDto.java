@@ -5,5 +5,5 @@ import jakarta.validation.constraints.Pattern;
 
 public record SolicitudDeUrlDeSubidaDto(
         @NotBlank @Pattern(regexp = "ANVERSO|REVERSO|SELFIE") String tipoDocumento,
-        @NotBlank @Pattern(regexp = "jpg|jpeg|png") String extension) {
+        @NotBlank @Pattern(regexp = "jpg|jpeg|png|pdf") String extension) {
 }

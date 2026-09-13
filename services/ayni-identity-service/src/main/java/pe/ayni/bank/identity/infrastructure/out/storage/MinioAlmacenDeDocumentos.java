@@ -15,6 +15,7 @@ import io.minio.Http;
 import io.minio.MinioClient;
 import io.minio.errors.MinioException;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -40,13 +41,16 @@ public class MinioAlmacenDeDocumentos implements AlmacenDeDocumentosPort {
     private static final Duration VIGENCIA = Duration.ofMinutes(5);
 
     private final MinioClient minioClient;
+    private final MinioClient minioClientPublico;
     private final String bucket;
     private final Clock reloj;
 
     public MinioAlmacenDeDocumentos(MinioClient minioClient,
+                                    @Qualifier("minioClientPublico") MinioClient minioClientPublico,
                                     @Value("${ayni.minio.bucket-kyc}") String bucket,
                                     Clock reloj) {
         this.minioClient = minioClient;
+        this.minioClientPublico = minioClientPublico;
         this.bucket = bucket;
         this.reloj = reloj;
     }
@@ -54,7 +58,7 @@ public class MinioAlmacenDeDocumentos implements AlmacenDeDocumentosPort {
     @Override
     public UrlDeSubida generarUrlDeSubida(String claveDeObjeto, String tipoDeContenido) {
         try {
-            String url = minioClient.getPresignedObjectUrl(
+            String url = minioClientPublico.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Http.Method.PUT)
                             .bucket(bucket)
