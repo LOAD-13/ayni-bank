@@ -1,6 +1,7 @@
 package pe.ayni.bank.identity.infrastructure.out.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +15,7 @@ import java.util.HexFormat;
 
 import io.minio.GetObjectResponse;
 import io.minio.MinioClient;
+import io.minio.errors.InternalException;
 import okhttp3.Headers;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -145,6 +147,43 @@ class MinioAlmacenDeDocumentosTest {
             String segundo = almacen.calcularHash("kyc/a.jpg");
 
             assertThat(primero).isEqualTo(segundo);
+        }
+    }
+
+    @Nested
+    @ExtendWith(MockitoExtension.class)
+    class ManejoDeErrores {
+
+        @Mock
+        private MinioClient minioClient;
+
+        private MinioAlmacenDeDocumentos almacen;
+
+        @BeforeEach
+        void construirAlmacen() {
+            almacen = new MinioAlmacenDeDocumentos(
+                    minioClient, minioClient, "ayni-kyc-documentos", Clock.fixed(AHORA, ZoneOffset.UTC));
+        }
+
+        @Test
+        @DisplayName("un fallo de MinIO al firmar se traduce a IllegalStateException")
+        void generarUrlDeSubidaTraduceElFallo() throws Exception {
+            when(minioClient.getPresignedObjectUrl(any()))
+                    .thenThrow(new InternalException("fallo simulado"));
+
+            assertThatThrownBy(() -> almacen.generarUrlDeSubida("kyc/abc/anverso-x.jpg", "image/jpeg"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("No se pudo generar la URL de subida.");
+        }
+
+        @Test
+        @DisplayName("un fallo de MinIO al descargar se traduce a IllegalStateException")
+        void calcularHashTraduceElFallo() throws Exception {
+            when(minioClient.getObject(any())).thenThrow(new InternalException("fallo simulado"));
+
+            assertThatThrownBy(() -> almacen.calcularHash("kyc/abc/anverso-x.jpg"))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("No se pudo calcular el hash del documento.");
         }
     }
 }
