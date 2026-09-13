@@ -99,6 +99,12 @@ límite.
 
 ## Pendiente
 
+- **Nota de la subtarea 14 (ADR-0024)**: el escenario de Jira para "agotamiento de
+  intentos" narra "falla 3 veces, intenta una cuarta, y esa cuarta deriva", mientras que
+  esta ADR implementó que el tercer fallo mismo deriva. Se decidió mantener el código tal
+  como está (coincide con el criterio de aceptación en prosa del ticket, "máximo 3
+  intentos... antes de derivar") en vez de perseguir la narrativa del escenario de ejemplo.
+  Revisar si esto cambia cuando exista feedback real de uso.
 - El caso de uso de integración de HU-02 debe llamar a
   `GestionarFalloDeVerificacionKycUseCase` en los dos puntos que le corresponden: capturar
   `KycServiceNoDisponibleException` de `VerificadorKycPort.iniciar` y llamar a
