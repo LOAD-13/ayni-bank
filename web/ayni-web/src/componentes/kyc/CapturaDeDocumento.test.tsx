@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,15 +16,25 @@ function streamFalso() {
   return { getTracks: () => [{ stop: vi.fn() }] } as unknown as MediaStream;
 }
 
+/** Un `File` de prueba, del tamaño y tipo que pida cada caso. */
+function archivoDePrueba({
+  nombre = "dni.jpg",
+  tipo = "image/jpeg",
+  bytes = 1024,
+}: { nombre?: string; tipo?: string; bytes?: number } = {}) {
+  return new File([new Uint8Array(bytes)], nombre, { type: tipo });
+}
+
 /**
- * AYNI-13 subtarea 12: cámara con guía visual de encuadre.
+ * AYNI-13 subtareas 12 y 13: cámara con guía visual de encuadre, con carga desde archivo
+ * como alternativa siempre disponible.
  *
  * jsdom no implementa `getUserMedia`, `canvas.toBlob` ni `URL.createObjectURL` — se
  * sustituyen a mano. Lo que se prueba es la máquina de estados (permiso → en vivo → foto
  * tomada → subida), no que la cámara real funcione: eso solo se ve en un navegador de
  * verdad, y por eso mismo no se automatiza aquí.
  */
-describe("CapturaDeDocumento · AYNI-13 subtarea 12", () => {
+describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
   const getUserMedia = vi.fn();
   const onCompletado = vi.fn();
 
@@ -170,5 +180,118 @@ describe("CapturaDeDocumento · AYNI-13 subtarea 12", () => {
     // Sigue en revisión: la foto no se pierde y se puede reintentar sin volver a fotografiar.
     expect(screen.getByRole("button", { name: /usar esta foto/i })).toBeInTheDocument();
     expect(onCompletado).not.toHaveBeenCalled();
+  });
+
+  describe("carga desde archivo (subtarea 13)", () => {
+    it("el enlace para subir un archivo está disponible aunque la cámara funcione", async () => {
+      await renderizarConCamaraLista();
+
+      expect(
+        screen.getByRole("button", { name: /subir un archivo en su lugar/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("cambiar a archivo detiene la cámara y muestra la zona de carga", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      expect(screen.getByLabelText(/arrastra tu archivo/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /tomar foto/i })).not.toBeInTheDocument();
+    });
+
+    it("un archivo también sirve para quien no tiene cámara", async () => {
+      const usuario = userEvent.setup();
+      getUserMedia.mockRejectedValue(new DOMException("Sin dispositivo", "NotFoundError"));
+      render(
+        <CapturaDeDocumento
+          solicitudId="11111111-1111-1111-1111-111111111111"
+          tipoDocumento="ANVERSO"
+          cara="Anverso"
+          onCompletado={onCompletado}
+        />,
+      );
+      await screen.findByText(/no pudimos acceder a tu cámara/i);
+
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      expect(screen.getByLabelText(/arrastra tu archivo/i)).toBeInTheDocument();
+    });
+
+    it("un archivo JPG válido pasa a la vista de revisión", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      await usuario.upload(screen.getByLabelText(/arrastra tu archivo/i), archivoDePrueba());
+
+      expect(await screen.findByAltText(/foto del dni/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /elegir otro archivo/i })).toBeInTheDocument();
+    });
+
+    it("rechaza un tipo de archivo que el backend no acepta", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      // `fireEvent` y no `userEvent.upload`: éste último respeta el `accept` del input y
+      // ni siquiera aplicaría un PDF, pero soltar un archivo arrastrado no pasa por esa
+      // validación del navegador — y es justo el camino que la validación propia cubre.
+      fireEvent.change(screen.getByLabelText(/arrastra tu archivo/i), {
+        target: { files: [archivoDePrueba({ nombre: "dni.pdf", tipo: "application/pdf" })] },
+      });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg o png/i);
+      expect(screen.queryByAltText(/foto del dni/i)).not.toBeInTheDocument();
+    });
+
+    it("rechaza un archivo que pesa más de 10 MB", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      await usuario.upload(
+        screen.getByLabelText(/arrastra tu archivo/i),
+        archivoDePrueba({ bytes: 11 * 1024 * 1024 }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(/10 mb/i);
+    });
+
+    it("sube el archivo elegido con su propia extensión", async () => {
+      const usuario = userEvent.setup();
+      vi.mocked(solicitarUrlDeSubida).mockResolvedValue({
+        url: "https://minio.local/presigned",
+        expiraEn: "2026-09-12T10:05:00Z",
+      });
+      vi.mocked(subirDocumento).mockResolvedValue(undefined);
+
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+      await usuario.upload(
+        screen.getByLabelText(/arrastra tu archivo/i),
+        archivoDePrueba({ nombre: "escaneo.png", tipo: "image/png" }),
+      );
+      await usuario.click(await screen.findByRole("button", { name: /usar esta foto/i }));
+
+      await waitFor(() => expect(onCompletado).toHaveBeenCalledTimes(1));
+      expect(solicitarUrlDeSubida).toHaveBeenCalledWith(
+        "11111111-1111-1111-1111-111111111111",
+        "ANVERSO",
+        "png",
+      );
+    });
+
+    it("volver a la cámara desde archivo pide el permiso de nuevo", async () => {
+      const usuario = userEvent.setup();
+      await renderizarConCamaraLista();
+      await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
+
+      await usuario.click(screen.getByRole("button", { name: /usar la cámara en su lugar/i }));
+
+      await screen.findByRole("button", { name: /tomar foto/i });
+      expect(getUserMedia).toHaveBeenCalledTimes(2);
+    });
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import { Camera, RotateCcw, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Camera, FileUp, RotateCcw, TriangleAlert, Upload } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import {
@@ -18,7 +18,21 @@ import {
  */
 const PROPORCION_DNI = 85.6 / 53.98;
 
-type Fase = "pidiendo-permiso" | "en-vivo" | "sin-camara" | "revisando" | "subiendo";
+/**
+ * Extensiones que acepta `POST .../documentos/url-de-subida` (ver
+ * `SolicitudDeUrlDeSubidaDto` en el backend). No hay un límite de tamaño documentado en
+ * ningún lado del diseño — 10 MB es un tope de sentido común para una foto de documento,
+ * no un requisito de negocio, y se documenta así en el ADR-0023.
+ */
+const TIPOS_ACEPTADOS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+};
+const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024;
+
+type Medio = "camara" | "archivo";
+type Fase =
+  "pidiendo-permiso" | "en-vivo" | "sin-camara" | "eligiendo-archivo" | "revisando" | "subiendo";
 
 interface Props {
   solicitudId: string;
@@ -29,28 +43,35 @@ interface Props {
 }
 
 /**
- * Cámara con guía visual de encuadre para un documento KYC (AYNI-13 subtarea 12).
+ * Cámara con guía visual de encuadre para un documento KYC, con carga desde archivo como
+ * alternativa siempre disponible (AYNI-13 subtareas 12 y 13).
  *
- * **Por qué la transmisión no se detiene al tomar la foto.** Detenerla forzaría pedir
- * permiso de cámara otra vez si la persona pulsa «Volver a tomar» — con Chrome mostrando
- * de nuevo el diálogo del navegador por cada reintento. Se mantiene viva en segundo plano
- * (oculta con CSS, no desmontada) mientras se revisa la foto, y solo se detiene al confirmar
- * la subida o al salir de la pantalla.
+ * **Por qué la transmisión de cámara no se detiene al tomar la foto.** Detenerla forzaría
+ * pedir permiso otra vez si la persona pulsa «Volver a tomar» — con Chrome mostrando de
+ * nuevo el diálogo del navegador por cada reintento. Se mantiene viva en segundo plano
+ * (oculta con CSS, no desmontada) mientras se revisa la foto, y solo se detiene al cambiar
+ * a carga por archivo, confirmar la subida, o salir de la pantalla.
  *
- * **Qué falta a propósito.** El mensaje específico de por qué una foto no sirve
- * («hay un reflejo», «acerca el documento») depende de `POST /kyc/verify` en Python, que
- * todavía no existe (ver ADR-0013 y la deuda técnica anotada en el plan de AYNI-13). Esta
- * pantalla da la guía ANTES de la foto —el marco geométrico— y sube lo que la persona
- * confirma; la retroalimentación DESPUÉS de subir es trabajo del caso de uso de integración
- * pendiente. Y sin cámara, la única salida hoy es la subtarea 13 (carga desde archivo),
- * todavía no construida — ver el enlace a «Prefiero subir un archivo».
+ * **Por qué «subir un archivo» no es solo el mensaje de error de la cámara.** El docente
+ * pidió esta alternativa explícitamente para tres casos que no son el mismo: sin cámara,
+ * con una cámara insuficiente (el OCR no alcanza su umbral con esa calidad), y quien ya
+ * conserva un escaneo de su documento — ese tercer caso no tiene nada que ver con que la
+ * cámara falle. Por eso el enlace a «Subir un archivo» está siempre visible, no solo
+ * cuando `getUserMedia` rechaza. Ver ADR-0023 y sprint-backlog Sprint 2.
+ *
+ * **Qué falta a propósito.** El mensaje específico de por qué una foto no sirve depende de
+ * `POST /kyc/verify` en Python, que todavía no existe — ver ADR-0022.
  */
 export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onCompletado }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const inputArchivoRef = useRef<HTMLInputElement>(null);
+  const idDeInput = useId();
 
+  const [medio, setMedio] = useState<Medio>("camara");
   const [fase, setFase] = useState<Fase>("pidiendo-permiso");
-  const [foto, setFoto] = useState<{ blob: Blob; url: string } | null>(null);
+  const [foto, setFoto] = useState<{ blob: Blob; url: string; extension: string } | null>(null);
+  const [errorDeArchivo, setErrorDeArchivo] = useState<string | null>(null);
   const [errorDeSubida, setErrorDeSubida] = useState<string | null>(null);
 
   const detenerCamara = useCallback(() => {
@@ -59,7 +80,10 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
   }, []);
 
   useEffect(() => {
+    if (medio !== "camara") return;
+
     let vigente = true;
+    setFase("pidiendo-permiso");
 
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "environment" }, audio: false })
@@ -80,13 +104,27 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
       vigente = false;
       detenerCamara();
     };
-  }, [detenerCamara]);
+  }, [medio, detenerCamara]);
 
   useEffect(() => {
     return () => {
       if (foto) URL.revokeObjectURL(foto.url);
     };
   }, [foto]);
+
+  function elegirMedio(nuevo: Medio) {
+    if (foto) URL.revokeObjectURL(foto.url);
+    setFoto(null);
+    setErrorDeArchivo(null);
+    setErrorDeSubida(null);
+    setMedio(nuevo);
+    if (nuevo === "archivo") {
+      detenerCamara();
+      setFase("eligiendo-archivo");
+    }
+    // Si vuelve a "camara", el efecto de arriba (que depende de `medio`) vuelve a pedir
+    // el permiso y pone la fase en "pidiendo-permiso" por su cuenta.
+  }
 
   function tomarFoto() {
     const video = videoRef.current;
@@ -102,7 +140,7 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        setFoto({ blob, url: URL.createObjectURL(blob) });
+        setFoto({ blob, url: URL.createObjectURL(blob), extension: "jpg" });
         setErrorDeSubida(null);
         setFase("revisando");
       },
@@ -111,22 +149,43 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
     );
   }
 
-  function volverATomar() {
+  function archivoElegido(lista: FileList | null) {
+    const archivo = lista?.[0];
+    if (!archivo) return;
+
+    const extension = TIPOS_ACEPTADOS[archivo.type];
+    if (!extension) {
+      setErrorDeArchivo("El archivo debe ser una foto JPG o PNG.");
+      return;
+    }
+    if (archivo.size > TAMANO_MAXIMO_BYTES) {
+      setErrorDeArchivo("El archivo pesa demasiado. El máximo es 10 MB.");
+      return;
+    }
+
+    setErrorDeArchivo(null);
+    setErrorDeSubida(null);
+    setFoto({ blob: archivo, url: URL.createObjectURL(archivo), extension });
+    setFase("revisando");
+  }
+
+  function volverAElegir() {
     if (foto) URL.revokeObjectURL(foto.url);
     setFoto(null);
     setErrorDeSubida(null);
-    setFase("en-vivo");
+    if (inputArchivoRef.current) inputArchivoRef.current.value = "";
+    setFase(medio === "camara" ? "en-vivo" : "eligiendo-archivo");
   }
 
-  async function usarEstaFoto() {
+  async function usarEstaImagen() {
     if (!foto) return;
     setFase("subiendo");
     setErrorDeSubida(null);
 
     try {
-      const { url } = await solicitarUrlDeSubida(solicitudId, tipoDocumento, "jpg");
-      const archivo = new File([foto.blob], `${tipoDocumento.toLowerCase()}.jpg`, {
-        type: "image/jpeg",
+      const { url } = await solicitarUrlDeSubida(solicitudId, tipoDocumento, foto.extension);
+      const archivo = new File([foto.blob], `${tipoDocumento.toLowerCase()}.${foto.extension}`, {
+        type: foto.blob.type || "image/jpeg",
       });
       await subirDocumento(url, archivo);
       detenerCamara();
@@ -146,7 +205,9 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
       <div>
         <h1 className="text-[22px] font-bold text-azul-700">DNI · {cara}</h1>
         <p className="mt-1 text-[14.5px] text-gris-700">
-          Coloca tu DNI dentro del marco, en un lugar bien iluminado y sin reflejos.
+          {medio === "camara"
+            ? "Coloca tu DNI dentro del marco, en un lugar bien iluminado y sin reflejos."
+            : "Sube una foto o un escaneo claro, sin reflejos ni recortes."}
         </p>
       </div>
 
@@ -160,73 +221,84 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
         </p>
       )}
 
-      <div
-        role="status"
-        aria-live="polite"
-        className="relative overflow-hidden rounded-[16px] bg-gris-900"
-        style={{ aspectRatio: "4 / 3" }}
-      >
-        {/* El video es funcional, no decorativo, pero no tiene contenido que un lector de
-            pantalla pueda anunciar: el estado con significado (`fase`) se dice aparte, en
-            los mensajes de texto de este mismo `role="status"`. */}
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          aria-hidden="true"
-          className={`h-full w-full object-cover ${fase === "en-vivo" ? "" : "hidden"}`}
+      {medio === "archivo" && fase === "eligiendo-archivo" ? (
+        <SelectorDeArchivo
+          idDeInput={idDeInput}
+          inputRef={inputArchivoRef}
+          error={errorDeArchivo}
+          onArchivo={archivoElegido}
         />
-
-        {fase === "en-vivo" && (
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 p-8">
-            {/* El marco guía: mismas proporciones que un DNI físico (ISO/IEC 7810 ID-1).
-                Encuadrar el documento dentro de él es, literalmente, encuadrarlo bien. */}
-            <div
-              className="w-full max-w-[360px] rounded-[14px] border-4 border-dashed border-dorado-500"
-              style={{ aspectRatio: PROPORCION_DNI }}
-            />
-            <p className="rounded-full bg-noche/70 px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
-              Encuadra tu DNI dentro del marco
-            </p>
-          </div>
-        )}
-
-        {(fase === "revisando" || fase === "subiendo") && foto && (
-          // Vista previa de un Blob local: next/image exige una URL servible, no un blob:
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={foto.url}
-            alt="Foto del DNI que vas a enviar"
-            className="h-full w-full object-cover"
+      ) : (
+        <div
+          role="status"
+          aria-live="polite"
+          className="relative overflow-hidden rounded-[16px] bg-gris-900"
+          style={{ aspectRatio: "4 / 3" }}
+        >
+          {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
+              de pantalla pueda anunciar: el estado con significado (`fase`) se dice
+              aparte, en los mensajes de texto de este mismo `role="status"`. */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            aria-hidden="true"
+            className={`h-full w-full object-cover ${fase === "en-vivo" ? "" : "hidden"}`}
           />
-        )}
 
-        {fase === "pidiendo-permiso" && (
-          <p className="absolute inset-0 flex items-center justify-center text-[13.5px] text-blanco">
-            Pidiendo acceso a tu cámara…
-          </p>
-        )}
+          {fase === "en-vivo" && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 p-8">
+              {/* El marco guía: mismas proporciones que un DNI físico (ISO/IEC 7810
+                  ID-1). Encuadrar el documento dentro de él es, literalmente,
+                  encuadrarlo bien. */}
+              <div
+                className="w-full max-w-[360px] rounded-[14px] border-4 border-dashed border-dorado-500"
+                style={{ aspectRatio: PROPORCION_DNI }}
+              />
+              <p className="rounded-full bg-noche/70 px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
+                Encuadra tu DNI dentro del marco
+              </p>
+            </div>
+          )}
 
-        {fase === "sin-camara" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-            <TriangleAlert aria-hidden="true" className="h-8 w-8 text-dorado-500" />
-            <p className="text-[14px] font-semibold text-blanco">No pudimos acceder a tu cámara</p>
-            <p className="text-[12.5px] text-gris-300">
-              Revisa que le hayas dado permiso a tu navegador, o vuelve a intentarlo desde otro
-              dispositivo.
+          {(fase === "revisando" || fase === "subiendo") && foto && (
+            // Vista previa de un Blob local: next/image exige una URL servible, no un blob:
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={foto.url}
+              alt="Foto del DNI que vas a enviar"
+              className="h-full w-full object-cover"
+            />
+          )}
+
+          {fase === "pidiendo-permiso" && (
+            <p className="absolute inset-0 flex items-center justify-center text-[13.5px] text-blanco">
+              Pidiendo acceso a tu cámara…
             </p>
-          </div>
-        )}
+          )}
 
-        {fase === "subiendo" && (
-          <p className="absolute inset-x-0 bottom-4 text-center text-[12.5px] font-semibold text-blanco">
-            Subiendo tu foto…
-          </p>
-        )}
-      </div>
+          {fase === "sin-camara" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+              <TriangleAlert aria-hidden="true" className="h-8 w-8 text-dorado-500" />
+              <p className="text-[14px] font-semibold text-blanco">
+                No pudimos acceder a tu cámara
+              </p>
+              <p className="text-[12.5px] text-gris-300">
+                Revisa que le hayas dado permiso a tu navegador, o sube un archivo en su lugar.
+              </p>
+            </div>
+          )}
 
-      {fase === "en-vivo" && (
+          {fase === "subiendo" && (
+            <p className="absolute inset-x-0 bottom-4 text-center text-[12.5px] font-semibold text-blanco">
+              Subiendo tu foto…
+            </p>
+          )}
+        </div>
+      )}
+
+      {medio === "camara" && fase === "en-vivo" && (
         <Boton onClick={tomarFoto} anchoCompleto>
           <Camera aria-hidden="true" className="h-4 w-4" />
           Tomar foto
@@ -237,26 +309,84 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
         <div className="flex flex-col gap-3 sm:flex-row">
           <Boton
             variante="contorno"
-            onClick={volverATomar}
+            onClick={volverAElegir}
             disabled={fase === "subiendo"}
             className="sm:flex-1"
           >
             <RotateCcw aria-hidden="true" className="h-4 w-4" />
-            Volver a tomar
+            {medio === "camara" ? "Volver a tomar" : "Elegir otro archivo"}
           </Boton>
-          <Boton onClick={usarEstaFoto} cargando={fase === "subiendo"} className="sm:flex-1">
+          <Boton onClick={usarEstaImagen} cargando={fase === "subiendo"} className="sm:flex-1">
             Usar esta foto
           </Boton>
         </div>
       )}
 
-      {/* La subtarea 13 (carga desde archivo) todavía no existe — ver sprint-backlog
-          Sprint 2. Sin cámara, hoy no hay alternativa real: se dice la verdad en vez de
-          ofrecer un enlace que no lleva a ninguna parte, siguiendo el mismo criterio que
-          `/pendiente`. */}
-      {fase === "sin-camara" && (
-        <p className="text-center text-[12.5px] text-gris-500">
-          Pronto podrás subir el DNI como archivo en vez de usar la cámara.
+      {/* El cambio de medio siempre está disponible, no solo cuando la cámara falla: hay
+          quien ya tiene un escaneo del documento y quien prefiere no usar la cámara aunque
+          funcione. Ver ADR-0023. */}
+      {fase !== "revisando" && fase !== "subiendo" && (
+        <button
+          type="button"
+          onClick={() => elegirMedio(medio === "camara" ? "archivo" : "camara")}
+          className="inline-flex items-center justify-center gap-2 self-center text-[13.5px] font-semibold text-azul-600 hover:underline"
+        >
+          {medio === "camara" ? (
+            <>
+              <FileUp aria-hidden="true" className="h-4 w-4" />
+              Subir un archivo en su lugar
+            </>
+          ) : (
+            <>
+              <Camera aria-hidden="true" className="h-4 w-4" />
+              Usar la cámara en su lugar
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface SelectorDeArchivoProps {
+  idDeInput: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  error: string | null;
+  onArchivo: (lista: FileList | null) => void;
+}
+
+/** La zona de carga: clic o arrastrar-y-soltar, con el mismo `<input>` para los dos. */
+function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDeArchivoProps) {
+  return (
+    <div>
+      <label
+        htmlFor={idDeInput}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          onArchivo(e.dataTransfer.files);
+        }}
+        className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
+          error ? "border-error bg-blanco" : "border-gris-300 bg-azul-050 hover:bg-azul-100"
+        }`}
+      >
+        <Upload aria-hidden="true" className="h-8 w-8 text-azul-600" />
+        <p className="text-[14.5px] font-semibold text-azul-800">
+          Arrastra tu archivo aquí o haz clic para elegirlo
+        </p>
+        <p className="text-[12.5px] text-gris-500">Formatos JPG o PNG, hasta 10 MB</p>
+        <input
+          ref={inputRef}
+          id={idDeInput}
+          type="file"
+          accept="image/jpeg,image/png"
+          onChange={(e) => onArchivo(e.target.files)}
+          className="sr-only"
+        />
+      </label>
+      {error && (
+        <p role="alert" className="mt-2 text-[12.5px] font-medium text-error">
+          {error}
         </p>
       )}
     </div>
