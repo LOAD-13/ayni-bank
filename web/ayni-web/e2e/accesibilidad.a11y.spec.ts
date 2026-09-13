@@ -10,7 +10,16 @@ import { expect, test } from "@playwright/test";
  *
  * Se limita a WCAG 2.1 nivel AA, que es lo comprometido en el SLA del proyecto.
  */
-const RUTAS = ["/", "/registro", "/ingresar", "/pendiente"] as const;
+const RUTAS = [
+  "/",
+  "/registro",
+  "/ingresar",
+  "/pendiente",
+  // Sin `solicitudId` a propósito: es el estado con el que responde cualquier visita
+  // directa a esta ruta, y tiene que ser tan accesible como el resto.
+  "/registro/dni-anverso",
+  "/registro/dni-reverso",
+] as const;
 
 for (const ruta of RUTAS) {
   test(`${ruta} no presenta violaciones de WCAG 2.1 AA`, async ({ page }) => {
