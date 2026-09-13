@@ -86,6 +86,16 @@ final class DoblesEnMemoria {
         }
 
         @Override
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
         public java.util.Optional<String> nombreDePilaDe(UUID usuarioId) {
             return java.util.Optional.of("Ana");
         }

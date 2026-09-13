@@ -140,7 +140,12 @@ antes de que Retry actúe) — no es una opción válida, es un bug si no se cor
 
 ## Pendiente
 
-- Subtarea 11: atrapar `KycServiceNoDisponibleException` en el caso de uso de integración y
-  derivar la solicitud a `EN_REVISION_MANUAL`.
+- ~~Subtarea 11: atrapar `KycServiceNoDisponibleException` en el caso de uso de integración y
+  derivar la solicitud a `EN_REVISION_MANUAL`.~~ Resuelto por
+  [ADR-0021](0021-limite-de-intentos-y-derivacion-a-revision-manual.md):
+  `GestionarFalloDeVerificacionKycUseCase.derivarPorServicioNoDisponible` deriva de inmediato,
+  sin consumir el límite de tres intentos que ADR-0021 define para los fallos que sí dependen
+  del usuario. Sigue pendiente que el caso de uso de integración (todavía no construido) sea
+  quien la invoque en la práctica.
 - Medir los valores de retry/circuit breaker contra tráfico real cuando exista, y ajustar si
   hace falta.

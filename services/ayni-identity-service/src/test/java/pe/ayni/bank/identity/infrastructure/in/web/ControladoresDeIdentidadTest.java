@@ -224,6 +224,16 @@ class ControladoresDeIdentidadTest {
         }
 
         @Override
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
         public Optional<String> nombreDePilaDe(UUID usuarioId) {
             return Optional.ofNullable(nombres.get(usuarioId));
         }

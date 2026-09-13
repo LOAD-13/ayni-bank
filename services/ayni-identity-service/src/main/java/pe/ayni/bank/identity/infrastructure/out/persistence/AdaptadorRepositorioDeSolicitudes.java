@@ -80,6 +80,24 @@ public class AdaptadorRepositorioDeSolicitudes implements RepositorioDeSolicitud
     }
 
     @Override
+    @Transactional
+    public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+        return repositorio.findById(solicitudId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Se intento registrar un fallo de KYC sobre una solicitud inexistente."))
+                .incrementarIntentosDeVerificacionKyc(reloj.instant());
+    }
+
+    @Override
+    @Transactional
+    public void marcarEnRevisionManual(UUID solicitudId) {
+        repositorio.findById(solicitudId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Se intento derivar a revision manual una solicitud inexistente."))
+                .derivarARevisionManual(reloj.instant());
+    }
+
+    @Override
     public Optional<String> nombreDePilaDe(UUID usuarioId) {
         return repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuarioId)
                 .map(SolicitudOnboardingEntity::getNombresDeclarados)

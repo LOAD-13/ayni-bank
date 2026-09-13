@@ -65,6 +65,10 @@ public class SolicitudOnboardingEntity {
     @Column(name = "fecha_nacimiento_declarada")
     private LocalDate fechaNacimientoDeclarada;
 
+    /** Intentos fallidos de verificacion consumidos. Ver ADR-0021. */
+    @Column(name = "intentos_verificacion_kyc", nullable = false)
+    private short intentosVerificacionKyc;
+
     protected SolicitudOnboardingEntity() {
         // Exigido por JPA.
     }
@@ -83,6 +87,18 @@ public class SolicitudOnboardingEntity {
     void aprobar(Instant momento) {
         this.estado = "APROBADA";
         this.pasoActual = 5;
+        this.actualizadaEn = momento;
+    }
+
+    /** Suma un intento fallido y devuelve el total acumulado. Ver ADR-0021. */
+    short incrementarIntentosDeVerificacionKyc(Instant momento) {
+        this.intentosVerificacionKyc++;
+        this.actualizadaEn = momento;
+        return this.intentosVerificacionKyc;
+    }
+
+    void derivarARevisionManual(Instant momento) {
+        this.estado = "EN_REVISION_MANUAL";
         this.actualizadaEn = momento;
     }
 
