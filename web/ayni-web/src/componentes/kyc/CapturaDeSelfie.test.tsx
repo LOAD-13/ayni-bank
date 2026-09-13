@@ -10,8 +10,13 @@ vi.mock("@vladmandic/face-api", () => {
       tinyFaceDetector: {
         loadFromUri: vi.fn().mockResolvedValue(undefined),
       },
+      faceExpressionNet: {
+        loadFromUri: vi.fn().mockResolvedValue(undefined),
+      },
     },
-    detectAllFaces: vi.fn().mockResolvedValue([]),
+    detectAllFaces: vi.fn().mockReturnValue({
+      withFaceExpressions: vi.fn().mockResolvedValue([])
+    }),
     TinyFaceDetectorOptions: vi.fn(),
   };
 });

@@ -33,6 +33,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
   const [modelosCargados, setModelosCargados] = useState(false);
   const [rostrosDetectados, setRostrosDetectados] = useState<number>(0);
   const [errorDeSubida, setErrorDeSubida] = useState<string | null>(null);
+  const [vivacidadConfirmada, setVivacidadConfirmada] = useState(false);
   
   const [foto, setFoto] = useState<{
     blob: Blob;
@@ -54,7 +55,10 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     let vigente = true;
     async function cargarModelos() {
       try {
-        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+          faceapi.nets.faceExpressionNet.loadFromUri("/models")
+        ]);
         if (vigente) setModelosCargados(true);
       } catch (e) {
         console.error("Error cargando modelos de face-api:", e);
@@ -71,8 +75,18 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       const detecciones = await faceapi.detectAllFaces(
         videoRef.current,
         new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 })
-      );
+      ).withFaceExpressions();
+      
       setRostrosDetectados(detecciones.length);
+      
+      if (detecciones.length === 1) {
+        if (detecciones[0].expressions.happy > 0.8) {
+          setVivacidadConfirmada(true);
+        }
+      } else {
+        // Reset liveness if multiple or zero faces are detected suddenly
+        setVivacidadConfirmada(false);
+      }
     } catch (e) {
       // Ignorar errores transitorios de detección
     }
@@ -120,8 +134,8 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
   }, [foto]);
 
   function tomarFoto() {
-    // AYNI-108: Solo permitir la captura si hay exactamente 1 rostro
-    if (rostrosDetectados !== 1) return;
+    // AYNI-108 & AYNI-109: Solo permitir si hay exactamente 1 rostro y se verificó vivacidad
+    if (rostrosDetectados !== 1 || !vivacidadConfirmada) return;
 
     const video = videoRef.current;
     if (!video) return;
@@ -159,6 +173,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     if (foto) URL.revokeObjectURL(foto.url);
     setFoto(null);
     setErrorDeSubida(null);
+    setVivacidadConfirmada(false);
     setFase("en-vivo");
   }
 
@@ -235,10 +250,11 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
                 style={{ aspectRatio: "3 / 4" }}
               />
               <p className={`rounded-full px-4 py-1.5 text-[12.5px] font-semibold text-blanco ${
-                rostrosDetectados === 1 ? "bg-exito" : "bg-error"
+                rostrosDetectados === 1 ? (vivacidadConfirmada ? "bg-exito" : "bg-aviso-600 text-blanco") : "bg-error"
               }`}>
                 {rostrosDetectados === 0 && "No se detecta un rostro"}
-                {rostrosDetectados === 1 && "Rostro detectado correctamente"}
+                {rostrosDetectados === 1 && !vivacidadConfirmada && "Por favor, sonríe a la cámara"}
+                {rostrosDetectados === 1 && vivacidadConfirmada && "Rostro y vivacidad detectados"}
                 {rostrosDetectados > 1 && "Múltiples rostros detectados"}
               </p>
             </div>
@@ -284,7 +300,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       )}
 
       {fase === "en-vivo" && (
-        <Boton onClick={tomarFoto} anchoCompleto disabled={rostrosDetectados !== 1}>
+        <Boton onClick={tomarFoto} anchoCompleto disabled={rostrosDetectados !== 1 || !vivacidadConfirmada}>
           <Camera aria-hidden="true" className="h-4 w-4" />
           Tomar selfie
         </Boton>
