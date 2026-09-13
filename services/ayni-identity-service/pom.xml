@@ -142,6 +142,14 @@
             <artifactId>okhttp-jvm</artifactId>
             <version>5.3.2</version>
         </dependency>
+        <!-- Envuelve la llamada a kyc-service con Retry + CircuitBreaker
+             (AYNI-13 subtarea 10). Sin BOM de Spring Boot que la gestione:
+             version fijada a mano, igual que minio/swagger-annotations-jakarta. -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.4.0</version>
+        </dependency>
     </dependencies>
 
     <build>

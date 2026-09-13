@@ -79,6 +79,55 @@ ayni:
     secret-key: ${MINIO_SECRET_KEY:cambiar_en_local}
     bucket-kyc: ayni-kyc-documentos
 
+  # ─── Cliente hacia kyc-service ──────────────────────────────────────────
+  # AYNI_KYC_SERVICE_URL ya llega al contenedor desde docker-compose.yml.
+  # El timeout de 10s (diseno-base.md §3.5) se fija en ConfiguracionDelClienteKyc,
+  # no aqui: RestClient no lo expone como propiedad Spring estandar.
+  kyc:
+    base-url: ${AYNI_KYC_SERVICE_URL:http://localhost:8000}
+
+# ─── Resiliencia de la llamada a kyc-service (AYNI-13 subtarea 10) ────────
+# Ver ADR-0020 para la justificacion de estos valores.
+resilience4j:
+  # El orden por defecto de resilience4j-spring-boot3 2.4.0 NO es
+  # CircuitBreaker-afuera/Retry-adentro (confirmado experimentalmente, ver
+  # ADR-0020): sin fijarlo aqui, el fallback de CircuitBreaker absorbe la
+  # excepcion en el PRIMER intento y Retry nunca llega a reintentar. Un
+  # numero menor se ejecuta mas afuera (Spring AOP @Order estandar).
+  circuitbreaker:
+    circuit-breaker-aspect-order: 1
+    instances:
+      kycService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        # No evita que el fallback se dispare para un 4xx (eso lo maneja
+        # AdaptadorVerificadorKyc.alAgotarLaResiliencia relanzando la
+        # excepcion tal cual); solo evita que un 4xx cuente como fallo en
+        # las metricas del circuito.
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  retry:
+    retry-aspect-order: 2
+    instances:
+      kycService:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        # HttpClientErrorException (4xx, ej. UUID invalido) queda fuera a
+        # proposito: reintentar una peticion mal formada no la arregla.
+
 server:
   port: 8081
 
