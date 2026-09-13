@@ -26,3 +26,4 @@ numpy==2.0.2
 # framework de deep learning que paddleocr usa como backend.
 paddlepaddle==3.3.1
 paddleocr==3.7.0
+deepface==0.0.92
