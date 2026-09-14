@@ -27,3 +27,12 @@ numpy==2.0.2
 paddlepaddle==3.3.1
 paddleocr==3.7.0
 deepface==0.0.92
+# deepface no fija tensorflow, asi que sin este pin arrastra el mas reciente
+# (2.21.0), cuyo tf.keras usa Keras 3 por defecto. mtcnn (dependencia de
+# deepface, importada siempre al cargar DeepFace sin importar el
+# detector_backend elegido) todavia usa la API de Keras 2 (`tf.keras.layers`)
+# y revienta con ImportError al arrancar. tf-keras reinstala el shim de
+# Keras 2 que tf.keras usa si esta presente; version igual a la de
+# tensorflow, que es como Keras versiona la compatibilidad entre ambos.
+tensorflow==2.21.0
+tf-keras==2.21.0
