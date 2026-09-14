@@ -54,7 +54,7 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
         <p>Tus datos biométricos serán utilizados única y exclusivamente con la finalidad de verificar tu identidad durante el proceso de apertura de cuenta (Onboarding Digital), comparando la fotografía (selfie) tomada en tiempo real con la imagen de tu Documento Nacional de Identidad (DNI).</p>
         
         <h3 className="font-bold">2. Banco de Datos</h3>
-        <p>Tus datos serán almacenados en el banco de datos "Clientes" de titularidad de Ayni Bank.</p>
+        <p>Tus datos serán almacenados en el banco de datos &quot;Clientes&quot; de titularidad de Ayni Bank.</p>
         
         <h3 className="font-bold">3. Plazo de Conservación</h3>
         <p>Los datos serán conservados mientras dure el proceso de verificación. En caso de apertura exitosa, se mantendrán conforme a los plazos exigidos por la normativa aplicable (SBS). En caso de rechazo, serán eliminados inmediatamente.</p>

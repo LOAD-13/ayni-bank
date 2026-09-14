@@ -8,13 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/**
- * HU-02 · paso 3 de 5 del onboarding: reverso del DNI (AYNI-13 subtarea 12).
- *
- * Al terminar va a `/pendiente`: el paso 4 («Prueba de vida») es HU-03 (`AYNI-14`), otra
- * Historia de Usuario, todavía no construida. Enlazar a una pantalla que dice la verdad es
- * preferible a una ruta que no existe — mismo criterio que el resto del sitio.
- */
+/** HU-02 · paso 3 de 5 del onboarding: reverso del DNI (AYNI-13 subtarea 12). */
 export default async function DniReverso({
   searchParams,
 }: {
@@ -28,7 +22,7 @@ export default async function DniReverso({
       pasoActual={3}
       tipoDocumento="REVERSO"
       cara="Reverso"
-      siguienteHref="/pendiente"
+      siguienteHref={`/registro/prueba-de-vida?solicitudId=${solicitudId ?? ""}`}
     />
   );
 }
