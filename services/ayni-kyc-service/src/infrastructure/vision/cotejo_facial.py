@@ -13,6 +13,35 @@ def determinar_decision(similitud_porcentaje: float) -> DecisionVerificacion:
         return DecisionVerificacion.REVISION_MANUAL
     return DecisionVerificacion.RECHAZADA
 
+# Umbral de reserva si el modelo no lo informa (no deberia pasar: DeepFace.verify() siempre
+# lo devuelve). Es el propio umbral de VGG-Face + coseno que trae DeepFace: no es un numero
+# inventado aqui, es el punto que la libreria ya valido como frontera entre "es la misma
+# persona" y "no lo es".
+UMBRAL_DE_RESERVA = 0.68
+
+def distancia_a_similitud_porcentaje(distancia: float, umbral: float) -> float:
+    """Convierte una distancia de DeepFace en un porcentaje de 0 a 100.
+
+    Antes esto era `(1 - distancia) * 100`: tratar la distancia coseno cruda como un
+    porcentaje directo. El problema es que esa distancia no se mueve en un rango simetrico
+    de 0 a 1 entre "misma persona" y "personas distintas" - para VGG-Face + coseno, DeepFace
+    considera que hay coincidencia con distancias de hasta 0.68, bastante lejos de 0. Con la
+    formula vieja, dos fotos de la misma persona con una distancia de 0.49 (caso real,
+    verificado en pruebas manuales con selfie y DNI autenticos) sacaban ~51% y el sistema
+    rechazaba a alguien que si era quien decia ser.
+
+    Esta version usa el propio umbral de DeepFace como bisagra: una distancia de 0 es 100%,
+    el umbral exacto es 75% (el piso de revision manual, no de rechazo automatico - llegar
+    justo al limite de lo que el modelo llama "coincidencia" no deberia bastar para aprobar
+    solo, pero tampoco para rechazar de plano), y de ahi sigue cayendo hasta 0% al doble del
+    umbral, que es donde para cualquier modelo razonable ya no hay parecido.
+    """
+    techo = umbral * 2
+    if distancia <= umbral:
+        return 100.0 - (distancia / umbral) * 25.0
+    exceso = min(distancia, techo) - umbral
+    return max(0.0, 75.0 - (exceso / (techo - umbral)) * 75.0)
+
 def cotejar_rostros(imagen1: np.ndarray[Any, Any], imagen2: np.ndarray[Any, Any], id_transaccion: str) -> ResultadoCotejoFacial:
     try:
         # enforce_detection=False para evitar excepciones si no detecta rostro en alguna imagen
@@ -24,23 +53,11 @@ def cotejar_rostros(imagen1: np.ndarray[Any, Any], imagen2: np.ndarray[Any, Any]
             detector_backend="opencv",
             distance_metric="cosine"
         )
-        
-        # similarity as a percentage based on distance.
-        # deepface verify returns 'distance'. distance varies by metric, for cosine it's [0, 2] usually but typical threshold is 0.40
-        # Wait, if we use cosine distance, distance = 0 means identical, distance = 1 means orthogonal.
-        # Let's just use 1.0 - distance to get similarity between 0 and 1, and multiply by 100 for percentage.
-        # Deepface also returns 'verified': bool, but we want our own threshold logic.
+
         distancia = float(resultado.get("distance", 1.0))
-        similitud_nativa = max(0.0, 1.0 - (distancia / 2.0)) if distancia <= 2.0 else 0.0
-        # We will map distance to a [0, 1] range reasonably. Cosine distance for face verification usually has a threshold around 0.40.
-        # Let's map it so that distance 0.40 corresponds to 85% roughly?
-        # Actually, let's just use a simple linear map or the 'distance' directly mapped:
-        # deepface threshold for cosine is usually 0.40. So if distance < 0.40 it's a match.
-        # To make it a percentage that makes sense with 75-90 thresholds, let's say 1.0 - distance is the score.
-        # Wait, a better way: 1 - distance is not exactly 0 to 100%. 
-        # For simplicity, score = (1 - distance) * 100
-        similitud_porcentaje = max(0.0, min(100.0, (1.0 - distancia) * 100.0))
-        
+        umbral = float(resultado.get("threshold", UMBRAL_DE_RESERVA))
+        similitud_porcentaje = distancia_a_similitud_porcentaje(distancia, umbral)
+
         similitud_decimal = similitud_porcentaje / 100.0
         decision = determinar_decision(similitud_porcentaje)
         
