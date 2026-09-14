@@ -42,6 +42,15 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     nombre: string;
   } | null>(null);
 
+  // Cuantas veces hay que (re)pedir la cámara: al cargar, y cada "volver a tomar". No es
+  // `fase` porque este mismo efecto ESCRIBE `fase` (a "en-vivo") — tenerla en las
+  // dependencias hace que, apenas se abre la cámara, el cambio de fase dispare la
+  // limpieza del efecto (que la cierra) y el efecto se repita (que la vuelve a abrir),
+  // en un ciclo sin fin. Con streams normales es demasiado rápido para notarlo; con una
+  // cámara de red (a través del celular) el ciclo sí se ve, como una imagen que titila
+  // y se corta todo el tiempo.
+  const [intentoDeCaptura, setIntentoDeCaptura] = useState(0);
+
   const detenerCamara = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -55,6 +64,20 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     let vigente = true;
     async function cargarModelos() {
       try {
+        // tfjs prueba WebGL2, WebGL1 y WASM antes de caer a CPU, y cualquiera de los
+        // tres puede faltar segun el entorno: sin GPU (una VM, una sesion remota) no hay
+        // contexto WebGL, y el .wasm de tfjs-backend-wasm no se empaqueta aqui. Sin este
+        // `setBackend` explicito esa negociacion cuelga o revienta antes de intentar CPU,
+        // y `cargando-modelos` se queda así para siempre sin avisar al usuario por qué.
+        // El .d.ts que reexporta `tf` es un subconjunto curado y no declara `setBackend`
+        // ni `ready`, aunque sí existen en tiempo de ejecución (el propio face-api los usa
+        // internamente). De ahí el `as` puntual, no una limitación real de la librería.
+        const tf = faceapi.tf as unknown as {
+          setBackend(nombre: string): Promise<boolean>;
+          ready(): Promise<void>;
+        };
+        await tf.setBackend("cpu");
+        await tf.ready();
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
           faceapi.nets.faceExpressionNet.loadFromUri("/models")
@@ -96,6 +119,8 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
 
   useEffect(() => {
     if (!modelosCargados) return;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lee `fase` a propósito sin
+    // declararla como dependencia; ver el comentario junto a `intentoDeCaptura`.
     if (fase === "revisando" || fase === "subiendo") return;
 
     let vigente = true;
@@ -125,7 +150,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       vigente = false;
       detenerCamara();
     };
-  }, [modelosCargados, fase, procesarVideo, detenerCamara]);
+  }, [modelosCargados, intentoDeCaptura, procesarVideo, detenerCamara]);
 
   useEffect(() => {
     return () => {
@@ -174,7 +199,13 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     setFoto(null);
     setErrorDeSubida(null);
     setVivacidadConfirmada(false);
-    setFase("en-vivo");
+    // `tomarFoto` cerró la cámara al pasar a "revisando" (para no dejar la luz de la
+    // cámara encendida mientras se revisa la foto). El efecto de arriba ya no reacciona a
+    // `fase` (ver el comentario junto a `intentoDeCaptura`), así que sacarla de
+    // "revisando" aquí es indispensable: si se queda en "revisando", su propio guard hace
+    // que el efecto ignore este reintento y la cámara nunca se reabre.
+    setFase("pidiendo-permiso");
+    setIntentoDeCaptura((n) => n + 1);
   }
 
   async function usarEstaImagen() {

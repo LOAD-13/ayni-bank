@@ -6,6 +6,10 @@ import { CapturaDeSelfie } from "./CapturaDeSelfie";
 // Mock de la librería face-api
 vi.mock("@vladmandic/face-api", () => {
   return {
+    tf: {
+      setBackend: vi.fn().mockResolvedValue(true),
+      ready: vi.fn().mockResolvedValue(undefined),
+    },
     nets: {
       tinyFaceDetector: {
         loadFromUri: vi.fn().mockResolvedValue(undefined),

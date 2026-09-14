@@ -1,6 +1,7 @@
 "use client";
 
 import { BookmarkCheck } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -8,8 +9,17 @@ import { useState } from "react";
 import { IndicadorDeProgreso } from "@/componentes/IndicadorDeProgreso";
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
 
-import { CapturaDeSelfie } from "./CapturaDeSelfie";
 import { ConsentimientoBiometrico } from "./ConsentimientoBiometrico";
+
+// @vladmandic/face-api toca APIs de navegador (entre ellas TextEncoder, de forma
+// incompatible con el runtime de Node) apenas se importa, no solo al usarse. Un import
+// estatico deja ese codigo alcanzable desde el renderizado en servidor de esta pagina y
+// lo revienta de forma intermitente (el commit que agrega esta pantalla lo dispara). Con
+// `ssr: false` el modulo ni siquiera se carga fuera del navegador.
+const CapturaDeSelfie = dynamic(
+  () => import("./CapturaDeSelfie").then((mod) => mod.CapturaDeSelfie),
+  { ssr: false },
+);
 
 interface Props {
   solicitudId: string | undefined;
