@@ -31,6 +31,7 @@
     "postcss": "^8.5.26"
   },
   "dependencies": {
+    "@vladmandic/face-api": "^1.7.15",
     "lucide-react": "^1.37.0",
     "next": "15.5.24",
     "qrcode": "^1.5.4",
