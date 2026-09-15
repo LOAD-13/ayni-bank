@@ -24,7 +24,11 @@ import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
+import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
+import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
+import pe.ayni.bank.identity.domain.model.UrlDeSubida;
 import pe.ayni.bank.identity.domain.model.Usuario;
+import pe.ayni.bank.identity.domain.port.in.GenerarUrlDeSubidaUseCase;
 import pe.ayni.bank.identity.domain.port.in.RegistrarVisitanteUseCase;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -163,6 +167,44 @@ class ControladoresDeIdentidadTest {
         }
     }
 
+    @Nested
+    @DisplayName("Documentos KYC · HU-02")
+    class DocumentoKyc {
+
+        private final GenerarUrlDeSubidaFalso casoDeUso = new GenerarUrlDeSubidaFalso();
+        private final DocumentoKycController controlador = new DocumentoKycController(casoDeUso);
+
+        @Test
+        @DisplayName("traslada la solicitud al caso de uso y devuelve la URL firmada")
+        void devuelveLaUrlDeSubida() {
+            UUID solicitudId = UUID.randomUUID();
+            var solicitud = new SolicitudDeUrlDeSubidaDto("ANVERSO", "jpg");
+
+            var respuesta = controlador.obtenerUrlDeSubida(solicitudId, solicitud);
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(respuesta.getBody().url()).isEqualTo(casoDeUso.urlDevuelta.url());
+            assertThat(casoDeUso.solicitudIdRecibido).isEqualTo(solicitudId);
+            assertThat(casoDeUso.tipoDocumentoRecibido).isEqualTo(TipoDeDocumentoKyc.ANVERSO);
+            assertThat(casoDeUso.extensionRecibida).isEqualTo("jpg");
+        }
+
+        @Test
+        @DisplayName("una solicitud inexistente se traduce a 404")
+        void unaSolicitudInexistenteEs404() {
+            casoDeUso.fallar = true;
+
+            assertThatThrownBy(() -> controlador.obtenerUrlDeSubida(
+                    UUID.randomUUID(), new SolicitudDeUrlDeSubidaDto("REVERSO", "png")))
+                    .isInstanceOf(SolicitudNoExisteException.class);
+
+            var problema = controlador.alNoExistirLaSolicitud(
+                    new SolicitudNoExisteException("La solicitud no existe o es un senuelo sin titular."));
+            assertThat(problema.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
+            assertThat(problema.getTitle()).isEqualTo("La solicitud no existe");
+        }
+    }
+
     // ─── Dobles ────────────────────────────────────────────────────────────
 
     private static final class RegistrarVisitanteFalso implements RegistrarVisitanteUseCase {
@@ -172,6 +214,26 @@ class ControladoresDeIdentidadTest {
         public ResultadoDeRegistro registrar(ComandoDeRegistro comando) {
             recibidos.add(comando);
             return ResultadoDeRegistro.aceptado(UUID.randomUUID());
+        }
+    }
+
+    private static final class GenerarUrlDeSubidaFalso implements GenerarUrlDeSubidaUseCase {
+        private final UrlDeSubida urlDevuelta =
+                new UrlDeSubida("https://minio.local/presigned", Instant.parse("2026-09-13T10:05:00Z"));
+        private UUID solicitudIdRecibido;
+        private TipoDeDocumentoKyc tipoDocumentoRecibido;
+        private String extensionRecibida;
+        private boolean fallar;
+
+        @Override
+        public UrlDeSubida generar(UUID solicitudId, TipoDeDocumentoKyc tipoDocumento, String extension) {
+            if (fallar) {
+                throw new SolicitudNoExisteException("La solicitud no existe o es un senuelo sin titular.");
+            }
+            this.solicitudIdRecibido = solicitudId;
+            this.tipoDocumentoRecibido = tipoDocumento;
+            this.extensionRecibida = extension;
+            return urlDevuelta;
         }
     }
 
@@ -221,6 +283,16 @@ class ControladoresDeIdentidadTest {
         @Override
         public void marcarAprobada(UUID solicitudId) {
             // Sin efecto: esta prueba no aprueba nada.
+        }
+
+        @Override
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
         }
 
         @Override

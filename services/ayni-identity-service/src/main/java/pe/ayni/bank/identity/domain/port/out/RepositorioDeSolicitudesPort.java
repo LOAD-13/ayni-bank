@@ -43,6 +43,18 @@ public interface RepositorioDeSolicitudesPort {
     void marcarAprobada(UUID solicitudId);
 
     /**
+     * Suma un intento fallido de verificacion y devuelve el total acumulado.
+     *
+     * <p>Devuelve el conteo actualizado, no solo el hecho de haberlo incrementado, porque
+     * quien decide si ya se agoto el limite es el caso de uso (ADR-0021), no este puerto: el
+     * puerto persiste, el dominio decide.
+     */
+    int registrarIntentoFallidoDeKyc(UUID solicitudId);
+
+    /** Lleva la solicitud a EN_REVISION_MANUAL. Ver ADR-0021. */
+    void marcarEnRevisionManual(UUID solicitudId);
+
+    /**
      * El nombre de pila que declaro el titular, para poder saludarle.
      *
      * <p>Solo el primero de los nombres, no la cadena completa. «Listo, Ana Lucia Beatriz»

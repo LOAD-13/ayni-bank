@@ -28,7 +28,7 @@ paths:
       tags:
         - Verification
       summary: Iniciar verificación de identidad
-      description: Inicia un proceso de verificación de identidad basado en un documento de identidad subido a MinIO. La verificación se realiza de forma asincrónica.
+      description: Inicia un proceso de verificación de identidad basado en el anverso y el reverso del documento, subidos a MinIO. La verificación se realiza de forma asincrónica.
       operationId: startVerification
       requestBody:
         required: true
@@ -38,7 +38,8 @@ paths:
             schema:
               $ref: '#/components/schemas/VerificationRequest'
             example:
-              identityDocumentKey: "550e8400-e29b-41d4-a716-446655440000"
+              anversoDocumentKey: "550e8400-e29b-41d4-a716-446655440000"
+              reversoDocumentKey: "660e8400-e29b-41d4-a716-446655440001"
       responses:
         '202':
           description: Verificación aceptada y en proceso (procesamiento async)
@@ -50,14 +51,14 @@ paths:
                 verificationId: "660e8400-e29b-41d4-a716-446655440000"
                 status: "pending"
         '400':
-          description: Solicitud inválida (identityDocumentKey faltante o formato incorrecto)
+          description: Solicitud inválida (alguna clave de documento faltante o con formato incorrecto)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 code: "BAD_REQUEST"
-                message: "identityDocumentKey is required and must be a valid UUID"
+                message: "anversoDocumentKey and reversoDocumentKey are required and must be valid UUIDs"
                 timestamp: "2026-09-06T10:30:00Z"
         '500':
           description: Error interno del servidor
@@ -179,15 +180,27 @@ components:
     VerificationRequest:
       type: object
       title: Verificación Request
-      description: Solicitud para iniciar una verificación de identidad
+      description: |
+        Solicitud para iniciar una verificación de identidad. Dos claves, no
+        una: el DNI peruano se verifica por ambas caras (anverso y reverso),
+        cada una subida como un objeto independiente en MinIO
+        (AlmacenDeDocumentosPort, AYNI-13 subtarea 7). La selfie para el
+        cotejo facial no viaja aquí: pertenece a HU-03, fuera de esta
+        verificación de documento.
       required:
-        - identityDocumentKey
+        - anversoDocumentKey
+        - reversoDocumentKey
       properties:
-        identityDocumentKey:
+        anversoDocumentKey:
           type: string
           format: uuid
-          description: Clave/identificador del documento de identidad almacenado en MinIO. Este documento debe haber sido subido previamente al bucket de MinIO designado.
+          description: Clave del objeto del anverso del documento, almacenado en MinIO. Debe haberse subido previamente al bucket designado.
           example: "550e8400-e29b-41d4-a716-446655440000"
+        reversoDocumentKey:
+          type: string
+          format: uuid
+          description: Clave del objeto del reverso del documento, almacenado en MinIO. Trae la zona de lectura mecánica (MRZ) que el OCR usa como fuente principal de datos.
+          example: "660e8400-e29b-41d4-a716-446655440001"
 
     VerificationResponse:
       type: object

@@ -13,6 +13,7 @@ import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeContrasenasPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeRegistroPort;
+import pe.ayni.bank.identity.domain.port.out.NotificadorDeVerificacionKycPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
 
@@ -59,6 +60,8 @@ final class DoblesEnMemoria {
         final List<UUID> senuelos = new ArrayList<>();
         final List<UUID> aprobadas = new ArrayList<>();
         final List<IdentidadDeclarada> identidades = new ArrayList<>();
+        final Map<UUID, Integer> intentosKyc = new HashMap<>();
+        final List<UUID> enRevisionManual = new ArrayList<>();
 
         @Override
         public UUID abrirPara(UUID usuarioId, IdentidadDeclarada identidad) {
@@ -83,6 +86,16 @@ final class DoblesEnMemoria {
         @Override
         public void marcarAprobada(UUID solicitudId) {
             aprobadas.add(solicitudId);
+        }
+
+        @Override
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+            return intentosKyc.merge(solicitudId, 1, Integer::sum);
+        }
+
+        @Override
+        public void marcarEnRevisionManual(UUID solicitudId) {
+            enRevisionManual.add(solicitudId);
         }
 
         @Override
@@ -124,6 +137,15 @@ final class DoblesEnMemoria {
         @Override
         public void avisarIntentoDeRegistroSobreCuentaExistente(CorreoElectronico correo) {
             avisosDeIntento.add(correo.valor());
+        }
+    }
+
+    static final class NotificadorDeVerificacionKyc implements NotificadorDeVerificacionKycPort {
+        final List<String> avisadosDeRevisionManual = new ArrayList<>();
+
+        @Override
+        public void avisarEnRevisionManual(CorreoElectronico correo) {
+            avisadosDeRevisionManual.add(correo.valor());
         }
     }
 }

@@ -12,6 +12,7 @@ COPY services/ayni-identity-service/pom.xml services/ayni-identity-service/pom.x
 COPY services/ayni-core-banking-service/pom.xml services/ayni-core-banking-service/pom.xml
 COPY services/ayni-notification-service/pom.xml services/ayni-notification-service/pom.xml
 RUN mvn -B -pl services/ayni-identity-service -am dependency:go-offline
+COPY contracts contracts
 COPY services/ayni-identity-service/src services/ayni-identity-service/src
 RUN mvn -B -pl services/ayni-identity-service -am clean package -DskipTests
 

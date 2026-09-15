@@ -7,7 +7,8 @@ openapi: 3.0.3
 # hablan con identity, y porque un cambio aqui debe pasar por revision de Pull
 # Request igual que un cambio de codigo.
 #
-# Crece historia a historia. Hoy cubre HU-01 (registro) y HU-04 (ingreso con
+# Crece historia a historia. Hoy cubre HU-01 (registro), HU-02 (solo la
+# subida de documentos a MinIO, AYNI-13 subtarea 7) y HU-04 (ingreso con
 # segundo factor).
 
 info:
@@ -82,6 +83,52 @@ paths:
             Demasiadas solicitudes desde el mismo origen. El limite lo aplica el
             gateway y es lo que impide recorrer el endpoint en masa pese a que
             las respuestas sean indistinguibles.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /solicitudes/{solicitudId}/documentos/url-de-subida:
+    post:
+      tags: [onboarding]
+      operationId: generarUrlDeSubidaDeDocumento
+      summary: Firma una URL para subir un documento KYC directamente a MinIO
+      description: |
+        El navegador sube el archivo con un PUT directo a la URL devuelta; la
+        imagen nunca atraviesa este servicio (diseno-base.md §3.4-3.5, §4.1).
+
+        La URL es valida durante 5 minutos. No persiste nada todavia: ni el
+        estado de la solicitud ni el registro del documento (eso lo cubren
+        subtareas posteriores de AYNI-13, cuando exista la tabla
+        `documento_kyc`). Este endpoint es solo el mecanismo de subida.
+      parameters:
+        - name: solicitudId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudUrlDeSubida"
+      responses:
+        "200":
+          description: URL de subida firmada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UrlDeSubida"
+        "400":
+          description: El cuerpo no cumple las validaciones de formato
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "404":
+          description: La solicitud no existe, o es un senuelo sin titular
           content:
             application/problem+json:
               schema:
@@ -320,6 +367,42 @@ components:
         celular: "987654321"
         contrasena: "Cont!rasena2026#"
         aceptaTerminos: true
+
+    SolicitudUrlDeSubida:
+      type: object
+      required: [tipoDocumento, extension]
+      additionalProperties: false
+      properties:
+        tipoDocumento:
+          type: string
+          enum: [ANVERSO, REVERSO, SELFIE]
+          description: Que cara/imagen del proceso de verificacion se va a subir.
+          example: ANVERSO
+        extension:
+          type: string
+          enum: [jpg, jpeg, png]
+          example: jpg
+      example:
+        tipoDocumento: ANVERSO
+        extension: jpg
+
+    UrlDeSubida:
+      type: object
+      required: [url, expiraEn]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: |
+            URL pre-firmada de subida (metodo PUT). El navegador sube el
+            archivo directamente aqui, con su propio Content-Type.
+        expiraEn:
+          type: string
+          format: date-time
+          description: Momento en que la URL deja de ser valida (5 minutos despues de emitida).
+      example:
+        url: https://minio.ayni.pe/ayni-kyc-documentos/kyc/6b1f9c2a.../anverso-...jpg?X-Amz-...
+        expiraEn: "2026-09-06T10:05:00Z"
 
     Credenciales:
       type: object

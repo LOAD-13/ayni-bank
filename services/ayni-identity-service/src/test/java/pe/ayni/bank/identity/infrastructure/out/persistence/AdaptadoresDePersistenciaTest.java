@@ -157,6 +157,56 @@ class AdaptadoresDePersistenciaTest {
     }
 
     @Nested
+    @DisplayName("Solicitudes · limite de intentos KYC (AYNI-13 subtarea 11)")
+    class LimiteDeIntentosKyc {
+
+        @Mock
+        private SolicitudJpaRepository repositorio;
+
+        @Mock
+        private CifradorDeDatosPort cifradorDeDatos;
+
+        private final SolicitudOnboardingEntity solicitud = new SolicitudOnboardingEntity(
+                UUID.randomUUID(), usuario, "DOCUMENTO_CARGADO", (short) 3,
+                AHORA, AHORA, AHORA.plusSeconds(3600));
+
+        @Test
+        @DisplayName("registrar un fallo suma un intento y lo devuelve, sin tocar el estado")
+        void registrarUnFalloSumaUnIntento() {
+            when(repositorio.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            int intentos = adaptador.registrarIntentoFallidoDeKyc(solicitud.getId());
+
+            assertThat(intentos).isEqualTo(1);
+            assertThat(solicitud.getEstado()).isEqualTo("DOCUMENTO_CARGADO");
+        }
+
+        @Test
+        @DisplayName("marcar en revision manual cambia el estado")
+        void marcarEnRevisionManualCambiaElEstado() {
+            when(repositorio.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            adaptador.marcarEnRevisionManual(solicitud.getId());
+
+            assertThat(solicitud.getEstado()).isEqualTo("EN_REVISION_MANUAL");
+        }
+
+        @Test
+        @DisplayName("registrar un fallo sobre una solicitud inexistente falla en vez de crear una fila")
+        void registrarFalloSobreSolicitudInexistente() {
+            UUID inexistente = UUID.randomUUID();
+            when(repositorio.findById(inexistente)).thenReturn(Optional.empty());
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            org.assertj.core.api.Assertions.assertThatThrownBy(
+                            () -> adaptador.registrarIntentoFallidoDeKyc(inexistente))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("Pista de auditoría")
     class Auditoria {
 

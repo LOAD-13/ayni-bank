@@ -23,7 +23,7 @@ spring:
                 # mano mientras no exista el OCR. El endpoint al que llega lleva
                 # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
                 # resuelve a nada: el bean ni se crea. Se retira con HU-02.
-                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**
+                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
 
             - id: core-banking
               uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}

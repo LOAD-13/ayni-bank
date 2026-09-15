@@ -150,6 +150,7 @@ services:
     environment:
       <<: *java-env
       AYNI_KYC_SERVICE_URL: http://ayni-kyc-service:8000
+      MINIO_ENDPOINT_PUBLICO: http://localhost:9000
       # Clave AES-256 que cifra el numero de documento declarado. El valor por
       # defecto repite el de application.yml a proposito: compose exporta la
       # variable vacia cuando no esta en el .env, y una cadena vacia NO activa el
@@ -157,10 +158,15 @@ services:
       # arrancaria. En staging y produccion llega como secreto desde el .env.
       # Generar una nueva:  openssl rand -base64 32
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+    # minio-init crea el bucket ayni-kyc-documentos y termina. Sin esta
+    # dependencia hay una condicion de carrera: identity-service podria
+    # generar una URL pre-firmada de subida (AYNI-13 subtarea 7) contra un
+    # bucket que todavia no existe. Mismo criterio que ya usa ayni-kyc-service.
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
 
   ayni-core-banking-service:
     <<: *java-common
