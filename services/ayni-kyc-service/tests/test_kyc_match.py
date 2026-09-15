@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import cv2
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
@@ -25,13 +27,21 @@ def test_distancia_a_similitud_porcentaje_respeta_el_umbral_del_modelo():
     assert distancia_a_similitud_porcentaje(0.2, 0.4) == 87.5
 
 @pytest.fixture
-def dummy_image_bytes():
-    # A valid but minimal 1x1 black image in PNG format
-    return (
-        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
-        b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xff"
-        b"\xff?\x00\x05\xfe\x02\xfe\xa7\x35\x81\x84\x00\x00\x00\x00IEND\xaeB`\x82"
-    )
+def dummy_image_bytes() -> bytes:
+    """PNG valido de 8x8 en negro, generado por OpenCV.
+
+    Antes esto era un literal de bytes escrito a mano que decia ser un PNG de 1x1.
+    No lo era: su fragmento IDAT declaraba 13 bytes de datos comprimidos y solo
+    traia 12, asi que libpng abortaba con «Not enough image data» y
+    `cv2.imdecode` devolvia None. El endpoint respondia 400 y los cuatro casos
+    que dependian de este fixture fallaban.
+
+    Generarlo con `cv2.imencode` en lugar de transcribirlo elimina la clase de
+    error entera: lo produce la misma biblioteca que despues lo lee.
+    """
+    ok, buffer = cv2.imencode(".png", np.zeros((8, 8, 3), dtype=np.uint8))
+    assert ok, "OpenCV no pudo codificar la imagen de prueba"
+    return bytes(buffer.tobytes())
 
 @pytest.fixture
 def mock_deepface():
