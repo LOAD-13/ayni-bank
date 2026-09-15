@@ -6,8 +6,13 @@ import { ConsentimientoBiometrico } from "./ConsentimientoBiometrico";
 describe("ConsentimientoBiometrico", () => {
   it("deshabilita el boton Continuar hasta que se aceptan ambos checks", () => {
     const onConsentimientoOtorgado = vi.fn();
-    render(<ConsentimientoBiometrico onConsentimientoOtorgado={onConsentimientoOtorgado} onRechazado={vi.fn()} />);
-    
+    render(
+      <ConsentimientoBiometrico
+        onConsentimientoOtorgado={onConsentimientoOtorgado}
+        onRechazado={vi.fn()}
+      />,
+    );
+
     const botonContinuar = screen.getByRole("button", { name: "Continuar" });
     expect(botonContinuar).toBeDisabled();
 

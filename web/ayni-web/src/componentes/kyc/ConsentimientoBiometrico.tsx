@@ -11,7 +11,7 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
   const [terminosAceptados, setTerminosAceptados] = useState(false);
   const [politicaAceptada, setPoliticaAceptada] = useState(false);
   const [leidoHastaElFinal, setLeidoHastaElFinal] = useState(false);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const revisarScroll = (e: UIEvent<HTMLDivElement>) => {
@@ -41,32 +41,50 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
       </div>
 
       <div className="bg-azul-050 p-4 rounded-lg text-sm text-azul-800">
-        <p>De conformidad con la Ley N° 29733, Ley de Protección de Datos Personales, necesitamos tu autorización expresa para capturar y procesar tus datos biométricos (fotografía facial).</p>
+        <p>
+          De conformidad con la Ley N° 29733, Ley de Protección de Datos Personales, necesitamos tu
+          autorización expresa para capturar y procesar tus datos biométricos (fotografía facial).
+        </p>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         onScroll={revisarScroll}
         className="border border-gris-300 rounded-lg p-4 h-64 overflow-y-auto text-sm text-gris-700 space-y-4"
         tabIndex={0}
       >
         <h3 className="font-bold">1. Finalidad del Tratamiento</h3>
-        <p>Tus datos biométricos serán utilizados única y exclusivamente con la finalidad de verificar tu identidad durante el proceso de apertura de cuenta (Onboarding Digital), comparando la fotografía (selfie) tomada en tiempo real con la imagen de tu Documento Nacional de Identidad (DNI).</p>
-        
+        <p>
+          Tus datos biométricos serán utilizados única y exclusivamente con la finalidad de
+          verificar tu identidad durante el proceso de apertura de cuenta (Onboarding Digital),
+          comparando la fotografía (selfie) tomada en tiempo real con la imagen de tu Documento
+          Nacional de Identidad (DNI).
+        </p>
+
         <h3 className="font-bold">2. Banco de Datos</h3>
-        <p>Tus datos serán almacenados en el banco de datos &quot;Clientes&quot; de titularidad de Ayni Bank.</p>
-        
+        <p>
+          Tus datos serán almacenados en el banco de datos &quot;Clientes&quot; de titularidad de
+          Ayni Bank.
+        </p>
+
         <h3 className="font-bold">3. Plazo de Conservación</h3>
-        <p>Los datos serán conservados mientras dure el proceso de verificación. En caso de apertura exitosa, se mantendrán conforme a los plazos exigidos por la normativa aplicable (SBS). En caso de rechazo, serán eliminados inmediatamente.</p>
-        
+        <p>
+          Los datos serán conservados mientras dure el proceso de verificación. En caso de apertura
+          exitosa, se mantendrán conforme a los plazos exigidos por la normativa aplicable (SBS). En
+          caso de rechazo, serán eliminados inmediatamente.
+        </p>
+
         <h3 className="font-bold">4. Ejercicio de Derechos ARCO</h3>
-        <p>Puedes ejercer tus derechos de Acceso, Rectificación, Cancelación y Oposición enviando un correo a derechosarco@aynibank.pe.</p>
+        <p>
+          Puedes ejercer tus derechos de Acceso, Rectificación, Cancelación y Oposición enviando un
+          correo a derechosarco@aynibank.pe.
+        </p>
       </div>
 
       <div className="space-y-4">
         <label className="flex items-start gap-3 cursor-pointer">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             className="mt-1 h-5 w-5 text-azul-600 rounded border-gris-300 focus:ring-azul-500 disabled:opacity-50"
             disabled={!leidoHastaElFinal}
             checked={terminosAceptados}
@@ -76,10 +94,10 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
             He leído y acepto los Términos y Condiciones del servicio biométrico.
           </span>
         </label>
-        
+
         <label className="flex items-start gap-3 cursor-pointer">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             className="mt-1 h-5 w-5 text-azul-600 rounded border-gris-300 focus:ring-azul-500 disabled:opacity-50"
             disabled={!leidoHastaElFinal}
             checked={politicaAceptada}
@@ -93,7 +111,8 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
 
       {!leidoHastaElFinal && (
         <p className="text-xs text-error font-medium text-center">
-          * Por favor, lee el documento completo (haz scroll hasta el final) para habilitar las opciones.
+          * Por favor, lee el documento completo (haz scroll hasta el final) para habilitar las
+          opciones.
         </p>
       )}
 
@@ -101,11 +120,7 @@ export function ConsentimientoBiometrico({ onConsentimientoOtorgado, onRechazado
         <Boton variante="contorno" onClick={onRechazado} className="flex-1">
           No acepto
         </Boton>
-        <Boton 
-          onClick={onConsentimientoOtorgado} 
-          disabled={!todoAceptado} 
-          className="flex-1"
-        >
+        <Boton onClick={onConsentimientoOtorgado} disabled={!todoAceptado} className="flex-1">
           Continuar
         </Boton>
       </div>

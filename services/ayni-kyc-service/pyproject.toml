@@ -30,6 +30,13 @@ ignore_missing_imports = true
 module = ["paddleocr.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# deepface no publica stubs de tipos ni marcador py.typed. Su valor de retorno
+# se normaliza a float en cotejo_facial.py antes de cruzar al dominio, de modo
+# que el Any no se propaga mas alla del adaptador.
+module = ["deepface.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

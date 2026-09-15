@@ -19,7 +19,7 @@ vi.mock("@vladmandic/face-api", () => {
       },
     },
     detectAllFaces: vi.fn().mockReturnValue({
-      withFaceExpressions: vi.fn().mockResolvedValue([])
+      withFaceExpressions: vi.fn().mockResolvedValue([]),
     }),
     TinyFaceDetectorOptions: vi.fn(),
   };
@@ -28,13 +28,13 @@ vi.mock("@vladmandic/face-api", () => {
 describe("CapturaDeSelfie", () => {
   it("muestra el estado de carga inicial de los modelos de IA", () => {
     render(<CapturaDeSelfie solicitudId="sol-123" onCompletado={vi.fn()} />);
-    
+
     // Verifica que se muestra el título
     expect(screen.getByText("Selfie de verificación")).toBeInTheDocument();
-    
+
     // Verifica que se muestra el texto inicial (ya sea cargando modelos o cámara)
     expect(
-      screen.getByText(/Iniciando motor de IA...|Pidiendo acceso a tu cámara/i)
+      screen.getByText(/Iniciando motor de IA...|Pidiendo acceso a tu cámara/i),
     ).toBeInTheDocument();
   });
 });

@@ -1,10 +1,12 @@
 from typing import Any
+
 import numpy as np
 from deepface import DeepFace
 
-from src.domain.model.resultado_verificacion import ResultadoCotejoFacial, DecisionVerificacion
-from src.infrastructure.config import settings
+from src.domain.model.resultado_verificacion import DecisionVerificacion, ResultadoCotejoFacial
 from src.infrastructure.auditoria import log_audit_event
+from src.infrastructure.config import settings
+
 
 def determinar_decision(similitud_porcentaje: float) -> DecisionVerificacion:
     if similitud_porcentaje >= settings.KYC_MATCH_THRESHOLD:
@@ -42,7 +44,11 @@ def distancia_a_similitud_porcentaje(distancia: float, umbral: float) -> float:
     exceso = min(distancia, techo) - umbral
     return max(0.0, 75.0 - (exceso / (techo - umbral)) * 75.0)
 
-def cotejar_rostros(imagen1: np.ndarray[Any, Any], imagen2: np.ndarray[Any, Any], id_transaccion: str) -> ResultadoCotejoFacial:
+def cotejar_rostros(
+    imagen1: np.ndarray[Any, Any],
+    imagen2: np.ndarray[Any, Any],
+    id_transaccion: str,
+) -> ResultadoCotejoFacial:
     try:
         # enforce_detection=False para evitar excepciones si no detecta rostro en alguna imagen
         resultado = DeepFace.verify(

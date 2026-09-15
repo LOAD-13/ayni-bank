@@ -27,11 +27,7 @@ interface Props {
   siguienteHref: string;
 }
 
-export function PasoDeCapturaDeSelfie({
-  solicitudId,
-  pasoActual,
-  siguienteHref,
-}: Props) {
+export function PasoDeCapturaDeSelfie({ solicitudId, pasoActual, siguienteHref }: Props) {
   const router = useRouter();
   const [consentimientoOtorgado, setConsentimientoOtorgado] = useState(false);
 
@@ -77,9 +73,9 @@ export function PasoDeCapturaDeSelfie({
               </Link>
             </div>
           ) : !consentimientoOtorgado ? (
-            <ConsentimientoBiometrico 
-              onConsentimientoOtorgado={() => setConsentimientoOtorgado(true)} 
-              onRechazado={() => router.push("/")} 
+            <ConsentimientoBiometrico
+              onConsentimientoOtorgado={() => setConsentimientoOtorgado(true)}
+              onRechazado={() => router.push("/")}
             />
           ) : (
             <CapturaDeSelfie
