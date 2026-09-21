@@ -1,5 +1,7 @@
 package pe.ayni.bank.identity.application.usecase;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
@@ -7,6 +9,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,7 @@ import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioAbierto;
 import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
+import pe.ayni.bank.identity.domain.model.DesafioPorCodigo;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
@@ -37,6 +41,7 @@ import pe.ayni.bank.identity.domain.port.out.GeneradorDeTotpPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
 import pe.ayni.bank.identity.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeControlDeAccesoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSesionesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -66,8 +71,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     private final PistaDeAuditoriaPort auditoria;
     private final NotificadorDeSeguridadPort notificador;
     private final Clock reloj;
+    private final RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo;
 
-    @SuppressWarnings("java:S107") // Diez colaboradores son los diez puertos que HU-04 necesita.
     public IniciarSesionService(RepositorioDeUsuariosPort usuarios,
                                 RepositorioDeSegundoFactorPort segundosFactores,
                                 RepositorioDeControlDeAccesoPort controles,
@@ -78,6 +83,22 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                                 PistaDeAuditoriaPort auditoria,
                                 NotificadorDeSeguridadPort notificador,
                                 Clock reloj) {
+        this(usuarios, segundosFactores, controles, sesiones, cifrador, totp, emisor, auditoria, notificador, reloj, null);
+    }
+
+    @Autowired
+    @SuppressWarnings("java:S107")
+    public IniciarSesionService(RepositorioDeUsuariosPort usuarios,
+                                RepositorioDeSegundoFactorPort segundosFactores,
+                                RepositorioDeControlDeAccesoPort controles,
+                                RepositorioDeSesionesPort sesiones,
+                                CifradorDeContrasenasPort cifrador,
+                                GeneradorDeTotpPort totp,
+                                EmisorDeTokensDeAccesoPort emisor,
+                                PistaDeAuditoriaPort auditoria,
+                                NotificadorDeSeguridadPort notificador,
+                                Clock reloj,
+                                @Autowired(required = false) RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo) {
         this.usuarios = usuarios;
         this.segundosFactores = segundosFactores;
         this.controles = controles;
@@ -88,6 +109,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         this.auditoria = auditoria;
         this.notificador = notificador;
         this.reloj = reloj;
+        this.repositorioDesafioPorCodigo = repositorioDesafioPorCodigo;
     }
 
     // ─── Paso 1 · credenciales ─────────────────────────────────────────────
@@ -194,6 +216,49 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     @Transactional
     public SesionIniciada verificarSegundoFactor(ComandoDeSegundoFactor comando) {
         Instant momento = reloj.instant();
+
+        if (repositorioDesafioPorCodigo != null) {
+            Optional<DesafioPorCodigo> desafioCodigo = repositorioDesafioPorCodigo.buscarPorId(comando.desafioId());
+            if (desafioCodigo.isPresent()) {
+                DesafioPorCodigo desafio = desafioCodigo.get();
+                Usuario usuario = usuarios.buscarPorId(desafio.usuarioId())
+                        .orElseThrow(SegundoFactorInvalidoException::new);
+                ControlDeAcceso control = controles.cargar(usuario.id());
+
+                if (control.estaBloqueado(momento)) {
+                    auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_BLOQUEADO,
+                            usuario.id(), comando.cliente());
+                    throw new CuentaBloqueadaException(control.esperaRestante(momento));
+                }
+
+                if (desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
+                    anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                            TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+                    throw new SegundoFactorInvalidoException();
+                }
+
+                String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(comando.codigo().valor());
+                boolean coincide = MessageDigest.isEqual(
+                        hashIngresado.getBytes(StandardCharsets.UTF_8),
+                        desafio.hashCodigo().getBytes(StandardCharsets.UTF_8));
+
+                if (!coincide) {
+                    repositorioDesafioPorCodigo.guardar(desafio.registrarIntentoFallido());
+                    anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                            TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+                    throw new SegundoFactorInvalidoException();
+                }
+
+                repositorioDesafioPorCodigo.guardar(desafio.marcarVerificado(momento));
+                controles.guardar(control.registrarAcierto());
+
+                SesionIniciada sesion = abrirSesion(usuario, momento);
+                auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(), comando.cliente());
+                log.info("Ingreso completado via OTP por correo/SMS. usuarioId={} ip={}",
+                        usuario.id(), comando.cliente().ip());
+                return sesion;
+            }
+        }
 
         DesafioDeSegundoFactor desafio = sesiones.buscarDesafio(comando.desafioId())
                 .filter(d -> !d.haCaducado(momento))
