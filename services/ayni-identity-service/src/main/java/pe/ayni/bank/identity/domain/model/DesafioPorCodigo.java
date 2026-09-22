@@ -95,6 +95,12 @@ public final class DesafioPorCodigo {
                 intentosRealizados, creadoEn, expiraEn, momento);
     }
 
+    /** Invalida el desafío forzando el máximo de intentos. */
+    public DesafioPorCodigo invalidar() {
+        return new DesafioPorCodigo(id, usuarioId, tipoFactor, hashCodigo,
+                MAX_INTENTOS, creadoEn, expiraEn, verificadoEn);
+    }
+
     public UUID id() {
         return id;
     }

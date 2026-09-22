@@ -40,7 +40,7 @@ class VerificarDesafioCodigoServiceTest {
     @BeforeEach
     void setUp() {
         service = new VerificarDesafioCodigoService(repositorioDesafio);
-        hashCorrecto = GenerarDesafioCodigoService.calcularHashSha256(codigoCorrecto);
+        hashCorrecto = GenerarDesafioCodigoService.calcularHashSha256(usuarioId, codigoCorrecto);
     }
 
     @Test
@@ -115,5 +115,18 @@ class VerificarDesafioCodigoServiceTest {
 
         assertThatThrownBy(() -> service.verificar(desafioId, "000000"))
                 .isInstanceOf(MaximoIntentosDesafioExcedidoException.class);
+    }
+
+    @Test
+    @DisplayName("Lanza CodigoDesafioInvalidoException si el desafío ya fue verificado previamente")
+    void verificar_DesafioYaVerificado_LanzaExcepcion() {
+        DesafioPorCodigo desafioYaVerificado = DesafioPorCodigo.generar(
+                desafioId, usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, hashCorrecto, Instant.now().minusSeconds(60))
+                .marcarVerificado(Instant.now().minusSeconds(30));
+
+        when(repositorioDesafio.buscarPorId(desafioId)).thenReturn(Optional.of(desafioYaVerificado));
+
+        assertThatThrownBy(() -> service.verificar(desafioId, codigoCorrecto))
+                .isInstanceOf(CodigoDesafioInvalidoException.class);
     }
 }

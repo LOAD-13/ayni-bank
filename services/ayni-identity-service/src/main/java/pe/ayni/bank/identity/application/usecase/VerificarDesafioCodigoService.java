@@ -35,6 +35,10 @@ public class VerificarDesafioCodigoService implements VerificarDesafioCodigoUseC
 
         Instant ahora = Instant.now();
 
+        if (desafio.estaVerificado()) {
+            throw new CodigoDesafioInvalidoException();
+        }
+
         if (desafio.estaExpirado(ahora)) {
             throw new DesafioExpiradoException();
         }
@@ -43,7 +47,7 @@ public class VerificarDesafioCodigoService implements VerificarDesafioCodigoUseC
             throw new MaximoIntentosDesafioExcedidoException();
         }
 
-        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(codigoIngresado);
+        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(desafio.usuarioId(), codigoIngresado);
 
         boolean esValido = MessageDigest.isEqual(
                 hashIngresado.getBytes(StandardCharsets.UTF_8),

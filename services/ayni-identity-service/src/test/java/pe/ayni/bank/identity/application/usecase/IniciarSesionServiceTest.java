@@ -687,7 +687,7 @@ class IniciarSesionServiceTest {
         @DisplayName("verificarSegundoFactor con OTP válido inicia sesión exitosamente")
         void verificarOtpExitoso() {
             String codigo = "654321";
-            String hash = GenerarDesafioCodigoService.calcularHashSha256(codigo);
+            String hash = GenerarDesafioCodigoService.calcularHashSha256(ana.id(), codigo);
             UUID desafioId = UUID.randomUUID();
             DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, hash, AHORA);
             desafiosPorCodigo.guardar(desafio);
@@ -703,7 +703,7 @@ class IniciarSesionServiceTest {
         @DisplayName("verificarSegundoFactor con OTP erróneo incrementa intentos y lanza excepción")
         void verificarOtpErroneo() {
             String codigoBueno = "654321";
-            String hash = GenerarDesafioCodigoService.calcularHashSha256(codigoBueno);
+            String hash = GenerarDesafioCodigoService.calcularHashSha256(ana.id(), codigoBueno);
             UUID desafioId = UUID.randomUUID();
             DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, hash, AHORA);
             desafiosPorCodigo.guardar(desafio);

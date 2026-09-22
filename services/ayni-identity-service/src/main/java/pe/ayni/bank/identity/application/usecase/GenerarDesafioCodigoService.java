@@ -34,13 +34,25 @@ public class GenerarDesafioCodigoService implements GenerarDesafioCodigoUseCase 
     @Transactional
     public ResultadoGeneracionDesafio generar(UUID usuarioId, TipoDeSegundoFactor tipoFactor) {
         String codigo6Digitos = String.format("%06d", aleatorio.nextInt(1_000_000));
-        String hashSha256 = calcularHashSha256(codigo6Digitos);
+        String hashSha256 = calcularHashSha256(usuarioId, codigo6Digitos);
+
+        Instant ahora = Instant.now();
+
+        // Invalidar desafíos pendientes anteriores para este usuario y tipo de factor
+        repositorioDesafio.buscarUltimoPendiente(usuarioId, tipoFactor)
+                .filter(d -> !d.estaVerificado() && !d.estaExpirado(ahora))
+                .ifPresent(anterior -> repositorioDesafio.guardar(anterior.invalidar()));
 
         DesafioPorCodigo nuevoDesafio = DesafioPorCodigo.generar(
-                UUID.randomUUID(), usuarioId, tipoFactor, hashSha256, Instant.now());
+                UUID.randomUUID(), usuarioId, tipoFactor, hashSha256, ahora);
 
         DesafioPorCodigo guardado = repositorioDesafio.guardar(nuevoDesafio);
         return new ResultadoGeneracionDesafio(guardado, codigo6Digitos);
+    }
+
+    public static String calcularHashSha256(UUID usuarioId, String texto) {
+        String textoConSalt = (usuarioId != null ? usuarioId.toString() : "") + ":" + texto;
+        return calcularHashSha256(textoConSalt);
     }
 
     public static String calcularHashSha256(String texto) {

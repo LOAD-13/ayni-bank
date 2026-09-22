@@ -341,13 +341,13 @@ public class IniciarSesionService implements IniciarSesionUseCase {
             throw new CuentaBloqueadaException(control.esperaRestante(momento));
         }
 
-        if (desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
+        if (desafio.estaVerificado() || desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
             anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
                     TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
             throw new SegundoFactorInvalidoException();
         }
 
-        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(comando.codigo().valor());
+        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(desafio.usuarioId(), comando.codigo().valor());
         boolean coincide = MessageDigest.isEqual(
                 hashIngresado.getBytes(StandardCharsets.UTF_8),
                 desafio.hashCodigo().getBytes(StandardCharsets.UTF_8));

@@ -45,7 +45,7 @@ class VerificarContactoRegistroServiceTest {
     @BeforeEach
     void setUp() {
         service = new VerificarContactoRegistroService(repositorioDesafio, repositorioMetodos);
-        hashCorrecto = GenerarDesafioCodigoService.calcularHashSha256(codigoCorrecto);
+        hashCorrecto = GenerarDesafioCodigoService.calcularHashSha256(usuarioId, codigoCorrecto);
     }
 
     @Test

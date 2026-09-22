@@ -37,6 +37,7 @@ public class VerificarContactoRegistroService implements VerificarContactoRegist
     @Transactional
     public boolean verificarContacto(SolicitudVerificacionContacto solicitud) {
         DesafioPorCodigo desafio = repositorioDesafio.buscarUltimoPendiente(solicitud.usuarioId(), solicitud.tipoContacto())
+                .filter(d -> !d.estaVerificado())
                 .orElseThrow(CodigoDesafioInvalidoException::new);
 
         Instant ahora = Instant.now();
@@ -49,7 +50,7 @@ public class VerificarContactoRegistroService implements VerificarContactoRegist
             throw new MaximoIntentosDesafioExcedidoException();
         }
 
-        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(solicitud.codigo());
+        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(solicitud.usuarioId(), solicitud.codigo());
 
         boolean coincide = MessageDigest.isEqual(
                 hashIngresado.getBytes(StandardCharsets.UTF_8),
