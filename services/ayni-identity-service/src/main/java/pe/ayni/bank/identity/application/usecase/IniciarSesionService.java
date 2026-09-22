@@ -25,7 +25,9 @@ import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.DesafioPorCodigo;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
+import pe.ayni.bank.identity.domain.model.ResultadoGeneracionDesafio;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
 import pe.ayni.bank.identity.domain.model.SegundoFactor;
@@ -33,7 +35,9 @@ import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
 import pe.ayni.bank.identity.domain.model.SesionIniciada;
 import pe.ayni.bank.identity.domain.model.TipoDeEventoDeAcceso;
+import pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.Usuario;
+import pe.ayni.bank.identity.domain.port.in.GenerarDesafioCodigoUseCase;
 import pe.ayni.bank.identity.domain.port.in.IniciarSesionUseCase;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeContrasenasPort;
 import pe.ayni.bank.identity.domain.port.out.EmisorDeTokensDeAccesoPort;
@@ -42,6 +46,7 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
 import pe.ayni.bank.identity.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeControlDeAccesoPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSesionesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -72,6 +77,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     private final NotificadorDeSeguridadPort notificador;
     private final Clock reloj;
     private final RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final GenerarDesafioCodigoUseCase generarDesafioCodigo;
 
     public IniciarSesionService(RepositorioDeUsuariosPort usuarios,
                                 RepositorioDeSegundoFactorPort segundosFactores,
@@ -82,8 +89,11 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                                 EmisorDeTokensDeAccesoPort emisor,
                                 PistaDeAuditoriaPort auditoria,
                                 NotificadorDeSeguridadPort notificador,
-                                Clock reloj) {
-        this(usuarios, segundosFactores, controles, sesiones, cifrador, totp, emisor, auditoria, notificador, reloj, null);
+                                Clock reloj,
+                                RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                GenerarDesafioCodigoUseCase generarDesafioCodigo) {
+        this(usuarios, segundosFactores, controles, sesiones, cifrador, totp, emisor, auditoria, notificador, reloj,
+                null, metodosSegundoFactor, generarDesafioCodigo);
     }
 
     @Autowired
@@ -98,7 +108,9 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                                 PistaDeAuditoriaPort auditoria,
                                 NotificadorDeSeguridadPort notificador,
                                 Clock reloj,
-                                @Autowired(required = false) RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo) {
+                                @Autowired(required = false) RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo,
+                                RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                GenerarDesafioCodigoUseCase generarDesafioCodigo) {
         this.usuarios = usuarios;
         this.segundosFactores = segundosFactores;
         this.controles = controles;
@@ -110,6 +122,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         this.notificador = notificador;
         this.reloj = reloj;
         this.repositorioDesafioPorCodigo = repositorioDesafioPorCodigo;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.generarDesafioCodigo = generarDesafioCodigo;
     }
 
     // ─── Paso 1 · credenciales ─────────────────────────────────────────────
@@ -184,9 +198,28 @@ public class IniciarSesionService implements IniciarSesionUseCase {
      * <p>La inscripcion ocurre aqui y no en el registro porque el secreto solo tiene sentido
      * cuando alguien va a usarlo: generarlo en HU-01 dejaria un secreto activo en la cuenta
      * de todo el que se registro y nunca volvio.
+     *
+     * <p>HU-22 (AYNI-124): si el usuario eligio Correo Electronico o SMS como segundo factor
+     * (tabla {@code metodo_segundo_factor}), el desafio es un OTP de 6 digitos —se genera y
+     * se despacha aqui mismo— y no el vale de dos minutos de la App Autenticadora. Cuando
+     * eligio ambos en algun momento, gana el mas reciente: no hay un campo "activo" en el
+     * modelo, y sin el, el ultimo elegido es la mejor aproximacion a la intencion actual.
+     * App Autenticadora sigue el camino de siempre, sin tocar {@link SegundoFactor}.
      */
     private DesafioAbierto abrirDesafio(Usuario usuario, CorreoElectronico correo,
                                         Instant momento) {
+        Optional<MetodoDeSegundoFactor> metodoPorCodigo = metodosSegundoFactor
+                .listarPorUsuario(usuario.id()).stream()
+                .filter(m -> m.tipo() == TipoDeSegundoFactor.CORREO_ELECTRONICO
+                        || m.tipo() == TipoDeSegundoFactor.SMS)
+                .max(java.util.Comparator.comparing(MetodoDeSegundoFactor::creadoEn));
+
+        if (metodoPorCodigo.isPresent()) {
+            ResultadoGeneracionDesafio resultado =
+                    generarDesafioCodigo.generar(usuario.id(), metodoPorCodigo.get().tipo());
+            return DesafioAbierto.paraQuienYaTieneSegundoFactor(resultado.desafio().id());
+        }
+
         DesafioDeSegundoFactor desafio = DesafioDeSegundoFactor.abrir(usuario.id(), momento);
         sesiones.guardarDesafio(desafio);
 

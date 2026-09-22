@@ -35,6 +35,7 @@ import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.DesafioPorCodigo;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
@@ -53,6 +54,7 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
 import pe.ayni.bank.identity.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeControlDeAccesoPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSesionesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -86,6 +88,7 @@ class IniciarSesionServiceTest {
     private AuditoriaFalsa auditoria;
     private NotificadorFalso notificador;
     private DesafiosPorCodigoFalsos desafiosPorCodigo;
+    private MetodosSegundoFactorFalsos metodosSegundoFactor;
     private IniciarSesionService servicio;
     private Usuario ana;
 
@@ -101,10 +104,15 @@ class IniciarSesionServiceTest {
         auditoria = new AuditoriaFalsa();
         notificador = new NotificadorFalso();
         desafiosPorCodigo = new DesafiosPorCodigoFalsos();
+        metodosSegundoFactor = new MetodosSegundoFactorFalsos();
+
+        GenerarDesafioCodigoService generarDesafioCodigo = new GenerarDesafioCodigoService(
+                desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso());
 
         servicio = new IniciarSesionService(usuarios, segundosFactores, controles, sesiones,
                 cifrador, totp, emisor, auditoria, notificador,
-                Clock.fixed(AHORA, ZoneOffset.UTC), desafiosPorCodigo);
+                Clock.fixed(AHORA, ZoneOffset.UTC), desafiosPorCodigo,
+                metodosSegundoFactor, generarDesafioCodigo);
 
         ana = Usuario.registrar(UUID.randomUUID(), new CorreoElectronico(CORREO),
                 new Celular("987654321"), new ContrasenaCifrada("$argon2id$" + CONTRASENA),
@@ -773,6 +781,73 @@ class IniciarSesionServiceTest {
             return desafios.values().stream()
                     .filter(d -> d.usuarioId().equals(usuarioId) && d.tipoFactor() == tipo && !d.estaVerificado())
                     .findFirst();
+        }
+    }
+
+    private static final class MetodosSegundoFactorFalsos implements RepositorioDeMetodoSegundoFactorPort {
+        private final List<MetodoDeSegundoFactor> guardados = new ArrayList<>();
+
+        @Override
+        public Optional<MetodoDeSegundoFactor> buscarPorUsuarioYTipo(UUID usuarioId, TipoDeSegundoFactor tipo) {
+            return guardados.stream()
+                    .filter(m -> m.usuarioId().equals(usuarioId) && m.tipo() == tipo)
+                    .findFirst();
+        }
+
+        @Override
+        public List<MetodoDeSegundoFactor> listarPorUsuario(UUID usuarioId) {
+            return guardados.stream().filter(m -> m.usuarioId().equals(usuarioId)).toList();
+        }
+
+        @Override
+        public MetodoDeSegundoFactor guardar(MetodoDeSegundoFactor metodo) {
+            guardados.removeIf(m -> m.id().equals(metodo.id()));
+            guardados.add(metodo);
+            return metodo;
+        }
+    }
+
+    private static final class NotificadorDeSegundoFactorFalso
+            implements pe.ayni.bank.identity.domain.port.out.NotificadorDeSegundoFactorPort {
+        private final List<String> correosNotificados = new ArrayList<>();
+
+        @Override
+        public void enviarCodigoPorCorreo(CorreoElectronico correo, String codigo) {
+            correosNotificados.add(correo.valor());
+        }
+
+        @Override
+        public void enviarCodigoPorSms(Celular celular, String codigo) {
+            // Sin bandeja de prueba para SMS en esta suite; no hace falta registrar nada.
+        }
+    }
+
+    @Nested
+    @DisplayName("HU-22 · Segundo factor a elección en el login")
+    class SegundoFactorAEleccionEnElLogin {
+
+        @Test
+        @DisplayName("con Correo Electrónico elegido, el primer paso abre un desafío OTP y lo despacha")
+        void loginConCorreoElegidoAbreDesafioOtp() {
+            metodosSegundoFactor.guardar(MetodoDeSegundoFactor.inscribir(
+                    UUID.randomUUID(), ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA));
+
+            DesafioAbierto desafio = ingresar();
+
+            assertThat(desafio.requiereInscripcion()).isFalse();
+            assertThat(desafio.uriDeAprovisionamiento()).isNull();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isPresent();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId()).orElseThrow().tipoFactor())
+                    .isEqualTo(TipoDeSegundoFactor.CORREO_ELECTRONICO);
+        }
+
+        @Test
+        @DisplayName("sin ningún método OTP elegido, el login sigue el camino de App Autenticadora de siempre")
+        void loginSinMetodoOtpUsaAppAutenticadora() {
+            DesafioAbierto desafio = ingresar();
+
+            assertThat(desafio.requiereInscripcion()).isTrue();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isEmpty();
         }
     }
 }
