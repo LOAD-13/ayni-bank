@@ -1,5 +1,7 @@
 package pe.ayni.bank.identity.application.usecase;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
@@ -7,6 +9,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +22,12 @@ import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioAbierto;
 import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
+import pe.ayni.bank.identity.domain.model.DesafioPorCodigo;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
+import pe.ayni.bank.identity.domain.model.ResultadoGeneracionDesafio;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
 import pe.ayni.bank.identity.domain.model.SegundoFactor;
@@ -29,7 +35,9 @@ import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
 import pe.ayni.bank.identity.domain.model.SesionIniciada;
 import pe.ayni.bank.identity.domain.model.TipoDeEventoDeAcceso;
+import pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.Usuario;
+import pe.ayni.bank.identity.domain.port.in.GenerarDesafioCodigoUseCase;
 import pe.ayni.bank.identity.domain.port.in.IniciarSesionUseCase;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeContrasenasPort;
 import pe.ayni.bank.identity.domain.port.out.EmisorDeTokensDeAccesoPort;
@@ -37,6 +45,8 @@ import pe.ayni.bank.identity.domain.port.out.GeneradorDeTotpPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
 import pe.ayni.bank.identity.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeControlDeAccesoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSesionesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -66,8 +76,10 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     private final PistaDeAuditoriaPort auditoria;
     private final NotificadorDeSeguridadPort notificador;
     private final Clock reloj;
+    private final RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final GenerarDesafioCodigoUseCase generarDesafioCodigo;
 
-    @SuppressWarnings("java:S107") // Diez colaboradores son los diez puertos que HU-04 necesita.
     public IniciarSesionService(RepositorioDeUsuariosPort usuarios,
                                 RepositorioDeSegundoFactorPort segundosFactores,
                                 RepositorioDeControlDeAccesoPort controles,
@@ -77,7 +89,28 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                                 EmisorDeTokensDeAccesoPort emisor,
                                 PistaDeAuditoriaPort auditoria,
                                 NotificadorDeSeguridadPort notificador,
-                                Clock reloj) {
+                                Clock reloj,
+                                RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                GenerarDesafioCodigoUseCase generarDesafioCodigo) {
+        this(usuarios, segundosFactores, controles, sesiones, cifrador, totp, emisor, auditoria, notificador, reloj,
+                null, metodosSegundoFactor, generarDesafioCodigo);
+    }
+
+    @Autowired
+    @SuppressWarnings("java:S107")
+    public IniciarSesionService(RepositorioDeUsuariosPort usuarios,
+                                RepositorioDeSegundoFactorPort segundosFactores,
+                                RepositorioDeControlDeAccesoPort controles,
+                                RepositorioDeSesionesPort sesiones,
+                                CifradorDeContrasenasPort cifrador,
+                                GeneradorDeTotpPort totp,
+                                EmisorDeTokensDeAccesoPort emisor,
+                                PistaDeAuditoriaPort auditoria,
+                                NotificadorDeSeguridadPort notificador,
+                                Clock reloj,
+                                @Autowired(required = false) RepositorioDeDesafioPorCodigoPort repositorioDesafioPorCodigo,
+                                RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                GenerarDesafioCodigoUseCase generarDesafioCodigo) {
         this.usuarios = usuarios;
         this.segundosFactores = segundosFactores;
         this.controles = controles;
@@ -88,6 +121,9 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         this.auditoria = auditoria;
         this.notificador = notificador;
         this.reloj = reloj;
+        this.repositorioDesafioPorCodigo = repositorioDesafioPorCodigo;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.generarDesafioCodigo = generarDesafioCodigo;
     }
 
     // ─── Paso 1 · credenciales ─────────────────────────────────────────────
@@ -162,9 +198,28 @@ public class IniciarSesionService implements IniciarSesionUseCase {
      * <p>La inscripcion ocurre aqui y no en el registro porque el secreto solo tiene sentido
      * cuando alguien va a usarlo: generarlo en HU-01 dejaria un secreto activo en la cuenta
      * de todo el que se registro y nunca volvio.
+     *
+     * <p>HU-22 (AYNI-124): si el usuario eligio Correo Electronico o SMS como segundo factor
+     * (tabla {@code metodo_segundo_factor}), el desafio es un OTP de 6 digitos —se genera y
+     * se despacha aqui mismo— y no el vale de dos minutos de la App Autenticadora. Cuando
+     * eligio ambos en algun momento, gana el mas reciente: no hay un campo "activo" en el
+     * modelo, y sin el, el ultimo elegido es la mejor aproximacion a la intencion actual.
+     * App Autenticadora sigue el camino de siempre, sin tocar {@link SegundoFactor}.
      */
     private DesafioAbierto abrirDesafio(Usuario usuario, CorreoElectronico correo,
                                         Instant momento) {
+        Optional<MetodoDeSegundoFactor> metodoPorCodigo = metodosSegundoFactor
+                .listarPorUsuario(usuario.id()).stream()
+                .filter(m -> m.tipo() == TipoDeSegundoFactor.CORREO_ELECTRONICO
+                        || m.tipo() == TipoDeSegundoFactor.SMS)
+                .max(java.util.Comparator.comparing(MetodoDeSegundoFactor::creadoEn));
+
+        if (metodoPorCodigo.isPresent()) {
+            ResultadoGeneracionDesafio resultado =
+                    generarDesafioCodigo.generar(usuario.id(), metodoPorCodigo.get().tipo());
+            return DesafioAbierto.paraQuienYaTieneSegundoFactor(resultado.desafio().id());
+        }
+
         DesafioDeSegundoFactor desafio = DesafioDeSegundoFactor.abrir(usuario.id(), momento);
         sesiones.guardarDesafio(desafio);
 
@@ -194,6 +249,11 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     @Transactional
     public SesionIniciada verificarSegundoFactor(ComandoDeSegundoFactor comando) {
         Instant momento = reloj.instant();
+
+        Optional<SesionIniciada> sesionOtp = verificarDesafioOtp(comando, momento);
+        if (sesionOtp.isPresent()) {
+            return sesionOtp.get();
+        }
 
         DesafioDeSegundoFactor desafio = sesiones.buscarDesafio(comando.desafioId())
                 .filter(d -> !d.haCaducado(momento))
@@ -294,6 +354,53 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     }
 
     // ─── Auxiliares ────────────────────────────────────────────────────────
+
+    private Optional<SesionIniciada> verificarDesafioOtp(ComandoDeSegundoFactor comando, Instant momento) {
+        if (repositorioDesafioPorCodigo == null) {
+            return Optional.empty();
+        }
+        Optional<DesafioPorCodigo> desafioCodigo = repositorioDesafioPorCodigo.buscarPorId(comando.desafioId());
+        if (desafioCodigo.isEmpty()) {
+            return Optional.empty();
+        }
+        DesafioPorCodigo desafio = desafioCodigo.get();
+        Usuario usuario = usuarios.buscarPorId(desafio.usuarioId())
+                .orElseThrow(SegundoFactorInvalidoException::new);
+        ControlDeAcceso control = controles.cargar(usuario.id());
+
+        if (control.estaBloqueado(momento)) {
+            auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_BLOQUEADO,
+                    usuario.id(), comando.cliente());
+            throw new CuentaBloqueadaException(control.esperaRestante(momento));
+        }
+
+        if (desafio.estaVerificado() || desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
+            anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                    TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+            throw new SegundoFactorInvalidoException();
+        }
+
+        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(desafio.usuarioId(), comando.codigo().valor());
+        boolean coincide = MessageDigest.isEqual(
+                hashIngresado.getBytes(StandardCharsets.UTF_8),
+                desafio.hashCodigo().getBytes(StandardCharsets.UTF_8));
+
+        if (!coincide) {
+            repositorioDesafioPorCodigo.guardar(desafio.registrarIntentoFallido());
+            anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                    TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+            throw new SegundoFactorInvalidoException();
+        }
+
+        repositorioDesafioPorCodigo.guardar(desafio.marcarVerificado(momento));
+        controles.guardar(control.registrarAcierto());
+
+        SesionIniciada sesion = abrirSesion(usuario, momento);
+        auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(), comando.cliente());
+        log.info("Ingreso completado via OTP por correo/SMS. usuarioId={} ip={}",
+                usuario.id(), comando.cliente().ip());
+        return Optional.of(sesion);
+    }
 
     private SesionIniciada abrirSesion(Usuario usuario, Instant momento) {
         var nuevo = emisor.generarTokenDeRenovacion();

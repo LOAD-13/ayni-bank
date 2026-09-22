@@ -150,6 +150,15 @@
             <artifactId>resilience4j-spring-boot3</artifactId>
             <version>2.4.0</version>
         </dependency>
+        <!-- Solo para el perfil `e2e` (ver NotificadorDeSegundoFactorPorCorreoDePrueba):
+             envio real de OTP a una bandeja de prueba (Ethereal) para verificar el
+             flujo de punta a punta. Fuera de ese perfil, JavaMailSender queda sin
+             usar: el notificador provisional por defecto solo deja rastro en el log
+             (pendiente de HU-13, outbox transaccional real). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

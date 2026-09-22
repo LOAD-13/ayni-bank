@@ -32,8 +32,10 @@ import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioAbierto;
 import pe.ayni.bank.identity.domain.model.DesafioDeSegundoFactor;
+import pe.ayni.bank.identity.domain.model.DesafioPorCodigo;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.RefreshToken;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
@@ -42,6 +44,7 @@ import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
 import pe.ayni.bank.identity.domain.model.SesionIniciada;
 import pe.ayni.bank.identity.domain.model.TipoDeEventoDeAcceso;
+import pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.TokenDeRenovacion;
 import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeContrasenasPort;
@@ -50,6 +53,8 @@ import pe.ayni.bank.identity.domain.port.out.GeneradorDeTotpPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
 import pe.ayni.bank.identity.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeControlDeAccesoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSesionesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -82,6 +87,8 @@ class IniciarSesionServiceTest {
     private EmisorFalso emisor;
     private AuditoriaFalsa auditoria;
     private NotificadorFalso notificador;
+    private DesafiosPorCodigoFalsos desafiosPorCodigo;
+    private MetodosSegundoFactorFalsos metodosSegundoFactor;
     private IniciarSesionService servicio;
     private Usuario ana;
 
@@ -96,10 +103,16 @@ class IniciarSesionServiceTest {
         emisor = new EmisorFalso();
         auditoria = new AuditoriaFalsa();
         notificador = new NotificadorFalso();
+        desafiosPorCodigo = new DesafiosPorCodigoFalsos();
+        metodosSegundoFactor = new MetodosSegundoFactorFalsos();
+
+        GenerarDesafioCodigoService generarDesafioCodigo = new GenerarDesafioCodigoService(
+                desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso());
 
         servicio = new IniciarSesionService(usuarios, segundosFactores, controles, sesiones,
                 cifrador, totp, emisor, auditoria, notificador,
-                Clock.fixed(AHORA, ZoneOffset.UTC));
+                Clock.fixed(AHORA, ZoneOffset.UTC), desafiosPorCodigo,
+                metodosSegundoFactor, generarDesafioCodigo);
 
         ana = Usuario.registrar(UUID.randomUUID(), new CorreoElectronico(CORREO),
                 new Celular("987654321"), new ContrasenaCifrada("$argon2id$" + CONTRASENA),
@@ -671,6 +684,170 @@ class IniciarSesionServiceTest {
         @Override
         public void avisarSesionCerradaPorSeguridad(CorreoElectronico correo) {
             sesionesCerradas.add(correo.valor());
+        }
+    }
+
+    @Nested
+    @DisplayName("Verificación de 2FA por código OTP (Correo/SMS)")
+    class VerificacionSegundoFactorOtp {
+
+        @Test
+        @DisplayName("verificarSegundoFactor con OTP válido inicia sesión exitosamente")
+        void verificarOtpExitoso() {
+            String codigo = "654321";
+            String hash = GenerarDesafioCodigoService.calcularHashSha256(ana.id(), codigo);
+            UUID desafioId = UUID.randomUUID();
+            DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, hash, AHORA);
+            desafiosPorCodigo.guardar(desafio);
+
+            SesionIniciada sesion = servicio.verificarSegundoFactor(new ComandoDeSegundoFactor(desafioId, new CodigoTotp(codigo), CLIENTE));
+
+            assertThat(sesion).isNotNull();
+            assertThat(auditoria.eventos).contains(TipoDeEventoDeAcceso.INGRESO_EXITOSO);
+            assertThat(desafiosPorCodigo.buscarPorId(desafioId).orElseThrow().estaVerificado()).isTrue();
+        }
+
+        @Test
+        @DisplayName("verificarSegundoFactor con OTP erróneo incrementa intentos y lanza excepción")
+        void verificarOtpErroneo() {
+            String codigoBueno = "654321";
+            String hash = GenerarDesafioCodigoService.calcularHashSha256(ana.id(), codigoBueno);
+            UUID desafioId = UUID.randomUUID();
+            DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, hash, AHORA);
+            desafiosPorCodigo.guardar(desafio);
+
+            ComandoDeSegundoFactor comandoErroneo = new ComandoDeSegundoFactor(desafioId, new CodigoTotp("000000"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoErroneo))
+                    .isInstanceOf(SegundoFactorInvalidoException.class);
+
+            assertThat(desafiosPorCodigo.buscarPorId(desafioId).orElseThrow().intentosRealizados()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("verificarSegundoFactor con OTP expirado o máximo intentos lanza excepción")
+        void verificarOtpExpiradoOMaximosIntentos() {
+            UUID idExpirado = UUID.randomUUID();
+            DesafioPorCodigo expirado = DesafioPorCodigo.reconstituir(idExpirado, ana.id(), TipoDeSegundoFactor.SMS, "hash", 0, AHORA.minusSeconds(700), AHORA.minusSeconds(100), null);
+            desafiosPorCodigo.guardar(expirado);
+
+            ComandoDeSegundoFactor comandoExpirado = new ComandoDeSegundoFactor(idExpirado, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoExpirado))
+                    .isInstanceOf(SegundoFactorInvalidoException.class);
+
+            UUID idMaxIntentos = UUID.randomUUID();
+            DesafioPorCodigo maxIntentos = DesafioPorCodigo.reconstituir(idMaxIntentos, ana.id(), TipoDeSegundoFactor.SMS, "hash", 3, AHORA, AHORA.plusSeconds(600), null);
+            desafiosPorCodigo.guardar(maxIntentos);
+
+            ComandoDeSegundoFactor comandoMaxIntentos = new ComandoDeSegundoFactor(idMaxIntentos, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoMaxIntentos))
+                    .isInstanceOf(SegundoFactorInvalidoException.class);
+        }
+
+        @Test
+        @DisplayName("verificarSegundoFactor con cuenta bloqueada lanza CuentaBloqueadaException")
+        void verificarOtpCuentaBloqueada() {
+            UUID desafioId = UUID.randomUUID();
+            DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, "hash", AHORA);
+            desafiosPorCodigo.guardar(desafio);
+
+            ControlDeAcceso bloqueado = controles.cargar(ana.id());
+            for (int i = 0; i < 6; i++) {
+                bloqueado = bloqueado.registrarFallo(AHORA);
+            }
+            controles.guardar(bloqueado);
+
+            ComandoDeSegundoFactor comandoBloqueado = new ComandoDeSegundoFactor(desafioId, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoBloqueado))
+                    .isInstanceOf(CuentaBloqueadaException.class);
+        }
+    }
+
+    private static final class DesafiosPorCodigoFalsos implements RepositorioDeDesafioPorCodigoPort {
+        private final Map<UUID, DesafioPorCodigo> desafios = new HashMap<>();
+
+        @Override
+        public Optional<DesafioPorCodigo> buscarPorId(UUID id) {
+            return Optional.ofNullable(desafios.get(id));
+        }
+
+        @Override
+        public DesafioPorCodigo guardar(DesafioPorCodigo desafio) {
+            desafios.put(desafio.id(), desafio);
+            return desafio;
+        }
+
+        @Override
+        public Optional<DesafioPorCodigo> buscarUltimoPendiente(UUID usuarioId, TipoDeSegundoFactor tipo) {
+            return desafios.values().stream()
+                    .filter(d -> d.usuarioId().equals(usuarioId) && d.tipoFactor() == tipo && !d.estaVerificado())
+                    .findFirst();
+        }
+    }
+
+    private static final class MetodosSegundoFactorFalsos implements RepositorioDeMetodoSegundoFactorPort {
+        private final List<MetodoDeSegundoFactor> guardados = new ArrayList<>();
+
+        @Override
+        public Optional<MetodoDeSegundoFactor> buscarPorUsuarioYTipo(UUID usuarioId, TipoDeSegundoFactor tipo) {
+            return guardados.stream()
+                    .filter(m -> m.usuarioId().equals(usuarioId) && m.tipo() == tipo)
+                    .findFirst();
+        }
+
+        @Override
+        public List<MetodoDeSegundoFactor> listarPorUsuario(UUID usuarioId) {
+            return guardados.stream().filter(m -> m.usuarioId().equals(usuarioId)).toList();
+        }
+
+        @Override
+        public MetodoDeSegundoFactor guardar(MetodoDeSegundoFactor metodo) {
+            guardados.removeIf(m -> m.id().equals(metodo.id()));
+            guardados.add(metodo);
+            return metodo;
+        }
+    }
+
+    private static final class NotificadorDeSegundoFactorFalso
+            implements pe.ayni.bank.identity.domain.port.out.NotificadorDeSegundoFactorPort {
+        private final List<String> correosNotificados = new ArrayList<>();
+
+        @Override
+        public void enviarCodigoPorCorreo(CorreoElectronico correo, String codigo) {
+            correosNotificados.add(correo.valor());
+        }
+
+        @Override
+        public void enviarCodigoPorSms(Celular celular, String codigo) {
+            // Sin bandeja de prueba para SMS en esta suite; no hace falta registrar nada.
+        }
+    }
+
+    @Nested
+    @DisplayName("HU-22 · Segundo factor a elección en el login")
+    class SegundoFactorAEleccionEnElLogin {
+
+        @Test
+        @DisplayName("con Correo Electrónico elegido, el primer paso abre un desafío OTP y lo despacha")
+        void loginConCorreoElegidoAbreDesafioOtp() {
+            metodosSegundoFactor.guardar(MetodoDeSegundoFactor.inscribir(
+                    UUID.randomUUID(), ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA));
+
+            DesafioAbierto desafio = ingresar();
+
+            assertThat(desafio.requiereInscripcion()).isFalse();
+            assertThat(desafio.uriDeAprovisionamiento()).isNull();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isPresent();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId()).orElseThrow().tipoFactor())
+                    .isEqualTo(TipoDeSegundoFactor.CORREO_ELECTRONICO);
+        }
+
+        @Test
+        @DisplayName("sin ningún método OTP elegido, el login sigue el camino de App Autenticadora de siempre")
+        void loginSinMetodoOtpUsaAppAutenticadora() {
+            DesafioAbierto desafio = ingresar();
+
+            assertThat(desafio.requiereInscripcion()).isTrue();
+            assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isEmpty();
         }
     }
 }

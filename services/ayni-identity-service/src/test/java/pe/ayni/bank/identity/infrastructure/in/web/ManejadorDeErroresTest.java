@@ -173,6 +173,33 @@ class ManejadorDeErroresTest {
     }
 
     @Test
+    void excepcionDeCodigoDesafioInvalidoDevuelve400() {
+        ProblemDetail problema = manejador.alIngresarCodigoDesafioInvalido(
+                new pe.ayni.bank.identity.domain.model.CodigoDesafioInvalidoException(), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(String.valueOf(problema.getType())).contains("codigo-desafio-invalido");
+    }
+
+    @Test
+    void excepcionDeDesafioExpiradoDevuelve400() {
+        ProblemDetail problema = manejador.alExpirarDesafio(
+                new pe.ayni.bank.identity.domain.model.DesafioExpiradoException(), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(String.valueOf(problema.getType())).contains("desafio-expirado");
+    }
+
+    @Test
+    void excepcionDeMaximoIntentosExcedidoDevuelve400() {
+        ProblemDetail problema = manejador.alExcederMaximoIntentosDesafio(
+                new pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException(), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(String.valueOf(problema.getType())).contains("maximo-intentos-excedido");
+    }
+
+    @Test
     @DisplayName("un fallo no previsto no filtra el mensaje de la excepcion")
     void elErrorInternoEsDeliberadamenteVago() {
         // Un mensaje real filtra nombres de tablas, versiones de bibliotecas y rutas del

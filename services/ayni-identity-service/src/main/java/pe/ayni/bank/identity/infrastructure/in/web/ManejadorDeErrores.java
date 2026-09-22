@@ -14,11 +14,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import pe.ayni.bank.identity.domain.model.CodigoDesafioInvalidoException;
 import pe.ayni.bank.identity.domain.model.ConsentimientoNoOtorgadoException;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
 import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
 import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
+import pe.ayni.bank.identity.domain.model.DesafioExpiradoException;
+import pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
@@ -101,6 +104,30 @@ public class ManejadorDeErrores {
         return problema(HttpStatus.UNAUTHORIZED, "segundo-factor-invalido",
                 "El codigo no es valido", excepcion.getMessage(),
                 List.of(new ErrorDeCampo("codigo", excepcion.getMessage())), peticion);
+    }
+
+    @ExceptionHandler(CodigoDesafioInvalidoException.class)
+    public ProblemDetail alIngresarCodigoDesafioInvalido(CodigoDesafioInvalidoException excepcion,
+                                                        WebRequest peticion) {
+        return problema(HttpStatus.BAD_REQUEST, "codigo-desafio-invalido",
+                "El codigo ingresado es incorrecto", excepcion.getMessage(),
+                List.of(new ErrorDeCampo("codigo", excepcion.getMessage())), peticion);
+    }
+
+    @ExceptionHandler(DesafioExpiradoException.class)
+    public ProblemDetail alExpirarDesafio(DesafioExpiradoException excepcion,
+                                          WebRequest peticion) {
+        return problema(HttpStatus.BAD_REQUEST, "desafio-expirado",
+                "El codigo ha expirado", excepcion.getMessage(),
+                List.of(), peticion);
+    }
+
+    @ExceptionHandler(MaximoIntentosDesafioExcedidoException.class)
+    public ProblemDetail alExcederMaximoIntentosDesafio(MaximoIntentosDesafioExcedidoException excepcion,
+                                                        WebRequest peticion) {
+        return problema(HttpStatus.BAD_REQUEST, "maximo-intentos-excedido",
+                "Se ha superado el maximo de intentos", excepcion.getMessage(),
+                List.of(), peticion);
     }
 
     /**
