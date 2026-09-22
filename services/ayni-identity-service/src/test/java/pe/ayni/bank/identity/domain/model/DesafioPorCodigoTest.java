@@ -118,13 +118,15 @@ class DesafioPorCodigoTest {
 
         DesafioPorCodigo d1 = DesafioPorCodigo.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "hash", 0, ahora, ahora.plusSeconds(600), null);
         DesafioPorCodigo d2 = DesafioPorCodigo.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "hash", 0, ahora, ahora.plusSeconds(600), null);
+        DesafioPorCodigo d3 = DesafioPorCodigo.reconstituir(UUID.randomUUID(), uId, TipoDeSegundoFactor.SMS, "hash", 0, ahora, ahora.plusSeconds(600), null);
 
-        assertThat(d1).isEqualTo(d2);
-        assertThat(d1).isEqualTo(d1);
-        assertThat(d1).isNotEqualTo(null);
-        assertThat(d1).isNotEqualTo("otro");
-        assertThat(d1.hashCode()).isEqualTo(d2.hashCode());
-        assertThat(d1.toString()).contains("DesafioPorCodigo");
+        assertThat(d1)
+                .isEqualTo(d2)
+                .isNotEqualTo(d3)
+                .isNotNull()
+                .hasSameHashCodeAs(d2)
+                .hasToString("DesafioPorCodigo[id=" + id + ", usuarioId=" + uId + ", tipo=SMS, intentos=0, verificado=false]");
+
         assertThat(d1.creadoEn()).isEqualTo(ahora);
     }
 }

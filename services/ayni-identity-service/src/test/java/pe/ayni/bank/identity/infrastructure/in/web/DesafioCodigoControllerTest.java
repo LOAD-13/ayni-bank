@@ -52,7 +52,7 @@ class DesafioCodigoControllerTest {
         DesafioPorCodigo desafio = DesafioPorCodigo.generar(
                 UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, "hash123", Instant.now());
 
-        when(generarDesafioUseCase.generar(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        when(generarDesafioUseCase.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .thenReturn(new ResultadoGeneracionDesafio(desafio, "123456"));
 
         SolicitudGenerarDesafioDto dto = new SolicitudGenerarDesafioDto(TipoDeSegundoFactor.CORREO_ELECTRONICO);
@@ -69,7 +69,7 @@ class DesafioCodigoControllerTest {
     @DisplayName("POST /api/v1/segundo-factor/desafio/{desafioId}/verificar verifica código exitosamente")
     void verificarDesafio_Exito() throws Exception {
         UUID desafioId = UUID.randomUUID();
-        when(verificarDesafioUseCase.verificar(eq(desafioId), eq("123456"))).thenReturn(true);
+        when(verificarDesafioUseCase.verificar(desafioId, "123456")).thenReturn(true);
 
         SolicitudVerificarDesafioDto dto = new SolicitudVerificarDesafioDto("123456");
 
@@ -83,7 +83,7 @@ class DesafioCodigoControllerTest {
     @DisplayName("POST /api/v1/segundo-factor/desafio/{desafioId}/verificar retorna 400 cuando código es inválido")
     void verificarDesafio_CodigoInvalido() throws Exception {
         UUID desafioId = UUID.randomUUID();
-        when(verificarDesafioUseCase.verificar(eq(desafioId), eq("000000")))
+        when(verificarDesafioUseCase.verificar(desafioId, "000000"))
                 .thenThrow(new CodigoDesafioInvalidoException());
 
         SolicitudVerificarDesafioDto dto = new SolicitudVerificarDesafioDto("000000");

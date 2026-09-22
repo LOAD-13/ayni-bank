@@ -87,12 +87,13 @@ class MetodoDeSegundoFactorTest {
 
         MetodoDeSegundoFactor m1 = MetodoDeSegundoFactor.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "sec", ahora, ahora);
         MetodoDeSegundoFactor m2 = MetodoDeSegundoFactor.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "sec", ahora, ahora);
+        MetodoDeSegundoFactor m3 = MetodoDeSegundoFactor.reconstituir(UUID.randomUUID(), uId, TipoDeSegundoFactor.SMS, "sec", ahora, ahora);
 
-        assertThat(m1).isEqualTo(m2);
-        assertThat(m1).isEqualTo(m1);
-        assertThat(m1).isNotEqualTo(null);
-        assertThat(m1).isNotEqualTo("otro");
-        assertThat(m1.hashCode()).isEqualTo(m2.hashCode());
-        assertThat(m1.toString()).contains("MetodoDeSegundoFactor");
+        assertThat(m1)
+                .isEqualTo(m2)
+                .isNotEqualTo(m3)
+                .isNotNull()
+                .hasSameHashCodeAs(m2)
+                .hasToString("MetodoDeSegundoFactor[id=" + id + ", usuarioId=" + uId + ", tipo=SMS, confirmado=true]");
     }
 }

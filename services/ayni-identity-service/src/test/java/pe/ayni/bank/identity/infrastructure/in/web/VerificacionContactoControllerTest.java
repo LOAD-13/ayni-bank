@@ -1,7 +1,6 @@
 package pe.ayni.bank.identity.infrastructure.in.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,7 +51,7 @@ class VerificacionContactoControllerTest {
         DesafioPorCodigo desafio = DesafioPorCodigo.generar(
                 UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, "hash456", Instant.now());
 
-        when(generarDesafioUseCase.generar(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        when(generarDesafioUseCase.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .thenReturn(new ResultadoGeneracionDesafio(desafio, "654321"));
 
         SolicitudReenvioCodigoDto dto = new SolicitudReenvioCodigoDto(TipoDeSegundoFactor.CORREO_ELECTRONICO);

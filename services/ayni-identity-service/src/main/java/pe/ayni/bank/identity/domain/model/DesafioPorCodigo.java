@@ -32,6 +32,7 @@ public final class DesafioPorCodigo {
     private final Instant expiraEn;
     private final Instant verificadoEn;
 
+    @SuppressWarnings("java:S107")
     private DesafioPorCodigo(UUID id, UUID usuarioId, TipoDeSegundoFactor tipoFactor,
                              String hashCodigo, int intentosRealizados,
                              Instant creadoEn, Instant expiraEn, Instant verificadoEn) {
@@ -53,6 +54,7 @@ public final class DesafioPorCodigo {
     }
 
     /** Reconstituye un desafío almacenado previamente. */
+    @SuppressWarnings("java:S107")
     public static DesafioPorCodigo reconstituir(UUID id, UUID usuarioId, TipoDeSegundoFactor tipoFactor,
                                                 String hashCodigo, int intentosRealizados,
                                                 Instant creadoEn, Instant expiraEn, Instant verificadoEn) {

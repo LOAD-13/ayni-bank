@@ -1,7 +1,6 @@
 package pe.ayni.bank.identity.infrastructure.in.web;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -54,7 +53,7 @@ class VerificacionContactoRegistroIntegrationTest {
                 UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, "hash999", Instant.now());
 
         // 1. Reenviar código OTP de contacto
-        when(generarDesafioUseCase.generar(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        when(generarDesafioUseCase.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .thenReturn(new ResultadoGeneracionDesafio(desafio, "987654"));
 
         SolicitudReenvioCodigoDto cuerpoReenvio = new SolicitudReenvioCodigoDto(TipoDeSegundoFactor.CORREO_ELECTRONICO);

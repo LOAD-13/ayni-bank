@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -15,7 +15,6 @@ import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.port.in.SeleccionarSegundoFactorUseCase;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,7 +26,7 @@ class MetodoSegundoFactorControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private SeleccionarSegundoFactorUseCase seleccionarSegundoFactor;
 
     @Test
@@ -40,7 +39,7 @@ class MetodoSegundoFactorControllerTest {
                 metodoId, usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, null, Instant.now()
         );
 
-        given(seleccionarSegundoFactor.seleccionarMetodo(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        given(seleccionarSegundoFactor.seleccionarMetodo(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .willReturn(metodo);
 
         mockMvc.perform(post("/api/v1/usuarios/{usuarioId}/segundo-factor/metodo", usuarioId)

@@ -217,47 +217,9 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     public SesionIniciada verificarSegundoFactor(ComandoDeSegundoFactor comando) {
         Instant momento = reloj.instant();
 
-        if (repositorioDesafioPorCodigo != null) {
-            Optional<DesafioPorCodigo> desafioCodigo = repositorioDesafioPorCodigo.buscarPorId(comando.desafioId());
-            if (desafioCodigo.isPresent()) {
-                DesafioPorCodigo desafio = desafioCodigo.get();
-                Usuario usuario = usuarios.buscarPorId(desafio.usuarioId())
-                        .orElseThrow(SegundoFactorInvalidoException::new);
-                ControlDeAcceso control = controles.cargar(usuario.id());
-
-                if (control.estaBloqueado(momento)) {
-                    auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_BLOQUEADO,
-                            usuario.id(), comando.cliente());
-                    throw new CuentaBloqueadaException(control.esperaRestante(momento));
-                }
-
-                if (desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
-                    anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
-                            TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
-                    throw new SegundoFactorInvalidoException();
-                }
-
-                String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(comando.codigo().valor());
-                boolean coincide = MessageDigest.isEqual(
-                        hashIngresado.getBytes(StandardCharsets.UTF_8),
-                        desafio.hashCodigo().getBytes(StandardCharsets.UTF_8));
-
-                if (!coincide) {
-                    repositorioDesafioPorCodigo.guardar(desafio.registrarIntentoFallido());
-                    anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
-                            TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
-                    throw new SegundoFactorInvalidoException();
-                }
-
-                repositorioDesafioPorCodigo.guardar(desafio.marcarVerificado(momento));
-                controles.guardar(control.registrarAcierto());
-
-                SesionIniciada sesion = abrirSesion(usuario, momento);
-                auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(), comando.cliente());
-                log.info("Ingreso completado via OTP por correo/SMS. usuarioId={} ip={}",
-                        usuario.id(), comando.cliente().ip());
-                return sesion;
-            }
+        Optional<SesionIniciada> sesionOtp = verificarDesafioOtp(comando, momento);
+        if (sesionOtp.isPresent()) {
+            return sesionOtp.get();
         }
 
         DesafioDeSegundoFactor desafio = sesiones.buscarDesafio(comando.desafioId())
@@ -359,6 +321,53 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     }
 
     // ─── Auxiliares ────────────────────────────────────────────────────────
+
+    private Optional<SesionIniciada> verificarDesafioOtp(ComandoDeSegundoFactor comando, Instant momento) {
+        if (repositorioDesafioPorCodigo == null) {
+            return Optional.empty();
+        }
+        Optional<DesafioPorCodigo> desafioCodigo = repositorioDesafioPorCodigo.buscarPorId(comando.desafioId());
+        if (desafioCodigo.isEmpty()) {
+            return Optional.empty();
+        }
+        DesafioPorCodigo desafio = desafioCodigo.get();
+        Usuario usuario = usuarios.buscarPorId(desafio.usuarioId())
+                .orElseThrow(SegundoFactorInvalidoException::new);
+        ControlDeAcceso control = controles.cargar(usuario.id());
+
+        if (control.estaBloqueado(momento)) {
+            auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_BLOQUEADO,
+                    usuario.id(), comando.cliente());
+            throw new CuentaBloqueadaException(control.esperaRestante(momento));
+        }
+
+        if (desafio.estaExpirado(momento) || desafio.alcanzoMaximoIntentos()) {
+            anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                    TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+            throw new SegundoFactorInvalidoException();
+        }
+
+        String hashIngresado = GenerarDesafioCodigoService.calcularHashSha256(comando.codigo().valor());
+        boolean coincide = MessageDigest.isEqual(
+                hashIngresado.getBytes(StandardCharsets.UTF_8),
+                desafio.hashCodigo().getBytes(StandardCharsets.UTF_8));
+
+        if (!coincide) {
+            repositorioDesafioPorCodigo.guardar(desafio.registrarIntentoFallido());
+            anotarFallo(usuario, control, usuario.correo(), comando.cliente(), momento,
+                    TipoDeEventoDeAcceso.SEGUNDO_FACTOR_INVALIDO);
+            throw new SegundoFactorInvalidoException();
+        }
+
+        repositorioDesafioPorCodigo.guardar(desafio.marcarVerificado(momento));
+        controles.guardar(control.registrarAcierto());
+
+        SesionIniciada sesion = abrirSesion(usuario, momento);
+        auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(), comando.cliente());
+        log.info("Ingreso completado via OTP por correo/SMS. usuarioId={} ip={}",
+                usuario.id(), comando.cliente().ip());
+        return Optional.of(sesion);
+    }
 
     private SesionIniciada abrirSesion(Usuario usuario, Instant momento) {
         var nuevo = emisor.generarTokenDeRenovacion();

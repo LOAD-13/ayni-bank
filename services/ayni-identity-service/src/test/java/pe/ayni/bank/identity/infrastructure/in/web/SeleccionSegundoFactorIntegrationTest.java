@@ -1,6 +1,5 @@
 package pe.ayni.bank.identity.infrastructure.in.web;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -57,7 +56,7 @@ class SeleccionSegundoFactorIntegrationTest {
         // 1. Seleccionar método de segundo factor (CORREO_ELECTRONICO)
         MetodoDeSegundoFactor metodo = MetodoDeSegundoFactor.inscribir(
                 UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, null, Instant.now());
-        when(seleccionarSegundoFactorUseCase.seleccionarMetodo(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        when(seleccionarSegundoFactorUseCase.seleccionarMetodo(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .thenReturn(metodo);
 
         SolicitudSeleccionMetodoDto cuerpoMetodo = new SolicitudSeleccionMetodoDto(TipoDeSegundoFactor.CORREO_ELECTRONICO);
@@ -73,7 +72,7 @@ class SeleccionSegundoFactorIntegrationTest {
         DesafioPorCodigo desafio = DesafioPorCodigo.generar(
                 UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, "hash123", Instant.now());
 
-        when(generarDesafioUseCase.generar(eq(usuarioId), eq(TipoDeSegundoFactor.CORREO_ELECTRONICO)))
+        when(generarDesafioUseCase.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
                 .thenReturn(new ResultadoGeneracionDesafio(desafio, "123456"));
 
         SolicitudGenerarDesafioDto cuerpoDesafio = new SolicitudGenerarDesafioDto(TipoDeSegundoFactor.CORREO_ELECTRONICO);

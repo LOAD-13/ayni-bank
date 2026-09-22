@@ -708,7 +708,8 @@ class IniciarSesionServiceTest {
             DesafioPorCodigo desafio = DesafioPorCodigo.generar(desafioId, ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, hash, AHORA);
             desafiosPorCodigo.guardar(desafio);
 
-            assertThatThrownBy(() -> servicio.verificarSegundoFactor(new ComandoDeSegundoFactor(desafioId, new CodigoTotp("000000"), CLIENTE)))
+            ComandoDeSegundoFactor comandoErroneo = new ComandoDeSegundoFactor(desafioId, new CodigoTotp("000000"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoErroneo))
                     .isInstanceOf(SegundoFactorInvalidoException.class);
 
             assertThat(desafiosPorCodigo.buscarPorId(desafioId).orElseThrow().intentosRealizados()).isEqualTo(1);
@@ -721,14 +722,16 @@ class IniciarSesionServiceTest {
             DesafioPorCodigo expirado = DesafioPorCodigo.reconstituir(idExpirado, ana.id(), TipoDeSegundoFactor.SMS, "hash", 0, AHORA.minusSeconds(700), AHORA.minusSeconds(100), null);
             desafiosPorCodigo.guardar(expirado);
 
-            assertThatThrownBy(() -> servicio.verificarSegundoFactor(new ComandoDeSegundoFactor(idExpirado, new CodigoTotp("123456"), CLIENTE)))
+            ComandoDeSegundoFactor comandoExpirado = new ComandoDeSegundoFactor(idExpirado, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoExpirado))
                     .isInstanceOf(SegundoFactorInvalidoException.class);
 
             UUID idMaxIntentos = UUID.randomUUID();
             DesafioPorCodigo maxIntentos = DesafioPorCodigo.reconstituir(idMaxIntentos, ana.id(), TipoDeSegundoFactor.SMS, "hash", 3, AHORA, AHORA.plusSeconds(600), null);
             desafiosPorCodigo.guardar(maxIntentos);
 
-            assertThatThrownBy(() -> servicio.verificarSegundoFactor(new ComandoDeSegundoFactor(idMaxIntentos, new CodigoTotp("123456"), CLIENTE)))
+            ComandoDeSegundoFactor comandoMaxIntentos = new ComandoDeSegundoFactor(idMaxIntentos, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoMaxIntentos))
                     .isInstanceOf(SegundoFactorInvalidoException.class);
         }
 
@@ -745,7 +748,8 @@ class IniciarSesionServiceTest {
             }
             controles.guardar(bloqueado);
 
-            assertThatThrownBy(() -> servicio.verificarSegundoFactor(new ComandoDeSegundoFactor(desafioId, new CodigoTotp("123456"), CLIENTE)))
+            ComandoDeSegundoFactor comandoBloqueado = new ComandoDeSegundoFactor(desafioId, new CodigoTotp("123456"), CLIENTE);
+            assertThatThrownBy(() -> servicio.verificarSegundoFactor(comandoBloqueado))
                     .isInstanceOf(CuentaBloqueadaException.class);
         }
     }

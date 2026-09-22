@@ -44,6 +44,7 @@ public class DesafioPorCodigoEntity {
     private Instant verificadoEn;
 
     public DesafioPorCodigoEntity() {
+        // Constructor sin argumentos exigido por la especificación JPA
     }
 
     public static DesafioPorCodigoEntity desdeDominio(DesafioPorCodigo d) {
