@@ -159,9 +159,7 @@ export function PasoDeSegundoFactor({
           )}
 
           {mensajeReenvio && (
-            <p className="mt-3 text-[13.5px] font-semibold text-verde-700">
-              {mensajeReenvio}
-            </p>
+            <p className="mt-3 text-[13.5px] font-semibold text-verde-700">{mensajeReenvio}</p>
           )}
 
           <form onSubmit={alEnviar} noValidate className="mt-6">
@@ -210,19 +208,20 @@ export function PasoDeSegundoFactor({
               </span>
             </div>
 
-            {(metodoActual === "CORREO_ELECTRONICO" || metodoActual === "SMS") && onReenviarCodigo && (
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  disabled={reenviando}
-                  onClick={manejarReenvio}
-                  className="flex items-center gap-1.5 text-[13.5px] font-semibold text-azul-600 hover:underline disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${reenviando ? "animate-spin" : ""}`} />
-                  {reenviando ? "Reenviando..." : "Reenviar código"}
-                </button>
-              </div>
-            )}
+            {(metodoActual === "CORREO_ELECTRONICO" || metodoActual === "SMS") &&
+              onReenviarCodigo && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={reenviando}
+                    onClick={manejarReenvio}
+                    className="flex items-center gap-1.5 text-[13.5px] font-semibold text-azul-600 hover:underline disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${reenviando ? "animate-spin" : ""}`} />
+                    {reenviando ? "Reenviando..." : "Reenviar código"}
+                  </button>
+                </div>
+              )}
 
             <button
               type="submit"

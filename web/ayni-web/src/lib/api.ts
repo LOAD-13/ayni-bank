@@ -102,20 +102,21 @@ export async function seleccionarMetodoSegundoFactor(
   usuarioId: string,
   tipo: TipoDeSegundoFactor,
 ): Promise<MetodoSegundoFactor> {
-  return pedir<MetodoSegundoFactor>(`/api/v1/usuarios/${usuarioId}/segundo-factor/metodo`, { tipo });
+  return pedir<MetodoSegundoFactor>(`/api/v1/usuarios/${usuarioId}/segundo-factor/metodo`, {
+    tipo,
+  });
 }
 
 export async function generarDesafioCodigo(
   usuarioId: string,
   tipoFactor: TipoDeSegundoFactor,
 ): Promise<DesafioCodigo> {
-  return pedir<DesafioCodigo>(`/api/v1/segundo-factor/desafio/usuario/${usuarioId}/generar`, { tipoFactor });
+  return pedir<DesafioCodigo>(`/api/v1/segundo-factor/desafio/usuario/${usuarioId}/generar`, {
+    tipoFactor,
+  });
 }
 
-export async function verificarDesafioCodigo(
-  desafioId: string,
-  codigo: string,
-): Promise<void> {
+export async function verificarDesafioCodigo(desafioId: string, codigo: string): Promise<void> {
   return pedir<void>(`/api/v1/segundo-factor/desafio/${desafioId}/verificar`, { codigo });
 }
 
