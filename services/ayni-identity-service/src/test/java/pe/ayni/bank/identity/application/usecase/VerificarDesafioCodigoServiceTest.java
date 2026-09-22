@@ -93,4 +93,27 @@ class VerificarDesafioCodigoServiceTest {
         assertThatThrownBy(() -> service.verificar(desafioId, codigoCorrecto))
                 .isInstanceOf(DesafioExpiradoException.class);
     }
+
+    @Test
+    @DisplayName("Lanza CodigoDesafioInvalidoException si no existe el desafioId")
+    void verificar_DesafioNoExistente() {
+        when(repositorioDesafio.buscarPorId(desafioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.verificar(desafioId, codigoCorrecto))
+                .isInstanceOf(CodigoDesafioInvalidoException.class);
+    }
+
+    @Test
+    @DisplayName("Lanza MaximoIntentosDesafioExcedidoException si este fallo es el 3er intento")
+    void verificar_AlcanzaMaximoIntentosEnEsteFallo() {
+        DesafioPorCodigo desafio2Intentos = DesafioPorCodigo.reconstituir(
+                desafioId, usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, hashCorrecto, 2,
+                Instant.now().minusSeconds(60), Instant.now().plusSeconds(500), null);
+
+        when(repositorioDesafio.buscarPorId(desafioId)).thenReturn(Optional.of(desafio2Intentos));
+        when(repositorioDesafio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> service.verificar(desafioId, "000000"))
+                .isInstanceOf(MaximoIntentosDesafioExcedidoException.class);
+    }
 }

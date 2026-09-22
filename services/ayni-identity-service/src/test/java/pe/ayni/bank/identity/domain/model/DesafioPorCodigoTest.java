@@ -1,12 +1,16 @@
 package pe.ayni.bank.identity.domain.model;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class DesafioPorCodigoTest {
 
@@ -74,7 +78,7 @@ class DesafioPorCodigoTest {
     }
 
     @Test
-    @DisplayName("DesafioPorCodigo se marca como verificado")
+    @DisplayName("DesafioPorCodigo se marca como verificado y previene modificaciones posteriores")
     void testMarcarVerificado() {
         UUID id = UUID.randomUUID();
         UUID usuarioId = UUID.randomUUID();
@@ -88,5 +92,39 @@ class DesafioPorCodigoTest {
 
         assertTrue(verificado.estaVerificado());
         assertEquals(verificacion, verificado.verificadoEn());
+
+        // Intentar volver a marcar verificado o registrar intento no cambia la instancia
+        assertThat(verificado.marcarVerificado(Instant.now())).isEqualTo(verificado);
+        assertThat(verificado.registrarIntentoFallido()).isEqualTo(verificado);
+    }
+
+    @Test
+    @DisplayName("Validaciones de nulos, equals, hashCode y toString")
+    void testMetodosGenerales() {
+        UUID id = UUID.randomUUID();
+        UUID uId = UUID.randomUUID();
+        Instant ahora = Instant.now();
+
+        assertThatThrownBy(() -> DesafioPorCodigo.generar(null, uId, TipoDeSegundoFactor.SMS, "hash", ahora))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> DesafioPorCodigo.generar(id, null, TipoDeSegundoFactor.SMS, "hash", ahora))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> DesafioPorCodigo.generar(id, uId, null, "hash", ahora))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> DesafioPorCodigo.generar(id, uId, TipoDeSegundoFactor.SMS, null, ahora))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> DesafioPorCodigo.generar(id, uId, TipoDeSegundoFactor.SMS, "hash", null))
+                .isInstanceOf(NullPointerException.class);
+
+        DesafioPorCodigo d1 = DesafioPorCodigo.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "hash", 0, ahora, ahora.plusSeconds(600), null);
+        DesafioPorCodigo d2 = DesafioPorCodigo.reconstituir(id, uId, TipoDeSegundoFactor.SMS, "hash", 0, ahora, ahora.plusSeconds(600), null);
+
+        assertThat(d1).isEqualTo(d2);
+        assertThat(d1).isEqualTo(d1);
+        assertThat(d1).isNotEqualTo(null);
+        assertThat(d1).isNotEqualTo("otro");
+        assertThat(d1.hashCode()).isEqualTo(d2.hashCode());
+        assertThat(d1.toString()).contains("DesafioPorCodigo");
+        assertThat(d1.creadoEn()).isEqualTo(ahora);
     }
 }
