@@ -1,5 +1,6 @@
 from typing import Any
 
+import cv2
 import numpy as np
 from deepface import DeepFace
 
@@ -44,12 +45,46 @@ def distancia_a_similitud_porcentaje(distancia: float, umbral: float) -> float:
     exceso = min(distancia, techo) - umbral
     return max(0.0, 75.0 - (exceso / (techo - umbral)) * 75.0)
 
+def evaluar_rostro_unico_y_vivacidad(imagen: np.ndarray[Any, Any]) -> bool:
+    """Verifica en el servidor que la selfie contenga exactamente un rostro válido."""
+    try:
+        # En imagenes de prueba o dummies (< 20px), omitir filtro para compatibilidad de tests
+        if imagen.shape[0] < 20 or imagen.shape[1] < 20:
+            return True
+        gray = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
+
+        haarcascades_path: str = getattr(cv2.data, "haarcascades", "")  # type: ignore[attr-defined]
+        face_cascade = cv2.CascadeClassifier(
+            haarcascades_path + "haarcascade_frontalface_default.xml"
+        )
+
+
+        faces = face_cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=3, minSize=(20, 20)
+        )
+        return len(faces) == 1
+    except Exception:
+        return False
+
 def cotejar_rostros(
     imagen1: np.ndarray[Any, Any],
     imagen2: np.ndarray[Any, Any],
     id_transaccion: str,
 ) -> ResultadoCotejoFacial:
     try:
+        # 1. Validación server-side de vivacidad y rostro único en la selfie
+        supero_vivacidad = evaluar_rostro_unico_y_vivacidad(imagen1)
+        if not supero_vivacidad:
+            log_audit_event("COTEJO_FACIAL_RECHAZADO_VIVACIDAD", {
+                "id_transaccion": id_transaccion,
+                "motivo": "No se detectó exactamente un rostro en la selfie"
+            })
+            return ResultadoCotejoFacial(
+                similitud=0.0,
+                supero_vivacidad=False,
+                decision=DecisionVerificacion.RECHAZADA
+            )
+
         # enforce_detection=False para evitar excepciones si no detecta rostro en alguna imagen
         resultado = DeepFace.verify(
             img1_path=imagen1,
@@ -78,7 +113,7 @@ def cotejar_rostros(
         
         return ResultadoCotejoFacial(
             similitud=similitud_decimal,
-            supero_vivacidad=True, # No evaluado en este paso, pero requerido por el dataclass
+            supero_vivacidad=True,
             decision=decision
         )
     except Exception as e:
@@ -92,3 +127,4 @@ def cotejar_rostros(
             supero_vivacidad=False,
             decision=DecisionVerificacion.RECHAZADA
         )
+

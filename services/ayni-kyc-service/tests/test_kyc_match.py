@@ -1,4 +1,10 @@
-from unittest.mock import patch
+import sys
+from unittest.mock import MagicMock, patch
+
+# Mockear deepface en sys.modules si no está instalado en el entorno local
+if "deepface" not in sys.modules:
+    mock_df_module = MagicMock()
+    sys.modules["deepface"] = mock_df_module
 
 import cv2
 import numpy as np
@@ -28,17 +34,7 @@ def test_distancia_a_similitud_porcentaje_respeta_el_umbral_del_modelo():
 
 @pytest.fixture
 def dummy_image_bytes() -> bytes:
-    """PNG valido de 8x8 en negro, generado por OpenCV.
-
-    Antes esto era un literal de bytes escrito a mano que decia ser un PNG de 1x1.
-    No lo era: su fragmento IDAT declaraba 13 bytes de datos comprimidos y solo
-    traia 12, asi que libpng abortaba con «Not enough image data» y
-    `cv2.imdecode` devolvia None. El endpoint respondia 400 y los cuatro casos
-    que dependian de este fixture fallaban.
-
-    Generarlo con `cv2.imencode` en lugar de transcribirlo elimina la clase de
-    error entera: lo produce la misma biblioteca que despues lo lee.
-    """
+    """PNG valido de 8x8 en negro, generado por OpenCV."""
     ok, buffer = cv2.imencode(".png", np.zeros((8, 8, 3), dtype=np.uint8))
     assert ok, "OpenCV no pudo codificar la imagen de prueba"
     return bytes(buffer.tobytes())
@@ -65,10 +61,6 @@ def test_verify_match_approved(dummy_image_bytes, mock_deepface):
     assert data["similitud"] == 98.16
 
 def test_verify_match_manual_review(dummy_image_bytes, mock_deepface):
-    # 0.5 es el orden de magnitud que dio una comparacion real de la misma persona
-    # (selfie y DNI autenticos) en pruebas manuales: por debajo del umbral de DeepFace
-    # (0.68, "es la misma persona") pero no tan cerca de 0 como para aprobar sola.
-    # 100 - (0.5/0.68)*25 = 81.62%
     mock_deepface.return_value = {"distance": 0.5}
 
     files = {
@@ -83,7 +75,6 @@ def test_verify_match_manual_review(dummy_image_bytes, mock_deepface):
     assert data["similitud"] == 81.62
 
 def test_verify_match_rejected(dummy_image_bytes, mock_deepface):
-    # 0.8 supera el umbral de DeepFace (0.68): 75 - ((0.8-0.68)/(1.36-0.68))*75 = 61.76%
     mock_deepface.return_value = {"distance": 0.8}
 
     files = {
@@ -112,7 +103,7 @@ def test_verify_match_deepface_exception(dummy_image_bytes, mock_deepface):
     assert data["similitud"] == 0.0
 
 def test_verify_match_invalid_image(mock_deepface):
-    # Enviar un archivo que no es una imagen válida
+    # Enviar un archivo que no es una imagen válida (magic bytes fallan)
     files = {
         'selfie': ('selfie.txt', b'hola', 'text/plain'),
         'documento': ('doc.txt', b'hola', 'text/plain')
@@ -120,4 +111,17 @@ def test_verify_match_invalid_image(mock_deepface):
     
     response = client.post("/kyc/verify-match", files=files)
     assert response.status_code == 400
-    assert "Error al procesar imágenes" in response.json()["detail"]
+    assert "El formato del archivo no es una imagen válida" in response.json()["detail"]
+
+def test_verify_match_file_too_large(dummy_image_bytes, mock_deepface):
+    # Enviar archivo que supera los 5MB
+    large_bytes = b"\xff\xd8\xff\xe0" + (b"0" * (5 * 1024 * 1024 + 10))
+    files = {
+        'selfie': ('selfie.jpg', large_bytes, 'image/jpeg'),
+        'documento': ('doc.png', dummy_image_bytes, 'image/png')
+    }
+
+    response = client.post("/kyc/verify-match", files=files)
+    assert response.status_code == 400
+    assert "excede el límite permitido" in response.json()["detail"]
+
