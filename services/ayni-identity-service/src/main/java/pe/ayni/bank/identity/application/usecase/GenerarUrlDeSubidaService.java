@@ -23,6 +23,9 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 @Service
 public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
+    private static final java.util.Set<String> EXTENSIONES_PERMITIDAS = java.util.Set.of("jpg", "jpeg", "png", "webp", "pdf");
+    private static final java.util.regex.Pattern PATRON_CARACTERES_INVALIDOS = java.util.regex.Pattern.compile("[^a-z0-9]");
+
     private final RepositorioDeSolicitudesPort solicitudes;
     private final AlmacenDeDocumentosPort almacen;
 
@@ -38,9 +41,28 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
 
-        String claveDeObjeto = "kyc/%s/%s-%s.%s".formatted(
-                solicitudId, tipoDocumento.name().toLowerCase(), UUID.randomUUID(), extension);
+        String extensionLimpia = sanitizarExtension(extension);
 
-        return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado());
+        String claveDeObjeto = "kyc/%s/%s-%s.%s".formatted(
+                solicitudId, tipoDocumento.name().toLowerCase(java.util.Locale.ROOT), UUID.randomUUID(), extensionLimpia);
+
+        return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia));
+    }
+
+    /**
+     * Sanitiza y valida que la extensión pertenezca al catálogo permitido (jpg, jpeg, png, webp, pdf).
+     *
+     * @param extension Extensión recibida en el requerimiento.
+     * @return Extensión limpia en minúsculas.
+     */
+    private String sanitizarExtension(String extension) {
+        if (extension == null || extension.isBlank()) {
+            return "jpg";
+        }
+        String limpia = PATRON_CARACTERES_INVALIDOS.matcher(extension.trim().toLowerCase(java.util.Locale.ROOT)).replaceAll("");
+        if (!EXTENSIONES_PERMITIDAS.contains(limpia)) {
+            throw new IllegalArgumentException("La extensión del archivo debe ser jpg, jpeg, png, webp o pdf.");
+        }
+        return limpia;
     }
 }
