@@ -12,8 +12,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.domain.model.resultado_verificacion import DecisionVerificacion
-from src.infrastructure.vision.cotejo_facial import distancia_a_similitud_porcentaje
+from src.infrastructure.vision.cotejo_facial import (
+    cotejar_rostros,
+    distancia_a_similitud_porcentaje,
+    evaluar_rostro_unico_y_vivacidad,
+)
 from src.infrastructure.web.main import app
+from src.infrastructure.web.router_kyc import validar_magic_bytes
 
 client = TestClient(app)
 
@@ -124,4 +129,41 @@ def test_verify_match_file_too_large(dummy_image_bytes, mock_deepface):
     response = client.post("/kyc/verify-match", files=files)
     assert response.status_code == 400
     assert "excede el límite permitido" in response.json()["detail"]
+
+def test_verify_match_imagen_con_cabecera_valida_pero_cuerpo_corrupto(dummy_image_bytes, mock_deepface):
+    # Cabecera JPEG valida (supera magic bytes) pero el resto no es una imagen decodificable:
+    # cv2.imdecode devuelve None y el endpoint debe caer en el manejador generico.
+    cabecera_valida_cuerpo_corrupto = b"\xff\xd8\xff\xe0" + b"esto no es una imagen"
+    files = {
+        'selfie': ('selfie.jpg', cabecera_valida_cuerpo_corrupto, 'image/jpeg'),
+        'documento': ('doc.png', dummy_image_bytes, 'image/png')
+    }
+
+    response = client.post("/kyc/verify-match", files=files)
+    assert response.status_code == 400
+    assert "Verifique que los archivos sean imágenes válidas" in response.json()["detail"]
+
+def test_validar_magic_bytes_rechaza_contenido_demasiado_corto():
+    assert validar_magic_bytes(b"ab") is False
+
+def test_evaluar_rostro_unico_y_vivacidad_sin_rostro_detectado():
+    imagen_sin_rostro = np.zeros((100, 100, 3), dtype=np.uint8)
+    assert evaluar_rostro_unico_y_vivacidad(imagen_sin_rostro) is False
+
+def test_evaluar_rostro_unico_y_vivacidad_ante_error_de_opencv_retorna_false():
+    imagen = np.zeros((100, 100, 3), dtype=np.uint8)
+    with patch('src.infrastructure.vision.cotejo_facial.cv2.cvtColor', side_effect=RuntimeError("boom")):
+        assert evaluar_rostro_unico_y_vivacidad(imagen) is False
+
+def test_cotejar_rostros_rechaza_cuando_no_supera_vivacidad():
+    imagen = np.zeros((100, 100, 3), dtype=np.uint8)
+    with patch(
+        'src.infrastructure.vision.cotejo_facial.evaluar_rostro_unico_y_vivacidad',
+        return_value=False,
+    ):
+        resultado = cotejar_rostros(imagen, imagen, "tx-vivacidad")
+
+    assert resultado.decision == DecisionVerificacion.RECHAZADA
+    assert resultado.supero_vivacidad is False
+    assert resultado.similitud == 0.0
 
