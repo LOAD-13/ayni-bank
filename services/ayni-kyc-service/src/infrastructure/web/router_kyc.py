@@ -47,7 +47,10 @@ async def verify_match(
         if not validar_magic_bytes(selfie_bytes) or not validar_magic_bytes(doc_bytes):
             raise HTTPException(
                 status_code=400,
-                detail="Error al procesar imágenes: el formato del archivo no es válido (se requiere JPEG, PNG, WEBP o PDF).",
+                detail=(
+                    "Error al procesar imágenes: el formato del archivo no es válido "
+                    "(se requiere JPEG, PNG, WEBP o PDF)."
+                ),
             )
 
         img_selfie = load_image_from_bytes(selfie_bytes)
