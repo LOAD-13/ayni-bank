@@ -274,6 +274,151 @@ paths:
               schema:
                 $ref: "#/components/schemas/Problema"
 
+  /usuarios/{usuarioId}/segundo-factor/metodo:
+    post:
+      summary: Eleccion y alta del metodo de segundo factor
+      description: Registra la preferencia de metodo 2FA (APP_AUTENTICADORA, CORREO_ELECTRONICO, SMS) para el usuario.
+      operationId: seleccionarMetodoSegundoFactor
+      tags: [Sesion]
+      parameters:
+        - name: usuarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudSeleccionMetodo"
+      responses:
+        "200":
+          description: Metodo de segundo factor configurado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetodoSegundoFactor"
+        "400":
+          description: Error de validacion en la solicitud
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+
+  /segundo-factor/desafio/usuario/{usuarioId}/generar:
+    post:
+      summary: Genera un desafio OTP por codigo
+      description: Genera un nuevo codigo OTP de 6 digitos con hash SHA-256 y 10 min de vigencia.
+      operationId: generarDesafioCodigo
+      tags: [Sesion]
+      parameters:
+        - name: usuarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudGenerarDesafio"
+      responses:
+        "200":
+          description: Desafio generado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesafioCodigo"
+
+  /segundo-factor/desafio/{desafioId}/verificar:
+    post:
+      summary: Verifica un codigo OTP ingresado
+      description: Comprueba el codigo de 6 digitos con limite de 3 intentos fallidos.
+      operationId: verificarDesafioCodigo
+      tags: [Sesion]
+      parameters:
+        - name: desafioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudVerificarDesafio"
+      responses:
+        "200":
+          description: Codigo verificado correctamente
+        "400":
+          description: Codigo invalido, expirado o limite de intentos excedido
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /registro/{usuarioId}/codigo/reenviar:
+    post:
+      summary: Reenvia el codigo de verificacion de contacto en el registro
+      description: Reenvia un codigo OTP de 6 digitos al contacto inicial durante el alta de usuario.
+      operationId: reenviarCodigoRegistro
+      tags: [onboarding]
+      parameters:
+        - name: usuarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudReenvioCodigo"
+      responses:
+        "200":
+          description: Codigo reenviado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesafioCodigo"
+
+  /registro/{usuarioId}/codigo/verificar:
+    post:
+      summary: Verifica el codigo de contacto primario en el registro
+      description: Confirma la verificacion del correo o celular del usuario en el registro.
+      operationId: verificarCodigoRegistro
+      tags: [onboarding]
+      parameters:
+        - name: usuarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudVerificarCodigoRegistro"
+      responses:
+        "200":
+          description: Contacto verificado correctamente
+        "400":
+          description: Codigo invalido o expirado
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
 components:
   schemas:
     SolicitudRegistro:
@@ -577,3 +722,84 @@ components:
                 mensaje: La contrasena debe tener al menos 12 caracteres.
               - campo: aceptaTerminos
                 mensaje: Debes aceptar los terminos y la politica de datos personales.
+
+    TipoDeSegundoFactor:
+      type: string
+      enum: [APP_AUTENTICADORA, CORREO_ELECTRONICO, SMS]
+
+    SolicitudSeleccionMetodo:
+      type: object
+      required: [tipo]
+      properties:
+        tipo:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
+
+    MetodoSegundoFactor:
+      type: object
+      required: [id, usuarioId, tipo, confirmado]
+      properties:
+        id:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        tipo:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
+        secreto:
+          type: string
+          nullable: true
+        confirmado:
+          type: boolean
+
+    SolicitudGenerarDesafio:
+      type: object
+      required: [tipoFactor]
+      properties:
+        tipoFactor:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
+
+    SolicitudVerificarDesafio:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+          pattern: "^[0-9]{6}$"
+
+    DesafioCodigo:
+      type: object
+      required: [id, usuarioId, tipoFactor, expiraEn, intentosRealizados, verificado]
+      properties:
+        id:
+          type: string
+          format: uuid
+        usuarioId:
+          type: string
+          format: uuid
+        tipoFactor:
+          type: string
+        expiraEn:
+          type: string
+          format: date-time
+        intentosRealizados:
+          type: integer
+        verificado:
+          type: boolean
+
+    SolicitudReenvioCodigo:
+      type: object
+      required: [tipoFactor]
+      properties:
+        tipoFactor:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
+
+    SolicitudVerificarCodigoRegistro:
+      type: object
+      required: [tipoFactor, codigo]
+      properties:
+        tipoFactor:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
+        codigo:
+          type: string
+          pattern: "^[0-9]{6}$"

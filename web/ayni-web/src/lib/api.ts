@@ -79,6 +79,62 @@ export interface Sesion {
   expiraEn: string;
 }
 
+export type TipoDeSegundoFactor = "APP_AUTENTICADORA" | "CORREO_ELECTRONICO" | "SMS";
+
+export interface MetodoSegundoFactor {
+  id: string;
+  usuarioId: string;
+  tipo: TipoDeSegundoFactor;
+  secreto: string | null;
+  confirmado: boolean;
+}
+
+export interface DesafioCodigo {
+  id: string;
+  usuarioId: string;
+  tipoFactor: string;
+  expiraEn: string;
+  intentosRealizados: number;
+  verificado: boolean;
+}
+
+export async function seleccionarMetodoSegundoFactor(
+  usuarioId: string,
+  tipo: TipoDeSegundoFactor,
+): Promise<MetodoSegundoFactor> {
+  return pedir<MetodoSegundoFactor>(`/api/v1/usuarios/${usuarioId}/segundo-factor/metodo`, {
+    tipo,
+  });
+}
+
+export async function generarDesafioCodigo(
+  usuarioId: string,
+  tipoFactor: TipoDeSegundoFactor,
+): Promise<DesafioCodigo> {
+  return pedir<DesafioCodigo>(`/api/v1/segundo-factor/desafio/usuario/${usuarioId}/generar`, {
+    tipoFactor,
+  });
+}
+
+export async function verificarDesafioCodigo(desafioId: string, codigo: string): Promise<void> {
+  return pedir<void>(`/api/v1/segundo-factor/desafio/${desafioId}/verificar`, { codigo });
+}
+
+export async function reenviarCodigoRegistro(
+  usuarioId: string,
+  tipoFactor: TipoDeSegundoFactor,
+): Promise<DesafioCodigo> {
+  return pedir<DesafioCodigo>(`/api/v1/registro/${usuarioId}/codigo/reenviar`, { tipoFactor });
+}
+
+export async function verificarCodigoRegistro(
+  usuarioId: string,
+  tipoFactor: TipoDeSegundoFactor,
+  codigo: string,
+): Promise<void> {
+  return pedir<void>(`/api/v1/registro/${usuarioId}/codigo/verificar`, { tipoFactor, codigo });
+}
+
 export async function presentarCredenciales(
   correo: string,
   contrasena: string,

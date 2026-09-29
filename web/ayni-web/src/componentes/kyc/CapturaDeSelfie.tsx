@@ -105,7 +105,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
         // Reset liveness if multiple or zero faces are detected suddenly
         setVivacidadConfirmada(false);
       }
-    } catch (e) {
+    } catch {
       // Ignorar errores transitorios de detección
     }
 
@@ -114,8 +114,6 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
 
   useEffect(() => {
     if (!modelosCargados) return;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- lee `fase` a propósito sin
-    // declararla como dependencia; ver el comentario junto a `intentoDeCaptura`.
     if (fase === "revisando" || fase === "subiendo") return;
 
     let vigente = true;
@@ -145,6 +143,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       vigente = false;
       detenerCamara();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lee `fase` a propósito sin declararla como dependencia
   }, [modelosCargados, intentoDeCaptura, procesarVideo, detenerCamara]);
 
   useEffect(() => {
