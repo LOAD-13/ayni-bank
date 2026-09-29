@@ -19,7 +19,16 @@ public enum TipoDeDocumentoKyc {
         this.tipoDeContenidoEsperado = tipoDeContenidoEsperado;
     }
 
-    public String tipoDeContenidoEsperado() {
-        return tipoDeContenidoEsperado;
+    public String tipoDeContenidoEsperado(String extension) {
+        if ("pdf".equalsIgnoreCase(extension)) {
+            return "application/pdf";
+        }
+        if ("png".equalsIgnoreCase(extension)) {
+            return "image/png";
+        }
+        if ("webp".equalsIgnoreCase(extension)) {
+            return "image/webp";
+        }
+        return "image/jpeg";
     }
 }

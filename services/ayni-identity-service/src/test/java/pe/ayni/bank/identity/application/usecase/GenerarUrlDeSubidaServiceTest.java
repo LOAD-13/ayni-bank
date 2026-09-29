@@ -12,6 +12,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
@@ -81,20 +85,38 @@ class GenerarUrlDeSubidaServiceTest {
                 .isInstanceOf(SolicitudNoExisteException.class);
     }
 
-    @Test
-    @DisplayName("sin extensión, usa jpg por defecto")
-    void usaJpgPorDefectoCuandoNoHayExtension() {
-        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, null);
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("una extension nula, vacia o en blanco cae por defecto a jpg")
+    void usaJpgPorDefectoCuandoNoHayExtension(String extension) {
+        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extension);
 
         assertThat(almacen.ultimaClaveDeObjeto).endsWith(".jpg");
+        assertThat(almacen.ultimoTipoDeContenido).isEqualTo("image/jpeg");
     }
 
-    @Test
-    @DisplayName("una extensión fuera del catálogo permitido es rechazada")
-    void rechazaUnaExtensionNoPermitida() {
-        assertThatThrownBy(() -> servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, "exe"))
+    @ParameterizedTest
+    @CsvSource({
+        "PNG, png",
+        " jpg , jpg",
+        "P.N.G, png",
+    })
+    @DisplayName("limpia mayusculas, espacios y caracteres invalidos antes de validar la extension")
+    void saneaLaExtensionAntesDeValidarla(String extensionRecibida, String extensionEsperada) {
+        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extensionRecibida);
+
+        assertThat(almacen.ultimaClaveDeObjeto).endsWith("." + extensionEsperada);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"exe", "svg", "php", "jpgx"})
+    @DisplayName("una extension fuera del catalogo permitido se rechaza")
+    void rechazaUnaExtensionNoPermitida(String extensionInvalida) {
+        assertThatThrownBy(() ->
+                servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extensionInvalida))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("La extensión del archivo debe ser jpg, jpeg, png o webp.");
+                .hasMessageContaining("jpg, jpeg, png, webp o pdf");
 
         assertThat(almacen.ultimaClaveDeObjeto).isNull();
     }

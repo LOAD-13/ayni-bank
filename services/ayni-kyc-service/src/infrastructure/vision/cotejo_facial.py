@@ -2,11 +2,18 @@ from typing import Any
 
 import cv2
 import numpy as np
-from deepface import DeepFace
 
 from src.domain.model.resultado_verificacion import DecisionVerificacion, ResultadoCotejoFacial
 from src.infrastructure.auditoria import log_audit_event
 from src.infrastructure.config import settings
+
+try:
+    from deepface import DeepFace
+except ImportError:
+    class DeepFace:  # type: ignore[no-redef]
+        @staticmethod
+        def verify(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            raise NotImplementedError("DeepFace module is not installed")
 
 
 def determinar_decision(similitud_porcentaje: float) -> DecisionVerificacion:
