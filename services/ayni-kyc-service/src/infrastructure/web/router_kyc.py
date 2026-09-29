@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Annotated, Any, cast
 
@@ -6,6 +7,8 @@ import numpy as np
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from src.infrastructure.vision.cotejo_facial import cotejar_rostros
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/kyc", tags=["KYC"])
 
@@ -38,19 +41,18 @@ async def verify_match(
         selfie_bytes = await selfie.read()
         doc_bytes = await documento.read()
 
+        # 1. Validación de tamaño máximo (5MB)
         if len(selfie_bytes) > MAX_FILE_SIZE_BYTES or len(doc_bytes) > MAX_FILE_SIZE_BYTES:
             raise HTTPException(
                 status_code=400,
                 detail="El tamaño del archivo excede el límite permitido de 5 MB por imagen.",
             )
 
+        # 2. Validación de Magic Bytes (firmas de formato de archivo)
         if not validar_magic_bytes(selfie_bytes) or not validar_magic_bytes(doc_bytes):
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Error al procesar imágenes: el formato del archivo no es válido "
-                    "(se requiere JPEG, PNG, WEBP o PDF)."
-                ),
+                detail="El formato del archivo no es una imagen válida (se requiere JPEG, PNG, WEBP o PDF).",
             )
 
         img_selfie = load_image_from_bytes(selfie_bytes)
@@ -58,10 +60,11 @@ async def verify_match(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error("Error al procesar imágenes de verificación KYC: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=400, detail=f"Error al procesar imágenes: {e!s}"
-        ) from e
-
+            status_code=400,
+            detail="Error al procesar las imágenes. Verifique que los archivos sean imágenes válidas.",
+        ) from None
 
     id_transaccion = str(uuid.uuid4())
     resultado = cotejar_rostros(img_selfie, img_doc, id_transaccion)
@@ -72,3 +75,4 @@ async def verify_match(
         "decision": resultado.decision.value,
         "supero_vivacidad": resultado.supero_vivacidad
     }
+

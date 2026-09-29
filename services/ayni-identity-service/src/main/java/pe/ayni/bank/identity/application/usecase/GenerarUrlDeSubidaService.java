@@ -1,6 +1,9 @@
 package pe.ayni.bank.identity.application.usecase;
 
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
@@ -15,16 +18,12 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
  * Genera la URL pre-firmada con la que el navegador sube un documento KYC
  * directamente a MinIO, sin que la imagen atraviese este servicio (ver
  * diseno-base.md §3.4-3.5 y §4.1).
- *
- * <p>No toca el estado de la solicitud ni escribe en {@code documento_kyc}:
- * esa migracion y su escritura son las subtareas 8 y 9 de AYNI-13, todavia
- * no implementadas. Esta subtarea es solo el mecanismo de subida en si.
  */
 @Service
 public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
-    private static final java.util.Set<String> EXTENSIONES_PERMITIDAS = java.util.Set.of("jpg", "jpeg", "png", "webp", "pdf");
-    private static final java.util.regex.Pattern PATRON_CARACTERES_INVALIDOS = java.util.regex.Pattern.compile("[^a-z0-9]");
+    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp", "pdf");
+    private static final Pattern PATRON_CARACTERES_INVALIDOS = Pattern.compile("[^a-z0-9]");
 
     private final RepositorioDeSolicitudesPort solicitudes;
     private final AlmacenDeDocumentosPort almacen;
@@ -44,7 +43,7 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
         String extensionLimpia = sanitizarExtension(extension);
 
         String claveDeObjeto = "kyc/%s/%s-%s.%s".formatted(
-                solicitudId, tipoDocumento.name().toLowerCase(java.util.Locale.ROOT), UUID.randomUUID(), extensionLimpia);
+                solicitudId, tipoDocumento.name().toLowerCase(Locale.ROOT), UUID.randomUUID(), extensionLimpia);
 
         return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia));
     }
@@ -59,7 +58,7 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
         if (extension == null || extension.isBlank()) {
             return "jpg";
         }
-        String limpia = PATRON_CARACTERES_INVALIDOS.matcher(extension.trim().toLowerCase(java.util.Locale.ROOT)).replaceAll("");
+        String limpia = PATRON_CARACTERES_INVALIDOS.matcher(extension.trim().toLowerCase(Locale.ROOT)).replaceAll("");
         if (!EXTENSIONES_PERMITIDAS.contains(limpia)) {
             throw new IllegalArgumentException("La extensión del archivo debe ser jpg, jpeg, png, webp o pdf.");
         }
