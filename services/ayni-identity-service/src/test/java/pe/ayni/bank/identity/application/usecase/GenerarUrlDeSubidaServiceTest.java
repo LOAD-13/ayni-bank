@@ -81,6 +81,24 @@ class GenerarUrlDeSubidaServiceTest {
                 .isInstanceOf(SolicitudNoExisteException.class);
     }
 
+    @Test
+    @DisplayName("sin extensión, usa jpg por defecto")
+    void usaJpgPorDefectoCuandoNoHayExtension() {
+        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, null);
+
+        assertThat(almacen.ultimaClaveDeObjeto).endsWith(".jpg");
+    }
+
+    @Test
+    @DisplayName("una extensión fuera del catálogo permitido es rechazada")
+    void rechazaUnaExtensionNoPermitida() {
+        assertThatThrownBy(() -> servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, "exe"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La extensión del archivo debe ser jpg, jpeg, png o webp.");
+
+        assertThat(almacen.ultimaClaveDeObjeto).isNull();
+    }
+
     // ─── Dobles ────────────────────────────────────────────────────────────
 
     private static final class SolicitudesFalsas implements RepositorioDeSolicitudesPort {
