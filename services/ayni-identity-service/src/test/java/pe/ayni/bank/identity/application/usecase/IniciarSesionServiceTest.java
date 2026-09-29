@@ -849,5 +849,24 @@ class IniciarSesionServiceTest {
             assertThat(desafio.requiereInscripcion()).isTrue();
             assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isEmpty();
         }
+
+        @Test
+        @DisplayName("sin repositorio de desafíos por código conectado, el segundo factor sigue "
+                + "verificándose por TOTP")
+        void verificarSegundoFactorSinRepositorioDeOtpUsaTotp() {
+            GenerarDesafioCodigoService generarDesafioCodigo = new GenerarDesafioCodigoService(
+                    desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso());
+            IniciarSesionService servicioSinOtp = new IniciarSesionService(usuarios, segundosFactores,
+                    controles, sesiones, cifrador, totp, emisor, auditoria, notificador,
+                    Clock.fixed(AHORA, ZoneOffset.UTC), metodosSegundoFactor, generarDesafioCodigo);
+            segundosFactores.guardar(SegundoFactor.inscribir(ana.id(), SECRETO, AHORA).confirmar(AHORA));
+
+            DesafioAbierto desafio = servicioSinOtp.presentarCredenciales(
+                    new ComandoDeIngreso(CORREO, CONTRASENA, CLIENTE));
+            SesionIniciada sesion = servicioSinOtp.verificarSegundoFactor(new ComandoDeSegundoFactor(
+                    desafio.desafioId(), new CodigoTotp(CODIGO_BUENO), CLIENTE));
+
+            assertThat(sesion).isNotNull();
+        }
     }
 }

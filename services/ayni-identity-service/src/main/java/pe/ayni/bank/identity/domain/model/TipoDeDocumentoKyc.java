@@ -9,15 +9,11 @@ package pe.ayni.bank.identity.domain.model;
  */
 public enum TipoDeDocumentoKyc {
 
-    ANVERSO("image/jpeg"),
-    REVERSO("image/jpeg"),
-    SELFIE("image/jpeg");
+    ANVERSO,
+    REVERSO,
+    SELFIE;
 
-    private final String tipoDeContenidoEsperado;
-
-    TipoDeDocumentoKyc(String tipoDeContenidoEsperado) {
-        this.tipoDeContenidoEsperado = tipoDeContenidoEsperado;
-    }
+    private static final String IMAGEN_JPEG = "image/jpeg";
 
     public String tipoDeContenidoEsperado(String extension) {
         if ("pdf".equalsIgnoreCase(extension)) {
@@ -29,6 +25,6 @@ public enum TipoDeDocumentoKyc {
         if ("webp".equalsIgnoreCase(extension)) {
             return "image/webp";
         }
-        return "image/jpeg";
+        return IMAGEN_JPEG;
     }
 }

@@ -119,4 +119,23 @@ class GenerarDesafioCodigoServiceTest {
         assertThat(resultado.desafio()).isNotNull();
         verify(repositorioDesafio, org.mockito.Mockito.atLeast(2)).guardar(any(DesafioPorCodigo.class));
     }
+
+    @Test
+    @DisplayName("No reinvalida un desafío previo que ya fue verificado")
+    void generar_NoReinvalidaDesafioPrevioYaVerificado() {
+        UUID usuarioId = UUID.randomUUID();
+        Instant ahora = Instant.now();
+        DesafioPorCodigo previoVerificado = DesafioPorCodigo.generar(
+                UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO, "hashViejo", ahora)
+                .marcarVerificado(ahora);
+
+        when(repositorioDesafio.buscarUltimoPendiente(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO))
+                .thenReturn(Optional.of(previoVerificado));
+        when(repositorioDesafio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(repositorioUsuarios.buscarPorId(usuarioId)).thenReturn(Optional.of(usuarioDePrueba(usuarioId)));
+
+        service.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
+
+        verify(repositorioDesafio, org.mockito.Mockito.times(1)).guardar(any(DesafioPorCodigo.class));
+    }
 }
