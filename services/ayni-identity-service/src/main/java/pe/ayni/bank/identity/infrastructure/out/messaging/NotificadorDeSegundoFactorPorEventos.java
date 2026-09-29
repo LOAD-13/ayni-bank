@@ -33,13 +33,17 @@ public class NotificadorDeSegundoFactorPorEventos implements NotificadorDeSegund
 
     @Override
     public void enviarCodigoPorCorreo(CorreoElectronico correo, String codigo) {
-        log.info("Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
-                correo.enmascarado());
+        if (log.isInfoEnabled()) {
+            log.info("Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
+                    correo.enmascarado());
+        }
     }
 
     @Override
     public void enviarCodigoPorSms(Celular celular, String codigo) {
-        log.info("Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
-                celular.enmascarado());
+        if (log.isInfoEnabled()) {
+            log.info("Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
+                    celular.enmascarado());
+        }
     }
 }

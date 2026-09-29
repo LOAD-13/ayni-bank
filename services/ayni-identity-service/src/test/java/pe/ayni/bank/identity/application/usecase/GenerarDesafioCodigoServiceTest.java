@@ -72,8 +72,8 @@ class GenerarDesafioCodigoServiceTest {
         assertThat(resultado.desafio().hashCodigo()).hasSize(64); // SHA-256 hex string
 
         verify(repositorioDesafio).guardar(any(DesafioPorCodigo.class));
-        verify(notificador).enviarCodigoPorCorreo(eq(new CorreoElectronico("ana.quispe@ejemplo.pe")),
-                eq(resultado.codigo6Digitos()));
+        verify(notificador).enviarCodigoPorCorreo(new CorreoElectronico("ana.quispe@ejemplo.pe"),
+                resultado.codigo6Digitos());
     }
 
     @Test

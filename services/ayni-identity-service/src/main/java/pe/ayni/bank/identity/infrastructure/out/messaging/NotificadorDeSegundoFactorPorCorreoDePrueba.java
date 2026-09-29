@@ -54,14 +54,18 @@ public class NotificadorDeSegundoFactorPorCorreoDePrueba implements NotificadorD
                 correo ni mensaje. Si te lo piden, no lo compartas.""".formatted(codigo));
 
         remitente.send(mensaje);
-        log.info("Codigo de verificacion enviado por SMTP de prueba (perfil e2e). destinatario={}",
-                correo.enmascarado());
+        if (log.isInfoEnabled()) {
+            log.info("Codigo de verificacion enviado por SMTP de prueba (perfil e2e). destinatario={}",
+                    correo.enmascarado());
+        }
     }
 
     @Override
     public void enviarCodigoPorSms(Celular celular, String codigo) {
-        log.info("Perfil e2e sin canal SMTP de prueba para SMS. "
-                + "Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
-                celular.enmascarado());
+        if (log.isInfoEnabled()) {
+            log.info("Perfil e2e sin canal SMTP de prueba para SMS. "
+                    + "Pendiente de publicar por outbox: plantilla=CODIGO_VERIFICACION destinatario={}",
+                    celular.enmascarado());
+        }
     }
 }
