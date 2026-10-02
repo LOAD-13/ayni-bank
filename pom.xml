@@ -53,8 +53,10 @@
              limite en jackson-databind), corregida en 2.21.6. Se eleva al primer
              parche de la misma linea menor que la corrige, no a 2.22.2, para no
              saltar de minor sin haberlo probado. Al subir Spring Boot, comprobar
-             si esta linea ya sobra. -->
-        <jackson-bom.version>2.21.6</jackson-bom.version>
+             si esta linea ya sobra. El 2 de octubre aparecieron cuatro ALTAS mas en
+             jackson-core y jackson-databind (CVE-2026-89407, -89425, -91776 y
+             -91777), corregidas en 2.21.7: se sube al siguiente parche de la linea. -->
+        <jackson-bom.version>2.21.7</jackson-bom.version>
         <archunit.version>1.3.0</archunit.version>
         <!-- Spring Boot no gestiona Bouncy Castle: no forma parte de su BOM.
              Lo necesita Argon2PasswordEncoder, que delega en el toda la
