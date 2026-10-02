@@ -123,6 +123,6 @@ Para comprobar a simple vista que llegó: la pantalla de ingreso muestra **«ver
 2. La web responde 200.
 3. La pantalla de ingreso muestra la versión recién desplegada.
 4. HTTP redirige a HTTPS.
-5. Están las cabeceras HSTS y `X-Frame-Options: DENY`, y no se expone `X-Powered-By`.
+5. Están las cabeceras HSTS, `X-Frame-Options: DENY` y `Content-Security-Policy`, y no se expone `X-Powered-By`.
 6. Un inicio de sesión con datos inválidos devuelve **400**, no 200 ni 500.
 7. Una ruta protegida sin token devuelve **401**.
