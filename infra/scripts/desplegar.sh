@@ -37,6 +37,18 @@ registrar "Descargando configuracion del commit ${COMMIT}"
 for f in infra/docker/docker-compose.prod.yml infra/docker/Caddyfile; do
   curl -fsSL "https://raw.githubusercontent.com/${REPO}/${COMMIT}/${f}" -o "$(basename "$f").nuevo"
 done
+# Prometheus y Grafana (AYNI-159): origen en el repositorio -> destino en ./observabilidad
+rm -rf observabilidad.nuevo
+while read -r origen destino; do
+  mkdir -p "observabilidad.nuevo/$(dirname "$destino")"
+  curl -fsSL "https://raw.githubusercontent.com/${REPO}/${COMMIT}/infra/observability/${origen}"     -o "observabilidad.nuevo/${destino}"
+done <<'LISTA'
+prometheus.prod.yml prometheus.yml
+grafana/datasources-prod/datasources.yml grafana/datasources/datasources.yml
+grafana/dashboards/proveedor.yml grafana/dashboards/proveedor.yml
+grafana/dashboards/ayni-tecnico.json grafana/dashboards/ayni-tecnico.json
+grafana/dashboards/ayni-negocio.json grafana/dashboards/ayni-negocio.json
+LISTA
 
 # ── 2. Secretos ──────────────────────────────────────────────────────────
 param() { aws ssm get-parameter --region "$REGION" --with-decryption --name "/ayni/prod/$1" --query Parameter.Value --output text; }
@@ -60,6 +72,7 @@ DB_CONTRASENA=$(param db-app-contrasena)
 RABBITMQ_PASSWORD=$(param rabbitmq-contrasena)
 AYNI_JWT_CLAVE=$(param jwt-clave)
 AYNI_CIFRADO_CLAVE=$(param cifrado-clave)
+GRAFANA_CONTRASENA=$(param grafana-contrasena)
 AYNI_BUCKET_KYC=$(param bucket-kyc)
 S3_ACCESS_KEY=$(jq -r .access_key <<<"$ALMACEN")
 S3_SECRET_KEY=$(jq -r .secret_key <<<"$ALMACEN")
@@ -86,6 +99,12 @@ done
 mv .env.nuevo .env
 mv docker-compose.prod.yml.nuevo docker-compose.prod.yml
 mv Caddyfile.nuevo Caddyfile
+rm -rf observabilidad.anterior
+[[ -d observabilidad ]] && mv observabilidad observabilidad.anterior
+mv observabilidad.nuevo observabilidad
+# Grafana corre con el usuario 472 y Prometheus con nobody: los ficheros
+# montados deben poder leerse aunque el umask del script sea 077.
+chmod -R a+rX observabilidad
 
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRO" >/dev/null
 registrar "Descargando imagenes ${ETIQUETA}"
@@ -94,8 +113,9 @@ registrar "Arrancando la version ${VERSION} (${ETIQUETA})"
 docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
 
 # ── 5. Verificar salud o revertir ────────────────────────────────────────
-# Sano = los ocho contenedores en marcha, ninguno arrancando ni enfermo.
-ESPERADOS=8
+# Sano = todos los contenedores del compose en marcha, ninguno arrancando ni
+# enfermo. Se cuentan del propio compose para no olvidar actualizar un numero.
+ESPERADOS=$(docker compose --env-file .env -f docker-compose.prod.yml config --services | wc -l)
 esperar_salud() {
   local limite=$((SECONDS + 360)) estados enmarcha pendientes
   while (( SECONDS < limite )); do
@@ -126,6 +146,9 @@ if [[ -n "$ANTERIOR" && -f .env.anterior ]]; then
   for f in .env docker-compose.prod.yml Caddyfile; do
     [[ -f "$f.anterior" ]] && mv "$f.anterior" "$f"
   done
+  if [[ -d observabilidad.anterior ]]; then
+    rm -rf observabilidad && mv observabilidad.anterior observabilidad
+  fi
   docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
   registrar "Revertido: sigue en produccion ${ANTERIOR}"
 fi

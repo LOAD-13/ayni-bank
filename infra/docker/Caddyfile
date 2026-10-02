@@ -34,6 +34,12 @@
 		reverse_proxy ayni-gateway:8080
 	}
 
+	# Grafana con sus tableros (AYNI-159). Tiene su propio inicio de sesion;
+	# Prometheus no se publica.
+	handle /grafana* {
+		reverse_proxy ayni-grafana:3000
+	}
+
 	handle {
 		reverse_proxy ayni-web:3000
 	}

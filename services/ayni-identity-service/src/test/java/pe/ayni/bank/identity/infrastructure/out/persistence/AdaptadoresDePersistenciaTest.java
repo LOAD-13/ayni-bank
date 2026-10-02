@@ -20,6 +20,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 import pe.ayni.bank.identity.domain.model.ControlDeAcceso;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
@@ -216,19 +218,22 @@ class AdaptadoresDePersistenciaTest {
         @Test
         @DisplayName("registra el tipo, la IP y el agente que exige HU-04")
         void registraLoQueExigeLaHistoria() {
-            var adaptador = new AdaptadorPistaDeAuditoria(repositorio, RELOJ);
+            var metricas = new SimpleMeterRegistry();
+            var adaptador = new AdaptadorPistaDeAuditoria(repositorio, RELOJ, metricas);
 
             adaptador.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario,
                     new HuellaDeCliente("190.12.4.7", "Mozilla/5.0"));
 
             verify(repositorio).save(any(EventoAuditoriaEntity.class));
+            assertThat(metricas.counter("ayni.acceso.eventos", "tipo", "INGRESO_EXITOSO").count())
+                    .isEqualTo(1.0);
         }
 
         @Test
         @DisplayName("un intento sobre un correo desconocido tambien se anota, sin usuario")
         void anotaTambienLoQueNoTieneTitular() {
             // Registrar el intento importa aunque no se sepa contra quien iba.
-            var adaptador = new AdaptadorPistaDeAuditoria(repositorio, RELOJ);
+            var adaptador = new AdaptadorPistaDeAuditoria(repositorio, RELOJ, new SimpleMeterRegistry());
 
             adaptador.registrar(TipoDeEventoDeAcceso.CREDENCIALES_INVALIDAS, null,
                     new HuellaDeCliente(null, null));
