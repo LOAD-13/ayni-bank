@@ -34,8 +34,15 @@ class CotejadorFacialPort(Protocol):
     def cotejar(self, clave_selfie: str, clave_documento: str) -> ResultadoCotejoFacial: ...
 
 
+class ObjetoNoEncontradoError(Exception):
+    """La clave pedida no existe en el almacen: identity envio una clave de un objeto no subido."""
+
+
 class AlmacenObjetosPort(Protocol):
-    """Acceso al almacenamiento de objetos. Las imagenes nunca viajan por la API."""
+    """Acceso al almacenamiento de objetos. Las imagenes nunca viajan por la API.
+
+    `descargar` lanza ObjetoNoEncontradoError si la clave no existe.
+    """
 
     def descargar(self, clave_objeto: str) -> bytes: ...
 
