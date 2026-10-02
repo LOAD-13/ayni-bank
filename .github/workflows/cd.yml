@@ -177,7 +177,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verificar el sistema desplegado
-        run: ./infra/scripts/pruebas-humo.sh "${{ vars.AYNI_URL }}" "${{ needs.version.outputs.version }}"
+        run: bash ./infra/scripts/pruebas-humo.sh "${{ vars.AYNI_URL }}" "${{ needs.version.outputs.version }}"
 
   # ── 6. Reversion automatica si el humo falla ────────────────────────────
   revertir:
