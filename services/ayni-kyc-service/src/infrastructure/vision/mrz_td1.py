@@ -19,6 +19,10 @@ from dataclasses import dataclass
 from datetime import date
 
 _PESOS = (7, 3, 1)
+# El checksum ICAO solo confirma que el OCR leyo bien los caracteres, no que
+# sean un DNI: "A1234567" tiene un digito de control valido. El numero del
+# DNI peruano son exactamente 8 digitos.
+_PATRON_NUMERO_DNI = re.compile(r"\d{8}")
 
 
 def _valor_caracter(caracter: str) -> int:
@@ -136,7 +140,10 @@ def parsear_mrz(linea1: str, linea2: str, linea3: str) -> DatosMrz | None:
         nacionalidad=nacionalidad,
         apellidos=apellidos,
         nombres=nombres,
-        numero_documento_verificado=validar_digito_verificador(numero_documento_crudo, checksum_documento),
+        numero_documento_verificado=(
+            _PATRON_NUMERO_DNI.fullmatch(numero_documento) is not None
+            and validar_digito_verificador(numero_documento_crudo, checksum_documento)
+        ),
         fecha_nacimiento_verificada=validar_digito_verificador(fecha_nacimiento_cruda, checksum_nacimiento),
         fecha_caducidad_verificada=validar_digito_verificador(fecha_caducidad_cruda, checksum_caducidad),
         checksum_compuesto_valido=validar_digito_verificador(campo_compuesto, linea2[29]),
@@ -152,22 +159,34 @@ def encontrar_lineas_mrz(lineas_texto: list[str]) -> tuple[str, str, str] | None
     El OCR no siempre da exactamente 30 caracteres por ruido/recorte, por eso
     se acepta un rango (28-32) y se normaliza con padding/recorte de '<' antes
     de parsear.
+
+    Una linea de MRZ siempre lleva algun '<' de relleno: sin esa condicion, un
+    rotulo del reverso como "Departamento LIMA Provincia LIMA" (29 letras sin
+    espacios) pasaba por linea de MRZ y desplazaba la ventana de tres. Y si aun
+    asi quedan varias ventanas posibles, se prefiere la que valida sus digitos
+    verificadores.
     """
     candidatas = [
-        linea.strip().upper().replace(" ", "")
-        for linea in lineas_texto
-        if _PATRON_LINEA_MRZ.match(linea.strip().upper().replace(" ", ""))
+        normalizada
+        for normalizada in (linea.strip().upper().replace(" ", "") for linea in lineas_texto)
+        if _PATRON_LINEA_MRZ.match(normalizada) and "<" in normalizada
     ]
     if len(candidatas) < 3:
         return None
 
-    for i in range(len(candidatas) - 2):
-        tres_lineas = candidatas[i : i + 3]
-        normalizadas = tuple(_normalizar_longitud(linea) for linea in tres_lineas)
-        if all(len(linea) == 30 for linea in normalizadas):
-            return normalizadas  # type: ignore[return-value]
-
-    return None
+    ventanas = [
+        (
+            _normalizar_longitud(candidatas[i]),
+            _normalizar_longitud(candidatas[i + 1]),
+            _normalizar_longitud(candidatas[i + 2]),
+        )
+        for i in range(len(candidatas) - 2)
+    ]
+    for ventana in ventanas:
+        datos = parsear_mrz(*ventana)
+        if datos is not None and datos.todos_los_checksums_validos:
+            return ventana
+    return ventanas[0]
 
 
 def _normalizar_longitud(linea: str) -> str:

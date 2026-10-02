@@ -8,6 +8,7 @@ texto libre sobre el anverso (menos confiable, sin forma de validar).
 Reutiliza procesamiento_documento (subtareas 3-4) para encontrar y enderezar
 cada cara antes de pasarla al motor de OCR.
 """
+from dataclasses import replace
 from typing import Any, Protocol
 
 from numpy.typing import NDArray
@@ -15,7 +16,7 @@ from paddleocr import PaddleOCR
 
 from src.domain.model.resultado_verificacion import DatosIdentidadExtraidos, FuenteDatosIdentidad
 from src.domain.port.verificador_identidad import AlmacenObjetosPort
-from src.infrastructure.vision.heuristicas_anverso import extraer_por_heuristicas
+from src.infrastructure.vision.heuristicas_anverso import extraer_fecha_emision, extraer_por_heuristicas
 from src.infrastructure.vision.mrz_td1 import encontrar_lineas_mrz, parsear_mrz
 from src.infrastructure.vision.procesamiento_documento import procesar_documento
 
@@ -62,11 +63,21 @@ class ExtractorDatosPaddleOCR:
     def extraer(
         self, clave_objeto_anverso: str, clave_objeto_reverso: str
     ) -> DatosIdentidadExtraidos | None:
-        datos_desde_mrz = self._extraer_desde_mrz(clave_objeto_reverso)
-        if datos_desde_mrz is not None:
-            return datos_desde_mrz
+        """Lee el reverso y despues el anverso, cada uno una sola vez.
 
-        return self._extraer_desde_anverso(clave_objeto_anverso)
+        El anverso se lee siempre, tambien cuando el MRZ valida: la fecha de
+        emision solo esta impresa en el anverso.
+        """
+        datos_desde_mrz = self._extraer_desde_mrz(clave_objeto_reverso)
+        texto_anverso = self._texto_crudo_del_documento(clave_objeto_anverso)
+
+        if datos_desde_mrz is not None:
+            fecha_emision = extraer_fecha_emision(texto_anverso) if texto_anverso else None
+            return replace(datos_desde_mrz, fecha_emision=fecha_emision)
+
+        if texto_anverso is None:
+            return None
+        return extraer_por_heuristicas(texto_anverso)
 
     def _extraer_desde_mrz(self, clave_objeto_reverso: str) -> DatosIdentidadExtraidos | None:
         lineas_texto = self._texto_crudo_del_documento(clave_objeto_reverso)
@@ -90,13 +101,6 @@ class ExtractorDatosPaddleOCR:
             fuente=FuenteDatosIdentidad.MRZ,
             confiable=True,
         )
-
-    def _extraer_desde_anverso(self, clave_objeto_anverso: str) -> DatosIdentidadExtraidos | None:
-        lineas_texto = self._texto_crudo_del_documento(clave_objeto_anverso)
-        if lineas_texto is None:
-            return None
-
-        return extraer_por_heuristicas(lineas_texto)
 
     def _texto_crudo_del_documento(self, clave_objeto: str) -> list[str] | None:
         imagen_bytes = self._almacen_objetos.descargar(clave_objeto)

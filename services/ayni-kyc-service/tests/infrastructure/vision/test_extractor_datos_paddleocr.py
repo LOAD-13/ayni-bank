@@ -79,7 +79,12 @@ def test_debe_usar_los_datos_del_mrz_cuando_el_reverso_se_lee_bien() -> None:
     imagen = _imagen_documento_generica()
     almacen = AlmacenObjetosFake({"anverso": imagen, "reverso": imagen})
     linea1, linea2, linea3 = _construir_mrz_valido()
-    motor = MotorOcrFake(respuestas=[["REPUBLICA DEL PERU", linea1, linea2, linea3, "RENIEC"]])
+    motor = MotorOcrFake(
+        respuestas=[
+            ["REPUBLICA DEL PERU", linea1, linea2, linea3, "RENIEC"],  # reverso: MRZ valido
+            ["Fecha de Emision", "20 08 2021"],  # anverso: solo aporta la fecha de emision
+        ]
+    )
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
 
     # Cuando
@@ -92,6 +97,23 @@ def test_debe_usar_los_datos_del_mrz_cuando_el_reverso_se_lee_bien() -> None:
     assert resultado.nombres == "MARIA JOSE"
     assert resultado.fuente is FuenteDatosIdentidad.MRZ
     assert resultado.confiable is True
+    # El MRZ no trae la fecha de emision: se lee del anverso
+    assert resultado.fecha_emision is not None
+    assert resultado.fecha_emision.isoformat() == "2021-08-20"
+
+
+def test_debe_devolver_el_mrz_sin_fecha_de_emision_cuando_el_anverso_no_la_muestra() -> None:
+    imagen = _imagen_documento_generica()
+    almacen = AlmacenObjetosFake({"anverso": imagen, "reverso": imagen})
+    linea1, linea2, linea3 = _construir_mrz_valido()
+    motor = MotorOcrFake(respuestas=[[linea1, linea2, linea3], ["REPUBLICA DEL PERU"]])
+    extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
+
+    resultado = extractor.extraer("anverso", "reverso")
+
+    assert resultado is not None
+    assert resultado.fuente is FuenteDatosIdentidad.MRZ
+    assert resultado.fecha_emision is None
 
 
 def test_debe_caer_a_heuristicas_del_anverso_cuando_el_reverso_no_tiene_mrz() -> None:

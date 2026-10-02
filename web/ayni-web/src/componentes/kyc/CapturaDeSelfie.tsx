@@ -208,11 +208,11 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
     setErrorDeSubida(null);
 
     try {
-      const { url } = await solicitarUrlDeSubida(solicitudId, "SELFIE", foto.extension);
+      const destino = await solicitarUrlDeSubida(solicitudId, "SELFIE", foto.extension);
       const archivo = new File([foto.blob], `selfie.${foto.extension}`, {
         type: foto.blob.type || "image/jpeg",
       });
-      await subirDocumento(url, archivo);
+      await subirDocumento(destino, archivo);
       onCompletado();
     } catch (error) {
       setErrorDeSubida(

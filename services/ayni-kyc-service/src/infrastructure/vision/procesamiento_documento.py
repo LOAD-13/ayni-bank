@@ -39,7 +39,7 @@ def procesar_documento(imagen_bytes: bytes) -> DocumentoProcesado | None:
     Retorna None si los bytes no son una imagen valida o no se encontro un
     contorno cuadrilatero reconocible como documento.
     """
-    imagen = _decodificar(imagen_bytes)
+    imagen = decodificar_imagen(imagen_bytes)
     if imagen is None:
         return None
 
@@ -52,7 +52,8 @@ def procesar_documento(imagen_bytes: bytes) -> DocumentoProcesado | None:
     return DocumentoProcesado(imagen_original=imagen, contorno=puntos, imagen_enderezada=enderezada)
 
 
-def _decodificar(imagen_bytes: bytes) -> Matriz | None:
+def decodificar_imagen(imagen_bytes: bytes) -> Matriz | None:
+    """Bytes de JPEG/PNG/WEBP a matriz BGR; None si no son una imagen que OpenCV lea."""
     buffer = np.frombuffer(imagen_bytes, dtype=np.uint8)
     imagen = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
     return imagen if imagen is not None else None

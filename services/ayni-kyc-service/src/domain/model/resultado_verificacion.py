@@ -31,18 +31,75 @@ class ResultadoCotejoFacial:
 class ResultadoValidacionCalidad:
     """Resultado de validar nitidez, reflejos y encuadre de una foto de documento.
 
-    Distingue cual de los tres controles fallo (util para logs internos y
-    para guiar al usuario en la subtarea 12), aunque el contrato publico
-    solo exponga un motivo generico QUALITY_CHECK_FAILED.
+    Distingue cual de los cuatro controles fallo: el escenario 3 de HU-02 pide
+    decirle al solicitante el motivo concreto (ver ResultadoEvaluacionCaptura).
     """
 
     es_nitida: bool
     sin_reflejos: bool
     bien_encuadrada: bool
+    bien_iluminada: bool
 
     @property
     def es_valida(self) -> bool:
-        return self.es_nitida and self.sin_reflejos and self.bien_encuadrada
+        return self.es_nitida and self.sin_reflejos and self.bien_encuadrada and self.bien_iluminada
+
+
+class MotivoRechazoCaptura(str, Enum):
+    """Por que se rechaza una foto, para que el solicitante sepa que repetir (escenarios 2 y 3)."""
+
+    NO_ES_DNI = "NO_ES_DNI"
+    ENCUADRE = "ENCUADRE"
+    DESENFOQUE = "DESENFOQUE"
+    REFLEJO = "REFLEJO"
+    ILUMINACION = "ILUMINACION"
+
+
+@dataclass(frozen=True)
+class ResultadoEvaluacionCaptura:
+    """Resultado de evaluar una foto de un lado del DNI antes de aceptarla.
+
+    Si hay varios problemas se informa uno solo, el que conviene corregir
+    primero: un documento cortado hace poco fiables las demas medidas, y un
+    desenfoque suele arrastrar tambien a la iluminacion.
+
+    Cuando no se encontro ningun documento en la foto, antes de decir "no es un
+    DNI" se mira si la foto esta borrosa u oscura: el documento puede estar ahi
+    y lo que hay que repetir es la toma. `calidad` es None cuando no hay nada
+    que medir: los bytes no son una imagen, o se encontro un objeto nitido que
+    no tiene la forma de un DNI.
+    """
+
+    es_dni: bool
+    calidad: ResultadoValidacionCalidad | None
+
+    @property
+    def motivo_rechazo(self) -> MotivoRechazoCaptura | None:
+        if self.calidad is None:
+            return MotivoRechazoCaptura.NO_ES_DNI
+        if not self.es_dni:
+            return self._motivo_sin_documento(self.calidad)
+        if not self.calidad.bien_encuadrada:
+            return MotivoRechazoCaptura.ENCUADRE
+        if not self.calidad.es_nitida:
+            return MotivoRechazoCaptura.DESENFOQUE
+        if not self.calidad.sin_reflejos:
+            return MotivoRechazoCaptura.REFLEJO
+        if not self.calidad.bien_iluminada:
+            return MotivoRechazoCaptura.ILUMINACION
+        return None
+
+    @staticmethod
+    def _motivo_sin_documento(calidad: ResultadoValidacionCalidad) -> MotivoRechazoCaptura:
+        if not calidad.es_nitida:
+            return MotivoRechazoCaptura.DESENFOQUE
+        if not calidad.bien_iluminada:
+            return MotivoRechazoCaptura.ILUMINACION
+        return MotivoRechazoCaptura.NO_ES_DNI
+
+    @property
+    def aceptada(self) -> bool:
+        return self.motivo_rechazo is None
 
 
 class FuenteDatosIdentidad(str, Enum):
@@ -61,6 +118,9 @@ class DatosIdentidadExtraidos:
     confiar en la lectura) o de heuristicas sobre el anverso (fallback sin
     forma de validar que el OCR leyo bien - ver ADR-0009 sobre lecturas
     plausibles pero erroneas).
+
+    `fecha_emision` es opcional: el MRZ no la trae y se lee del anverso, donde
+    el OCR puede no encontrarla. El titular la completa al confirmar sus datos.
     """
 
     dni: str
@@ -70,3 +130,4 @@ class DatosIdentidadExtraidos:
     sexo: str
     fuente: FuenteDatosIdentidad
     confiable: bool
+    fecha_emision: date | None = None

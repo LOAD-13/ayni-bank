@@ -1,6 +1,6 @@
 """Pruebas de las heuristicas de fallback: sin FastAPI, sin red, sin disco."""
 from src.domain.model.resultado_verificacion import FuenteDatosIdentidad
-from src.infrastructure.vision.heuristicas_anverso import extraer_por_heuristicas
+from src.infrastructure.vision.heuristicas_anverso import extraer_fecha_emision, extraer_por_heuristicas
 
 
 def test_debe_extraer_los_campos_cuando_las_etiquetas_estan_en_lineas_separadas() -> None:
@@ -63,3 +63,78 @@ def test_debe_retornar_none_cuando_falta_un_campo_requerido() -> None:
 
 def test_debe_retornar_none_cuando_el_texto_esta_vacio() -> None:
     assert extraer_por_heuristicas([]) is None
+
+
+def test_debe_leer_los_rotulos_reales_del_dni_sin_devolver_el_rotulo_como_valor() -> None:
+    # Dado: los rotulos tal como estan impresos en el DNI ("Primer Apellido",
+    # "Pre Nombres"). Antes se devolvia "PRIMER" como apellido y "PRE" como nombre.
+    texto_ocr = [
+        "REPUBLICA DEL PERU",
+        "DNI 44556677",
+        "Primer Apellido",
+        "QUISPE",
+        "Segundo Apellido",
+        "MAMANI",
+        "Pre Nombres",
+        "ANA LUCIA",
+        "Fecha de Nacimiento",
+        "15 05 1990",
+        "Sexo",
+        "F",
+        "Fecha de Emisión",
+        "20 08 2021",
+    ]
+
+    # Cuando
+    resultado = extraer_por_heuristicas(texto_ocr)
+
+    # Entonces
+    assert resultado is not None
+    assert resultado.dni == "44556677"
+    assert resultado.apellidos == "QUISPE MAMANI"
+    assert resultado.nombres == "ANA LUCIA"
+    assert resultado.sexo == "F"
+    assert resultado.fecha_nacimiento.isoformat() == "1990-05-15"
+    assert resultado.fecha_emision is not None
+    assert resultado.fecha_emision.isoformat() == "2021-08-20"
+
+
+def test_debe_aceptar_prenombres_en_una_sola_palabra_como_en_el_dnie() -> None:
+    texto_ocr = [
+        "44556677",
+        "Primer Apellido: QUISPE",
+        "Prenombres: ANA LUCIA",
+        "Sexo: F",
+        "Nacimiento: 15/05/1990",
+    ]
+
+    resultado = extraer_por_heuristicas(texto_ocr)
+
+    assert resultado is not None
+    assert resultado.apellidos == "QUISPE"
+    assert resultado.nombres == "ANA LUCIA"
+
+
+def test_no_debe_tomar_el_rotulo_siguiente_como_valor_cuando_falta_el_dato() -> None:
+    # Dado: el OCR perdio el valor del nombre; la linea siguiente es otro rotulo
+    texto_ocr = [
+        "44556677",
+        "Primer Apellido",
+        "QUISPE",
+        "Pre Nombres",
+        "Sexo",
+        "F",
+        "Fecha de Nacimiento",
+        "15 05 1990",
+    ]
+
+    # Cuando / Entonces: sin nombre no hay extraccion, en vez de un nombre "SEXO"
+    assert extraer_por_heuristicas(texto_ocr) is None
+
+
+def test_debe_extraer_la_fecha_de_emision_aunque_no_haya_otros_datos() -> None:
+    fecha = extraer_fecha_emision(["FECHA EMISION", "03-02-2020"])
+
+    assert fecha is not None
+    assert fecha.isoformat() == "2020-02-03"
+    assert extraer_fecha_emision(["SEXO", "F"]) is None
