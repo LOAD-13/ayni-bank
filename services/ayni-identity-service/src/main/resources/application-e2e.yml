@@ -1,0 +1,19 @@
+# Perfil `e2e` — solo para levantar el servicio localmente y probar, con una
+# bandeja SMTP de prueba real (Ethereal), que el envio de OTP de HU-22
+# funciona de punta a punta. No se activa en ningun compose ni despliegue:
+# SPRING_PROFILES_ACTIVE tendria que incluir "e2e" explicitamente.
+#
+# Las credenciales NO van aqui: Ethereal entrega una cuenta de un solo uso
+# por sesion de prueba (ethereal.email/create), asi que se pasan por entorno
+# (AYNI_SMTP_*) al arrancar. Sin esas variables, Spring falla al conectar en
+# el primer envio, no al arrancar, y el mensaje de error ya deja claro que
+# falta credenciales, no que la app se rompio.
+spring:
+  mail:
+    host: ${AYNI_SMTP_HOST}
+    port: ${AYNI_SMTP_PORT:587}
+    username: ${AYNI_SMTP_USER}
+    password: ${AYNI_SMTP_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true

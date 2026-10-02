@@ -12,6 +12,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
@@ -79,6 +83,42 @@ class GenerarUrlDeSubidaServiceTest {
 
         assertThatThrownBy(() -> servicio.generar(senuelo, TipoDeDocumentoKyc.ANVERSO, "jpg"))
                 .isInstanceOf(SolicitudNoExisteException.class);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("una extension nula, vacia o en blanco cae por defecto a jpg")
+    void usaJpgPorDefectoCuandoNoHayExtension(String extension) {
+        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extension);
+
+        assertThat(almacen.ultimaClaveDeObjeto).endsWith(".jpg");
+        assertThat(almacen.ultimoTipoDeContenido).isEqualTo("image/jpeg");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "PNG, png",
+        " jpg , jpg",
+        "P.N.G, png",
+    })
+    @DisplayName("limpia mayusculas, espacios y caracteres invalidos antes de validar la extension")
+    void saneaLaExtensionAntesDeValidarla(String extensionRecibida, String extensionEsperada) {
+        servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extensionRecibida);
+
+        assertThat(almacen.ultimaClaveDeObjeto).endsWith("." + extensionEsperada);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"exe", "svg", "php", "jpgx"})
+    @DisplayName("una extension fuera del catalogo permitido se rechaza")
+    void rechazaUnaExtensionNoPermitida(String extensionInvalida) {
+        assertThatThrownBy(() ->
+                servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extensionInvalida))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("jpg, jpeg, png, webp o pdf");
+
+        assertThat(almacen.ultimaClaveDeObjeto).isNull();
     }
 
     // ─── Dobles ────────────────────────────────────────────────────────────
