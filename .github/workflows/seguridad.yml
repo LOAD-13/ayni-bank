@@ -80,6 +80,7 @@ jobs:
         run: |
           mkdir -p informes && chmod 777 informes
           # Nikto desde su repositorio oficial (la imagen publicada ya no existe).
+          sudo apt-get update && sudo apt-get install -y libxml-writer-perl libnet-ssleay-perl libjson-perl
           git clone --depth 1 https://github.com/sullo/nikto.git /tmp/nikto
           perl /tmp/nikto/program/nikto.pl -h "${{ inputs.objetivo }}" -maxtime 300s             -o informes/nikto.txt -Format txt || true
           echo "── Resumen ──"; cat informes/nikto.txt || true
