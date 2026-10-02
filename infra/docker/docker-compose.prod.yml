@@ -161,6 +161,63 @@ services:
     logging: *logs
     networks: [ayni]
 
+  # ── Observabilidad (AYNI-159) ──────────────────────────────────────────
+  # Prometheus y node-exporter solo viven en la red interna. Grafana se publica
+  # en /grafana a traves de Caddy, con la contrasena de Parameter Store y sin
+  # registro ni acceso anonimo. La configuracion la descarga desplegar.sh del
+  # mismo commit, en ./observabilidad.
+
+  ayni-prometheus:
+    image: prom/prometheus:v3.4.0
+    container_name: ayni-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Quince dias o 2 GB, lo que llegue antes: el disco de la instancia es de 30 GB.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=2GB
+    volumes:
+      - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    logging: *logs
+    networks: [ayni]
+
+  ayni-grafana:
+    image: grafana/grafana:11.6.0
+    container_name: ayni-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_CONTRASENA}
+      GF_SERVER_ROOT_URL: https://${AYNI_DOMINIO}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/ayni-negocio.json
+    volumes:
+      - ./observabilidad/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observabilidad/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on: [ayni-prometheus]
+    logging: *logs
+    networks: [ayni]
+
+  ayni-node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: ayni-node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    logging: *logs
+    networks: [ayni]
+
 networks:
   ayni:
     driver: bridge
@@ -169,3 +226,5 @@ volumes:
   rabbitmq-data:
   caddy-data:
   caddy-config:
+  prometheus-data:
+  grafana-data:

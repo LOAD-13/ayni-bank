@@ -66,6 +66,14 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  # Histograma de latencias para calcular el p95 en Grafana, y el nombre del
+  # servicio como etiqueta comun de todas las metricas (AYNI-159).
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: ${spring.application.name}
   endpoint:
     health:
       probes:

@@ -1,0 +1,13 @@
+# Fuente de datos de Grafana en produccion. En desarrollo se usa
+# ../datasources/datasources.yml, que ademas trae Loki; en produccion los logs
+# siguen en CloudWatch y Docker, asi que solo hay Prometheus.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://ayni-prometheus:9090
+    isDefault: true
+    editable: false
