@@ -30,10 +30,11 @@ spring:
               predicates:
                 - Path=/api/v1/cuentas/**,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
 
-            - id: kyc
-              uri: ${AYNI_KYC_URI:http://ayni-kyc-service:8000}
-              predicates:
-                - Path=/api/v1/kyc/**
+            # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
+            # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
+            # (`/api/v1/kyc/**`) no reescribia el prefijo y no llegaba a ningun endpoint,
+            # pero de haberlo hecho habria expuesto a Internet la lectura de documentos
+            # KYC por clave. Ver ADR-0026.
 
           globalcors:
             cors-configurations:
