@@ -392,6 +392,27 @@ class IniciarSesionServiceTest {
             assertThatThrownBy(() -> servicio.renovar("inventado", CLIENTE))
                     .isInstanceOf(SesionExpiradaException.class);
         }
+
+        @Test
+        @DisplayName("cerrar la sesion invalida la familia: la cookie ya no renueva")
+        void cerrarInvalidaLaFamilia() {
+            SesionIniciada sesion = completarIngreso();
+
+            servicio.cerrar(sesion.tokenDeRenovacion());
+
+            assertThatThrownBy(() -> servicio.renovar(sesion.tokenDeRenovacion(), CLIENTE))
+                    .isInstanceOf(SesionExpiradaException.class);
+        }
+
+        @Test
+        @DisplayName("cerrar sin token, o con uno desconocido, no hace nada ni falla")
+        void cerrarSinTokenEsInocuo() {
+            servicio.cerrar(null);
+            servicio.cerrar(" ");
+            servicio.cerrar("inventado");
+
+            assertThat(sesiones.familiasInvalidadas).isEmpty();
+        }
     }
 
     @Nested
