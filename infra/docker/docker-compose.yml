@@ -207,6 +207,11 @@ services:
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      # Mismo bucket que firma identity-service (ayni.minio.bucket-kyc).
+      MINIO_BUCKET_KYC: ayni-kyc-documentos
+      # Carga PaddleOCR al arrancar: la primera extraccion no debe pagar la carga
+      # del modelo dentro del timeout de 10 s de identity (HU-02).
+      KYC_PRECARGAR_OCR: "true"
       AYNI_UMBRAL_SIMILITUD_FACIAL: ${AYNI_UMBRAL_SIMILITUD_FACIAL:-0.80}
     ports: ["8000:8000"]
     # minio-init crea los buckets y termina. Declararlo con
@@ -221,6 +226,9 @@ services:
       interval: 20s
       timeout: 5s
       retries: 5
+      # Margen para la precarga de PaddleOCR (KYC_PRECARGAR_OCR), que en la
+      # Raspberry Pi puede tardar mas de lo que cubren los reintentos.
+      start_period: 120s
     networks: [ayni]
 
   ayni-web:
