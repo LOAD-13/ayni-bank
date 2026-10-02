@@ -22,7 +22,7 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 @Service
 public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
-    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp", "pdf");
+    private static final Set<String> EXTENSIONES_PERMITIDAS = Set.of("jpg", "jpeg", "png", "webp");
     private static final Pattern PATRON_CARACTERES_INVALIDOS = Pattern.compile("[^a-z0-9]");
 
     private final RepositorioDeSolicitudesPort solicitudes;
@@ -42,14 +42,16 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
         String extensionLimpia = sanitizarExtension(extension);
 
-        String claveDeObjeto = "kyc/%s/%s-%s.%s".formatted(
-                solicitudId, tipoDocumento.name().toLowerCase(Locale.ROOT), UUID.randomUUID(), extensionLimpia);
+        String claveDeObjeto = "kyc/%s/%s%s.%s".formatted(
+                solicitudId, tipoDocumento.prefijoDeObjeto(), UUID.randomUUID(), extensionLimpia);
 
-        return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia));
+        return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia),
+                TipoDeDocumentoKyc.TAMANO_MAXIMO_BYTES);
     }
 
     /**
-     * Sanitiza y valida que la extensión pertenezca al catálogo permitido (jpg, jpeg, png, webp, pdf).
+     * Sanitiza y valida que la extensión pertenezca al catálogo permitido (jpg, jpeg, png, webp).
+     * Sin PDF: kyc-service no puede analizarlo (ver {@link TipoDeDocumentoKyc#tipoDeContenidoEsperado}).
      *
      * @param extension Extensión recibida en el requerimiento.
      * @return Extensión limpia en minúsculas.
@@ -60,7 +62,7 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
         }
         String limpia = PATRON_CARACTERES_INVALIDOS.matcher(extension.trim().toLowerCase(Locale.ROOT)).replaceAll("");
         if (!EXTENSIONES_PERMITIDAS.contains(limpia)) {
-            throw new IllegalArgumentException("La extensión del archivo debe ser jpg, jpeg, png, webp o pdf.");
+            throw new IllegalArgumentException("La extensión del archivo debe ser jpg, jpeg, png o webp.");
         }
         return limpia;
     }
