@@ -2,14 +2,32 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ErrorDeApi, solicitarUrlDeSubida, subirDocumento } from "@/lib/api";
+import {
+  ErrorDeApi,
+  evaluarCaptura,
+  solicitarUrlDeSubida,
+  subirDocumento,
+  type UrlDeSubida,
+} from "@/lib/api";
 
-import { CapturaDeDocumento } from "./CapturaDeDocumento";
+import { CapturaDeDocumento, mensajeDeRechazo } from "./CapturaDeDocumento";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/api")>();
-  return { ...real, solicitarUrlDeSubida: vi.fn(), subirDocumento: vi.fn() };
+  return {
+    ...real,
+    solicitarUrlDeSubida: vi.fn(),
+    subirDocumento: vi.fn(),
+    evaluarCaptura: vi.fn(),
+  };
 });
+
+const DESTINO: UrlDeSubida = {
+  url: "https://minio.local/ayni-kyc-documentos",
+  campos: { key: "kyc/1111/anverso-x.jpg", policy: "p" },
+  claveDeObjeto: "kyc/1111/anverso-x.jpg",
+  expiraEn: "2026-09-12T10:05:00Z",
+};
 
 /** Falso `MediaStream`: lo único que el componente le pide es poder detener sus pistas. */
 function streamFalso() {
@@ -37,6 +55,7 @@ function archivoDePrueba({
 describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
   const getUserMedia = vi.fn();
   const onCompletado = vi.fn();
+  const onDerivada = vi.fn();
 
   // jsdom no implementa `getContext`/`toBlob` de forma útil (sin el paquete `canvas`), así
   // que se sustituyen a mano y se restauran aparte: `vi.restoreAllMocks()` solo deshace
@@ -83,6 +102,7 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
         tipoDocumento="ANVERSO"
         cara="Anverso"
         onCompletado={onCompletado}
+        onDerivada={onDerivada}
       />,
     );
     await screen.findByRole("button", { name: /tomar foto/i });
@@ -106,6 +126,7 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
         tipoDocumento="ANVERSO"
         cara="Anverso"
         onCompletado={onCompletado}
+        onDerivada={onDerivada}
       />,
     );
 
@@ -137,13 +158,11 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
     expect(getUserMedia).toHaveBeenCalledTimes(1);
   });
 
-  it("usar esta foto pide la URL de subida, sube el archivo y avisa que terminó", async () => {
+  it("usar esta foto la sube, la manda evaluar y avisa que terminó si se acepta", async () => {
     const usuario = userEvent.setup();
-    vi.mocked(solicitarUrlDeSubida).mockResolvedValue({
-      url: "https://minio.local/presigned",
-      expiraEn: "2026-09-12T10:05:00Z",
-    });
+    vi.mocked(solicitarUrlDeSubida).mockResolvedValue(DESTINO);
     vi.mocked(subirDocumento).mockResolvedValue(undefined);
+    vi.mocked(evaluarCaptura).mockResolvedValue({ estado: "ACEPTADO" });
 
     await renderizarConCamaraLista();
     await usuario.click(screen.getByRole("button", { name: /tomar foto/i }));
@@ -156,18 +175,62 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
       "ANVERSO",
       "jpg",
     );
-    const [urlUsada, archivoUsado] = vi.mocked(subirDocumento).mock.calls[0];
-    expect(urlUsada).toBe("https://minio.local/presigned");
+    const [destinoUsado, archivoUsado] = vi.mocked(subirDocumento).mock.calls[0];
+    expect(destinoUsado).toBe(DESTINO);
     expect(archivoUsado).toBeInstanceOf(File);
     expect(archivoUsado.type).toBe("image/jpeg");
+    expect(evaluarCaptura).toHaveBeenCalledWith(
+      "11111111-1111-1111-1111-111111111111",
+      "ANVERSO",
+      DESTINO.claveDeObjeto,
+    );
+  });
+
+  it("si la foto se rechaza, dice el motivo concreto y vuelve a la cámara (escenario 3)", async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(solicitarUrlDeSubida).mockResolvedValue(DESTINO);
+    vi.mocked(subirDocumento).mockResolvedValue(undefined);
+    vi.mocked(evaluarCaptura).mockResolvedValue({
+      estado: "RECHAZADO",
+      motivo: "DESENFOQUE",
+      intentosRestantes: 2,
+    });
+
+    await renderizarConCamaraLista();
+    await usuario.click(screen.getByRole("button", { name: /tomar foto/i }));
+    await usuario.click(await screen.findByRole("button", { name: /usar esta foto/i }));
+
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(/borrosa/i);
+    expect(aviso).toHaveTextContent(/te quedan 2 intentos/i);
+    expect(await screen.findByRole("button", { name: /tomar foto/i })).toBeInTheDocument();
+    expect(onCompletado).not.toHaveBeenCalled();
+  });
+
+  it("si la solicitud se deriva a revisión, lo avisa hacia arriba (escenarios 4 y 5)", async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(solicitarUrlDeSubida).mockResolvedValue(DESTINO);
+    vi.mocked(subirDocumento).mockResolvedValue(undefined);
+    vi.mocked(evaluarCaptura).mockResolvedValue({ estado: "VERIFICACION_DIFERIDA" });
+
+    await renderizarConCamaraLista();
+    await usuario.click(screen.getByRole("button", { name: /tomar foto/i }));
+    await usuario.click(await screen.findByRole("button", { name: /usar esta foto/i }));
+
+    await waitFor(() => expect(onDerivada).toHaveBeenCalledWith("VERIFICACION_DIFERIDA"));
+    expect(onCompletado).not.toHaveBeenCalled();
+  });
+
+  it("el mensaje de rechazo dice qué repetir para cada motivo", () => {
+    expect(mensajeDeRechazo("NO_ES_DNI", 2)).toMatch(/no reconocimos un dni/i);
+    expect(mensajeDeRechazo("ENCUADRE", 1)).toMatch(/no se ve completo.*te queda 1 intento\./i);
+    expect(mensajeDeRechazo("REFLEJO")).toMatch(/reflejo/i);
+    expect(mensajeDeRechazo("ILUMINACION")).toMatch(/oscura o muy clara/i);
   });
 
   it("si la subida falla, avisa y deja reintentar sin perder la foto tomada", async () => {
     const usuario = userEvent.setup();
-    vi.mocked(solicitarUrlDeSubida).mockResolvedValue({
-      url: "https://minio.local/presigned",
-      expiraEn: "2026-09-12T10:05:00Z",
-    });
+    vi.mocked(solicitarUrlDeSubida).mockResolvedValue(DESTINO);
     vi.mocked(subirDocumento).mockRejectedValue(
       new ErrorDeApi({ title: "No pudimos subir el documento", status: 503 }, 503),
     );
@@ -210,6 +273,7 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
           tipoDocumento="ANVERSO"
           cara="Anverso"
           onCompletado={onCompletado}
+          onDerivada={onDerivada}
         />,
       );
       await screen.findByText(/no pudimos acceder a tu cámara/i);
@@ -234,17 +298,17 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
       expect(screen.getByRole("button", { name: "Cambiar" })).toBeInTheDocument();
     });
 
-    it("un PDF también es válido — el mockup de diseño lo pide explícitamente", async () => {
+    it("un PDF ya no se acepta: kyc-service no puede analizarlo (ADR-0026)", async () => {
       const usuario = userEvent.setup();
       await renderizarConCamaraLista();
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));
 
-      await usuario.upload(
-        screen.getByLabelText(/arrastra tu archivo/i),
-        archivoDePrueba({ nombre: "dni.pdf", tipo: "application/pdf" }),
-      );
+      fireEvent.change(screen.getByLabelText(/arrastra tu archivo/i), {
+        target: { files: [archivoDePrueba({ nombre: "dni.pdf", tipo: "application/pdf" })] },
+      });
 
-      expect(await screen.findByText("dni.pdf")).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg, png o webp/i);
+      expect(screen.queryByText("dni.pdf")).not.toBeInTheDocument();
     });
 
     it("rechaza un tipo de archivo que el backend no acepta", async () => {
@@ -261,7 +325,7 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
         },
       });
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg, png o un pdf/i);
+      expect(await screen.findByRole("alert")).toHaveTextContent(/jpg, png o webp/i);
       expect(screen.queryByText("dni.docx")).not.toBeInTheDocument();
     });
 
@@ -280,11 +344,9 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
 
     it("sube el archivo elegido con su propia extensión", async () => {
       const usuario = userEvent.setup();
-      vi.mocked(solicitarUrlDeSubida).mockResolvedValue({
-        url: "https://minio.local/presigned",
-        expiraEn: "2026-09-12T10:05:00Z",
-      });
+      vi.mocked(solicitarUrlDeSubida).mockResolvedValue(DESTINO);
       vi.mocked(subirDocumento).mockResolvedValue(undefined);
+      vi.mocked(evaluarCaptura).mockResolvedValue({ estado: "ACEPTADO" });
 
       await renderizarConCamaraLista();
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));

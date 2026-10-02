@@ -4,16 +4,16 @@ import { BookmarkCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { IndicadorDeProgreso } from "@/componentes/IndicadorDeProgreso";
+import { IndicadorDeProgreso, PASOS_DEL_ONBOARDING } from "@/componentes/IndicadorDeProgreso";
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
-import type { TipoDeDocumentoKyc } from "@/lib/api";
+import type { LadoDelDni } from "@/lib/api";
 
 import { CapturaDeDocumento } from "./CapturaDeDocumento";
 
 interface Props {
   solicitudId: string | undefined;
   pasoActual: number;
-  tipoDocumento: TipoDeDocumentoKyc;
+  tipoDocumento: LadoDelDni;
   cara: string;
   /** A dónde navegar cuando la subida termina bien. */
   siguienteHref: string;
@@ -42,7 +42,8 @@ export function PasoDeCapturaDeDni({
           </Link>
           <div className="flex items-center gap-4">
             <span className="hidden text-[13.5px] text-gris-500 sm:inline">
-              Paso <strong className="font-bold text-azul-700">{pasoActual}</strong> de 5
+              Paso <strong className="font-bold text-azul-700">{pasoActual}</strong> de{" "}
+              {PASOS_DEL_ONBOARDING.length}
             </span>
             <Link
               href="/"
@@ -65,6 +66,11 @@ export function PasoDeCapturaDeDni({
               tipoDocumento={tipoDocumento}
               cara={cara}
               onCompletado={() => router.push(siguienteHref)}
+              onDerivada={(estado) =>
+                router.push(
+                  `/registro/en-revision?motivo=${estado === "VERIFICACION_DIFERIDA" ? "diferida" : "revision"}`,
+                )
+              }
             />
           ) : (
             <div className="text-center">
