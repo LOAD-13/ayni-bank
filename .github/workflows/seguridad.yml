@@ -43,6 +43,8 @@ jobs:
           # Informa de todo lo que encuentra; no falla el job por hallazgos,
           # porque el objetivo es recoger evidencia, no bloquear nada.
           fail_action: false
+          # Sin permiso para abrir issues: el informe va como artefacto.
+          allow_issue_writing: false
           cmd_options: "-a"
           artifact_name: zap-baseline
 
@@ -76,7 +78,7 @@ jobs:
     steps:
       - name: Escaneo Nikto
         run: |
-          mkdir -p informes
+          mkdir -p informes && chmod 777 informes
           # Nikto oficial en contenedor; -maxtime acota la ejecucion.
           docker run --rm -v "$PWD/informes:/out" sullo/nikto:latest \
             -h "${{ inputs.objetivo }}" -maxtime 300s \
@@ -96,7 +98,8 @@ jobs:
       - name: Analizar la configuracion TLS
         run: |
           HOST=$(echo "${{ inputs.objetivo }}" | sed -E 's#^https?://##; s#/.*$##')
-          mkdir -p informes
+          # El contenedor escribe con otro usuario: sin esto el informe no se crea.
+          mkdir -p informes && chmod 777 informes
           docker run --rm -v "$PWD/informes:/out" drwetter/testssl.sh:latest \
             --quiet --color 0 --logfile /out/testssl.txt "$HOST:443" || true
           echo "── Resumen ──"; tail -40 informes/testssl.txt || true
