@@ -331,6 +331,18 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                 nuevo.enClaro(), rotacion.sucesor().expiraEn());
     }
 
+    @Override
+    @Transactional
+    public void cerrar(String tokenDeRenovacion) {
+        if (tokenDeRenovacion == null || tokenDeRenovacion.isBlank()) {
+            return;
+        }
+        sesiones.buscarTokenPorHuella(emisor.huellaDe(tokenDeRenovacion)).ifPresent(token -> {
+            sesiones.invalidarFamilia(token.familiaId());
+            log.info("Sesion cerrada por el titular. usuarioId={}", token.usuarioId());
+        });
+    }
+
     /**
      * Escenario 4: se presento un token ya consumido.
      *

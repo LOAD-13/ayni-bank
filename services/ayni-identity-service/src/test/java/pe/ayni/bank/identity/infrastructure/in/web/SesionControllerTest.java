@@ -208,6 +208,38 @@ class SesionControllerTest {
         }
     }
 
+    @Nested
+    @DisplayName("Cierre de sesion")
+    class Cierre {
+
+        private MockHttpServletRequest conCookie(String nombre) {
+            MockHttpServletRequest peticion = peticionDesde(null);
+            peticion.setCookies(new Cookie(nombre, TOKEN_DE_RENOVACION));
+            return peticion;
+        }
+
+        @Test
+        @DisplayName("invalida el token de la cookie y la borra con Max-Age=0")
+        void cierraYBorraLaCookie() {
+            var respuesta = enProduccion.cerrar(conCookie("__Host-ayni-renovacion"));
+
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(204);
+            assertThat(casoDeUso.ultimoTokenCerrado).isEqualTo(TOKEN_DE_RENOVACION);
+            assertThat(cookieDe(respuesta))
+                    .startsWith("__Host-ayni-renovacion=;")
+                    .contains("Max-Age=0", "HttpOnly", "Secure", "SameSite=Strict");
+        }
+
+        @Test
+        @DisplayName("sin cookie responde igual: no revela si habia sesion")
+        void sinCookie() {
+            var respuesta = enLocal.cerrar(peticionDesde(null));
+
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(204);
+            assertThat(casoDeUso.ultimoTokenCerrado).isNull();
+        }
+    }
+
     // ─── Doble ─────────────────────────────────────────────────────────────
 
     private static final class CasoDeUsoFalso implements IniciarSesionUseCase {
@@ -215,6 +247,7 @@ class SesionControllerTest {
         private HuellaDeCliente ultimoCliente;
         private String ultimoTokenRenovado;
         private boolean requiereInscripcion;
+        private String ultimoTokenCerrado = "sin-llamar";
 
         @Override
         public DesafioAbierto presentarCredenciales(ComandoDeIngreso comando) {
@@ -238,6 +271,11 @@ class SesionControllerTest {
             ultimoTokenRenovado = tokenDeRenovacion;
             ultimoCliente = cliente;
             return sesion();
+        }
+
+        @Override
+        public void cerrar(String tokenDeRenovacion) {
+            ultimoTokenCerrado = tokenDeRenovacion;
         }
 
         private static SesionIniciada sesion() {

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -121,6 +122,28 @@ public class SesionController {
      * la propia aplicacion; con {@code Lax} viajaria tambien en navegaciones desde otros
      * sitios, que es la puerta de un CSRF.
      */
+    /**
+     * Cierra la sesion: invalida la familia del token y borra la cookie.
+     *
+     * <p>Responde 204 aunque no hubiera cookie: cerrar una sesion ya cerrada no es un error,
+     * y responder distinto revelaria si habia una sesion abierta.
+     */
+    @DeleteMapping
+    public ResponseEntity<Void> cerrar(HttpServletRequest peticion) {
+        iniciarSesion.cerrar(tokenDeLaCookie(peticion));
+
+        ResponseCookie borrada = ResponseCookie.from(nombreDeLaCookie, "")
+                .httpOnly(true)
+                .secure(cookieSegura)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, borrada.toString())
+                .build();
+    }
+
     private ResponseEntity<SesionDto> responderCon(SesionIniciada sesion) {
         ResponseCookie cookie = ResponseCookie.from(
                         nombreDeLaCookie, sesion.tokenDeRenovacion())

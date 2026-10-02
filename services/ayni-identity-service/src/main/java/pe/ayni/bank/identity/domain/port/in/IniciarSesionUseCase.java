@@ -44,4 +44,13 @@ public interface IniciarSesionUseCase {
      *         si el token no existe o caduco
      */
     SesionIniciada renovar(String tokenDeRenovacion, HuellaDeCliente cliente);
+
+    /**
+     * Cierra la sesion: invalida la familia entera del token de renovacion.
+     *
+     * <p>No basta con olvidar el token de acceso en el navegador: mientras la cookie de
+     * renovacion siga valida, recargar la pagina volveria a abrir la sesion. Un token
+     * desconocido o ya caducado no es un error: la sesion ya estaba cerrada.
+     */
+    void cerrar(String tokenDeRenovacion);
 }

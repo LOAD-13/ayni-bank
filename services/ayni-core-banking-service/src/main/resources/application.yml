@@ -59,6 +59,10 @@ spring:
           multiplier: 2
 
 ayni:
+  cuentas:
+    # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
+    # migracion V3 con este mismo identificador.
+    fondeo-pen: f0de0000-0000-4000-8000-000000000001
   productos:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
