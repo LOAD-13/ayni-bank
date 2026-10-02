@@ -102,7 +102,7 @@ public class RegistrarVisitanteService implements RegistrarVisitanteUseCase {
                 UUID.randomUUID(), correo, celular, contrasena, consentimiento, momento));
 
         UUID solicitudId = solicitudes.abrirPara(usuario.id(), identidad);
-        notificador.enviarBienvenida(correo);
+        notificador.enviarBienvenida(correo, solicitudId);
 
         // El correo va enmascarado. Un log de aplicacion lo leen operaciones, soporte y
         // cualquiera con acceso a Loki; el correo es dato personal segun la Ley N.o 29733.

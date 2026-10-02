@@ -13,7 +13,7 @@ import pe.ayni.bank.identity.domain.model.CorreoElectronico;
  */
 public interface NotificadorDeRegistroPort {
 
-    void enviarBienvenida(CorreoElectronico correo);
+    void enviarBienvenida(CorreoElectronico correo, java.util.UUID solicitudId);
 
     void avisarIntentoDeRegistroSobreCuentaExistente(CorreoElectronico correo);
 }

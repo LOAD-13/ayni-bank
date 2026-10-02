@@ -93,6 +93,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- SDK de AWS v2: correo transaccional con Amazon SES (identity). -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>2.55.10</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>io.cucumber</groupId>
                 <artifactId>cucumber-bom</artifactId>

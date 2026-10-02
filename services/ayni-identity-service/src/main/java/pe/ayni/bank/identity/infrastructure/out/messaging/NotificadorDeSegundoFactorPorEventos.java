@@ -25,7 +25,7 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeSegundoFactorPort;
  * extremo, {@link NotificadorDeSegundoFactorPorCorreoDePrueba} no se activa.
  */
 @Component
-@Profile("!e2e")
+@Profile("!e2e & !prod")
 public class NotificadorDeSegundoFactorPorEventos implements NotificadorDeSegundoFactorPort {
 
     private static final Logger log =
