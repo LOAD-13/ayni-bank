@@ -9,6 +9,10 @@ import contextlib
 import hashlib
 from unittest.mock import MagicMock, patch
 
+import pytest
+from minio.error import S3Error
+
+from src.domain.port.verificador_identidad import ObjetoNoEncontradoError
 from src.infrastructure.storage.almacen_objetos_minio import AlmacenObjetosMinIO
 
 
@@ -99,3 +103,23 @@ def test_debe_calcular_el_hash_sha256_de_los_bytes_descargados() -> None:
     resultado = almacen.calcular_hash("kyc/abc/anverso-x.jpg")
 
     assert resultado == hashlib.sha256(contenido).hexdigest()
+
+
+def _error_s3(codigo: str) -> S3Error:
+    return S3Error(codigo, "mensaje", "recurso", "request-id", "host-id", MagicMock())
+
+
+def test_debe_traducir_una_clave_inexistente_a_objeto_no_encontrado() -> None:
+    almacen, cliente_falso = _construir_almacen_con_cliente_falso()
+    cliente_falso.get_object.side_effect = _error_s3("NoSuchKey")
+
+    with pytest.raises(ObjetoNoEncontradoError):
+        almacen.descargar("kyc/no-existe.jpg")
+
+
+def test_debe_propagar_otros_errores_de_minio_tal_cual() -> None:
+    almacen, cliente_falso = _construir_almacen_con_cliente_falso()
+    cliente_falso.get_object.side_effect = _error_s3("AccessDenied")
+
+    with pytest.raises(S3Error):
+        almacen.descargar("kyc/cualquiera.jpg")

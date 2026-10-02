@@ -7,6 +7,9 @@ import hashlib
 from urllib.parse import urlparse
 
 from minio import Minio
+from minio.error import S3Error
+
+from src.domain.port.verificador_identidad import ObjetoNoEncontradoError
 
 
 class AlmacenObjetosMinIO:
@@ -24,7 +27,12 @@ class AlmacenObjetosMinIO:
         self._bucket = bucket
 
     def descargar(self, clave_objeto: str) -> bytes:
-        respuesta = self._cliente.get_object(self._bucket, clave_objeto)
+        try:
+            respuesta = self._cliente.get_object(self._bucket, clave_objeto)
+        except S3Error as error:
+            if error.code == "NoSuchKey":
+                raise ObjetoNoEncontradoError(clave_objeto) from error
+            raise
         try:
             return respuesta.read()
         finally:
