@@ -20,7 +20,7 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 
 /**
- * HU-02 · El titular confirma o corrige lo que leyo el OCR (ADR-0009, ADR-0026).
+ * HU-02 · El titular confirma o corrige lo que leyo el OCR (ADR-0009, ADR-0028).
  *
  * <p>Pasa a revision manual en dos casos:
  *

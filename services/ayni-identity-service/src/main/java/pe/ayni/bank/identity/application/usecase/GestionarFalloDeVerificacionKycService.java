@@ -17,7 +17,7 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
 
 /**
  * Implementa el limite de tres intentos por lado del DNI y la derivacion a revision manual
- * (AYNI-13, ADR-0021 y ADR-0026), y el aviso al solicitante cuando eso ocurre (ADR-0024).
+ * (AYNI-13, ADR-0021 y ADR-0028), y el aviso al solicitante cuando eso ocurre (ADR-0024).
  *
  * <p>Una solicitud que ya esta en revision manual no suma mas intentos ni vuelve a avisar:
  * un cuarto intento sobre ella se responde como derivada (escenario 4 de Jira), sin que el

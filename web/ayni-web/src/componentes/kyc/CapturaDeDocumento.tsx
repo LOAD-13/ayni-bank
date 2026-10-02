@@ -28,7 +28,7 @@ import {
  */
 const PROPORCION_DNI = 85.6 / 53.98;
 
-/** Sin PDF: kyc-service analiza la imagen con OpenCV, que no lee PDF (ADR-0026). */
+/** Sin PDF: kyc-service analiza la imagen con OpenCV, que no lee PDF (ADR-0028). */
 const TIPOS_ACEPTADOS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -95,7 +95,7 @@ function formatearTamano(bytes: number): string {
  *
  * **Después de subir, se evalúa.** La foto no se da por buena al llegar a MinIO: identity
  * la manda evaluar a kyc-service y, si no es un DNI o no tiene calidad, la persona ve el
- * motivo concreto y repite (escenarios 2 y 3, ADR-0026).
+ * motivo concreto y repite (escenarios 2 y 3, ADR-0028).
  */
 export function CapturaDeDocumento({
   solicitudId,

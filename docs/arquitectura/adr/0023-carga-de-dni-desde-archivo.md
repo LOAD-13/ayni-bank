@@ -4,7 +4,7 @@
 - **Fecha:** 12 de septiembre de 2026
 - **Historias afectadas:** HU-02 (verificación de identidad)
 - **Reemplaza a:** ninguno (extiende [ADR-0022](0022-captura-de-dni-con-guia-visual-de-encuadre.md))
-- **Actualizado por:** [ADR-0026](0026-verificacion-sincrona-del-dni-por-lado-y-confirmacion-del-titular.md) (se retira el PDF: OpenCV no lo lee)
+- **Actualizado por:** [ADR-0028](0028-verificacion-sincrona-del-dni-por-lado-y-confirmacion-del-titular.md) (se retira el PDF: OpenCV no lo lee)
 
 ## Contexto
 

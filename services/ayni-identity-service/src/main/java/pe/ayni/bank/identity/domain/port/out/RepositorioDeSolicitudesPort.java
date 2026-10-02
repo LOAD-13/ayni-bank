@@ -49,7 +49,7 @@ public interface RepositorioDeSolicitudesPort {
      * acumulado para ese lado.
      *
      * <p>Devuelve el conteo actualizado, no solo el hecho de haberlo incrementado, porque
-     * quien decide si ya se agoto el limite es el caso de uso (ADR-0021, ADR-0026), no este
+     * quien decide si ya se agoto el limite es el caso de uso (ADR-0021, ADR-0028), no este
      * puerto: el puerto persiste, el dominio decide.
      */
     int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado);

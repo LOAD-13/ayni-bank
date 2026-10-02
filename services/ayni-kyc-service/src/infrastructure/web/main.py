@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 # PaddlePaddle (OCR, HU-02) tiene que cargarse ANTES que TensorFlow, que entra con
 # DeepFace (cotejo facial, HU-03) al importar router_kyc. En el orden inverso, importar
 # paddle en el mismo proceso provoca un segfault (codigo 139) sin traza: se comprobo en
-# la imagen del servicio. Con este orden conviven. Ver ADR-0026.
+# la imagen del servicio. Con este orden conviven. Ver ADR-0028.
 import paddle  # noqa: F401
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError

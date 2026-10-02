@@ -7,7 +7,7 @@ info:
     identity-service, nunca el navegador (diseno-base.md §3.4).
 
     Las dos operaciones son **síncronas**, con el timeout de 10 s que fija
-    diseno-base.md §3.5 punto 5 (ver ADR-0026). Las imágenes no viajan por la
+    diseno-base.md §3.5 punto 5 (ver ADR-0028). Las imágenes no viajan por la
     API: identity envía la clave del objeto y kyc-service lo lee de MinIO.
 
     La versión 1.0.0 describía un flujo asíncrono (`POST /kyc/verify` con 202 y

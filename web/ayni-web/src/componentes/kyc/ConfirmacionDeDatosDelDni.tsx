@@ -34,7 +34,7 @@ type Estado =
  *
  * **El número llega enmascarado** y solo se pide entero si la persona dice que está mal: la
  * respuesta de lectura no exige sesión todavía (T-12), y no tiene por qué viajar completo si
- * el OCR lo leyó bien. Ver ADR-0026.
+ * el OCR lo leyó bien. Ver ADR-0028.
  *
  * **La lectura se pide una sola vez por montaje.** Cada lectura lanza el OCR y, si falla,
  * consume un intento del reverso; el doble efecto de React en desarrollo no debe gastar dos.

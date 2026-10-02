@@ -20,7 +20,7 @@ import pe.ayni.bank.identity.domain.model.Usuario;
 
 /**
  * AYNI-13: limite de tres intentos POR LADO y derivacion a revision manual (ADR-0021,
- * ADR-0026), y el aviso al solicitante cuando eso ocurre (ADR-0024).
+ * ADR-0028), y el aviso al solicitante cuando eso ocurre (ADR-0024).
  */
 class GestionarFalloDeVerificacionKycServiceTest {
 

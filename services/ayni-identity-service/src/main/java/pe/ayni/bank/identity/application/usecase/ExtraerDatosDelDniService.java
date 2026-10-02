@@ -22,7 +22,7 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.VerificadorKycPort;
 
 /**
- * HU-02 · Lee los datos del DNI de las dos fotos aceptadas (escenario 1, ADR-0026).
+ * HU-02 · Lee los datos del DNI de las dos fotos aceptadas (escenario 1, ADR-0028).
  *
  * <p>Antes de leer, comprueba que las fotos siguen siendo las que se evaluaron: la politica
  * de subida permite volver a escribir la misma clave durante cinco minutos, y el hash

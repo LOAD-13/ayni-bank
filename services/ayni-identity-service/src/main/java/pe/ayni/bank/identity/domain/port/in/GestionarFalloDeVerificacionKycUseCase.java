@@ -8,7 +8,7 @@ import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 /**
  * Decide que hacer con una solicitud cuando un paso de la verificacion KYC no prospera.
  *
- * <p>Distingue los motivos de fallo porque no significan lo mismo (ver ADR-0021 y ADR-0026):
+ * <p>Distingue los motivos de fallo porque no significan lo mismo (ver ADR-0021 y ADR-0028):
  *
  * <ul>
  *   <li>{@link #registrarFalloDeUsuario(UUID, TipoDeDocumentoKyc)} — la foto de un lado no

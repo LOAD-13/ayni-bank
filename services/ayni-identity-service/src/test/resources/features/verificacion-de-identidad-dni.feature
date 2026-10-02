@@ -14,7 +14,7 @@
 #
 # 1. Jira dice "EN_REVISION"; el estado que el sistema persiste es "EN_REVISION_MANUAL"
 #    (V2__usuario_persona_y_solicitud_de_onboarding.sql). Los pasos comprueban el real.
-# 2. Escenario 4: el tercer fallo del mismo lado ya deriva (ADR-0021, ADR-0026). La cuarta
+# 2. Escenario 4: el tercer fallo del mismo lado ya deriva (ADR-0021, ADR-0028). La cuarta
 #    captura que narra Jira se responde como derivada, sin evaluarse ni volver a avisar.
 # 3. "kyc-vision-service" es ayni-kyc-service.
 

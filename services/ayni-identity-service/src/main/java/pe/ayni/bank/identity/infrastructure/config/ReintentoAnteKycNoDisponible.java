@@ -8,7 +8,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 /**
- * Que fallos de kyc-service merecen reintento (ADR-0020, ADR-0026).
+ * Que fallos de kyc-service merecen reintento (ADR-0020, ADR-0028).
  *
  * <p>Este predicado decide solo: Resilience4j combina {@code retry-exceptions} y
  * {@code retry-exception-predicate} con un O logico, asi que una lista de excepciones en
