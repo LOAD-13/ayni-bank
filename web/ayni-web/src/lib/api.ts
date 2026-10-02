@@ -364,17 +364,30 @@ export async function confirmarDatosDelDni(
  * guarda la cookie del token de renovación aunque el servidor la envíe, y la sesión dura
  * exactamente quince minutos sin que nada indique por qué.
  */
-async function pedir<T>(ruta: string, cuerpo?: unknown): Promise<T> {
+interface Opciones {
+  metodo?: "GET" | "POST" | "DELETE";
+  /** Token de acceso para las rutas protegidas. Viaja como `Authorization: Bearer`. */
+  token?: string;
+  /** Clave de idempotencia de las operaciones monetarias. */
+  idempotencia?: string;
+}
+
+async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {}): Promise<T> {
   let respuesta: Response;
+
+  const cabeceras: Record<string, string> = {};
+  if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
+  if (opciones.token) cabeceras.Authorization = `Bearer ${opciones.token}`;
+  if (opciones.idempotencia) cabeceras["Idempotency-Key"] = opciones.idempotencia;
 
   try {
     // Sin cuerpo es una consulta: GET. Mandar un POST con el cuerpo vacío para leer algo
     // funcionaría, pero rompe la caché, los reintentos y cualquier lectura del registro
     // del gateway.
     respuesta = await fetch(`${BASE}${ruta}`, {
-      method: cuerpo === undefined ? "GET" : "POST",
+      method: opciones.metodo ?? (cuerpo === undefined ? "GET" : "POST"),
       credentials: "include",
-      headers: cuerpo === undefined ? {} : { "Content-Type": "application/json" },
+      headers: cabeceras,
       body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo),
     });
   } catch {
@@ -391,7 +404,8 @@ async function pedir<T>(ruta: string, cuerpo?: unknown): Promise<T> {
   }
 
   if (respuesta.ok) {
-    return (await respuesta.json()) as T;
+    // 204 No Content (cerrar sesión) no trae cuerpo que leer.
+    return (respuesta.status === 204 ? undefined : await respuesta.json()) as T;
   }
 
   let problema: Problema;
@@ -402,4 +416,85 @@ async function pedir<T>(ruta: string, cuerpo?: unknown): Promise<T> {
   }
 
   throw new ErrorDeApi(problema, respuesta.status);
+}
+
+// ─── Sesión ──────────────────────────────────────────────────────────────
+
+/** Pide un token nuevo con la cookie de renovación. Rota la cookie en cada uso. */
+export async function renovarSesion(): Promise<Sesion> {
+  return pedir<Sesion>("/api/v1/sesion/renovacion", {});
+}
+
+/** Invalida la familia del token de renovación y borra la cookie. */
+export async function cerrarSesion(): Promise<void> {
+  return pedir<void>("/api/v1/sesion", undefined, { metodo: "DELETE" });
+}
+
+// ─── Banca · HU-07 y HU-08 ───────────────────────────────────────────────
+
+/** Un asiento de la cuenta, tal como lo lista el panel. */
+export interface Movimiento {
+  movimientoId: string;
+  tipo: "CARGO" | "ABONO";
+  /** Siempre positivo y como texto: el signo lo da `tipo`. */
+  importe: string;
+  moneda: string;
+  concepto: string;
+  registradoEn: string;
+}
+
+/** Lo que devuelve una operación terminada. Las cuentas llegan enmascaradas. */
+export interface Comprobante {
+  movimientoId: string;
+  tipo: "TRANSFERENCIA" | "DEPOSITO_SIMULADO";
+  importe: string;
+  moneda: string;
+  cuentaOrigen: string;
+  cuentaDestino: string;
+  concepto: string;
+  registradoEn: string;
+  saldoDisponible: string;
+}
+
+export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
+  return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
+}
+
+export async function consultarMovimientos(token: string, limite = 10): Promise<Movimiento[]> {
+  return pedir<Movimiento[]>(`/api/v1/cuentas/mia/movimientos?limite=${limite}`, undefined, {
+    token,
+  });
+}
+
+/**
+ * Deposita dinero de prueba en la cuenta propia.
+ *
+ * La clave de idempotencia la genera quien llama UNA vez por intento de operación: si la
+ * red falla y se reintenta con la misma clave, el servidor devuelve el mismo comprobante
+ * en lugar de depositar dos veces.
+ */
+export async function depositarSimulado(
+  token: string,
+  importe: string,
+  clave: string,
+): Promise<Comprobante> {
+  return pedir<Comprobante>(
+    "/api/v1/cuentas/mia/depositos-simulados",
+    { importe },
+    { token, idempotencia: clave },
+  );
+}
+
+export async function transferir(
+  token: string,
+  cuentaDestino: string,
+  importe: string,
+  concepto: string,
+  clave: string,
+): Promise<Comprobante> {
+  return pedir<Comprobante>(
+    "/api/v1/transferencias",
+    { cuentaDestino, importe, concepto },
+    { token, idempotencia: clave },
+  );
 }

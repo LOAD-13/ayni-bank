@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
   // limiting. Ver §3.4 del documento de diseno.
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
+    // La versión que se ve bajo el formulario de ingreso. La inyecta el pipeline de
+    // despliegue a partir del fichero VERSION de la raíz; en local queda «desarrollo».
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION ?? "desarrollo",
   },
 };
 

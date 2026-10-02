@@ -5,6 +5,9 @@ on:
     branches: [develop, main]
   push:
     branches: [develop]
+  # El pipeline de despliegue (cd.yml) la reutiliza entera antes de publicar
+  # nada: lo que llega a produccion ha pasado exactamente las mismas pruebas.
+  workflow_call:
 
 permissions:
   contents: read
