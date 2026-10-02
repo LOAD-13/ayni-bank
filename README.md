@@ -30,7 +30,7 @@ banco sin comisiones, donde el dinero de la comunidad rinde para la comunidad, e
 
 | Situación actual en Perú | Qué hace Ayni |
 |---|---|
-| Abrir una cuenta exige ir a una agencia en horario bancario | Onboarding completo desde el navegador en **menos de 90 segundos** |
+| Abrir una cuenta exige ir a una agencia en horario bancario | Onboarding completo desde el navegador en **menos de 5 minutos**, 24 horas los 7 días |
 | Las cuentas de ahorro rinden en torno al **0.5% TREA**, por debajo de la inflación | Cuenta remunerada con **devengo diario** y TREA publicada de forma transparente |
 | La comisión de mantenimiento penaliza proporcionalmente más a los saldos pequeños | **Cero comisión de mantenimiento**, por lo que TREA = TEA |
 | La verificación de identidad es manual y sin trazabilidad | KYC con OCR del DNI, prueba de vivacidad y cotejo biométrico, **todo auditado** |
@@ -158,6 +158,7 @@ se carga además el histórico de tipo de cambio de ejemplo.
 
 | Servicio | URL |
 |---|---|
+| Aplicación web | http://localhost:3000 |
 | API Gateway | http://localhost:8080 |
 | Health check del gateway | http://localhost:8080/actuator/health |
 | Servicio de verificación de identidad | http://localhost:8000/health |
@@ -165,6 +166,12 @@ se carga además el histórico de tipo de cambio de ejemplo.
 | Panel de RabbitMQ | http://localhost:15672 |
 | Grafana | http://localhost:3001 |
 | Prometheus | http://localhost:9090 |
+
+**Si trabajas en Windows y `up` aborta con «bind: An attempt was made to access a socket in a way
+forbidden by its access permissions»**, Hyper-V tiene reservado ese puerto. Los rangos reservados
+cambian en cada reinicio. Consúltalos con `netsh interface ipv4 show excludedportrange protocol=tcp`
+y ajusta `AYNI_WEB_PORT` y `AYNI_GRAFANA_PORT` en tu `.env` local; son las dos únicas URL de la tabla
+que caen en el bloque afectado.
 
 Para detener y limpiar, volúmenes incluidos:
 

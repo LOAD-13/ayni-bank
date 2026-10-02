@@ -16,7 +16,22 @@ COPY services/ayni-notification-service/src services/ayni-notification-service/s
 RUN mvn -B -pl services/ayni-notification-service -am clean package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S ayni && adduser -S ayni -G ayni
+
+# La imagen base arrastra paquetes de Alpine con CVE conocidas y ya corregidas
+# aguas arriba. Hoy son libexpat 2.8.3-r0 —CVE-2026-66046 y CVE-2026-76641,
+# ambas ALTAS, resueltas en 2.8.4-r0— y antes fue OpenSSL. La lista cambia sola:
+# la base de datos de Trivy se actualiza a diario y aparecen avisos nuevos sin
+# que este repositorio toque una linea.
+#
+# Por eso se actualiza el arbol completo en lugar de una lista de paquetes
+# fijada a mano. Fijarla obliga a editar cinco Dockerfiles cada vez que sale una
+# CVE nueva, y a enterarse cuando la integracion ya esta en rojo. Ver el riesgo
+# R-16 de la matriz.
+#
+# Ninguna de estas vulnerabilidades es de la aplicacion: Trivy informa cero
+# hallazgos en app.jar.
+RUN apk upgrade --no-cache \
+    && addgroup -S ayni && adduser -S ayni -G ayni
 WORKDIR /app
 COPY --from=build /build/services/ayni-notification-service/target/*.jar app.jar
 RUN chown -R ayni:ayni /app

@@ -25,9 +25,111 @@ spring:
     # registro, queremos enterarnos, no que los de por buenos en silencio.
     baseline-on-migrate: false
 
-  # ddl-auto no existe aqui a proposito. El esquema lo define Flyway y solo
-  # Flyway; que un ORM altere tablas por su cuenta es inaceptable en un
-  # sistema financiero. Ver §4.5 del documento de diseño.
+  jpa:
+    hibernate:
+      # `none` explicito, no por omision. Spring Boot solo elige `create-drop`
+      # con bases embebidas, asi que hoy el valor por defecto ya seria `none`;
+      # se escribe igualmente porque de esta linea depende que un ORM no altere
+      # el esquema de un sistema financiero, y eso no se deja a un valor por
+      # defecto que otra version puede cambiar. Ver §4.5 del documento de diseño.
+      ddl-auto: none
+    # Sin esto, Hibernate mantiene la sesion abierta durante todo el renderizado
+    # de la respuesta: las consultas perezosas se disparan fuera de la
+    # transaccion, la conexion se retiene de mas y el problema aparece bajo
+    # carga, no en desarrollo. Spring Boot lo avisa al arrancar por algo.
+    open-in-view: false
+    properties:
+      hibernate:
+        # Las entidades no escriben el schema en cada @Table. Si manana el
+        # bounded context se muda a su propia base, se cambia aqui.
+        default_schema: identity
+
+# ─── Cifrado de datos personales en reposo ─────────────────────────────────
+# Clave AES-256 en Base64, 32 bytes. Cifra el numero de documento declarado, que
+# es dato sensible segun la Ley N.o 29733 (§5.2 del documento de diseño).
+#
+# El valor por defecto es de desarrollo y esta aqui para que el compose arranque
+# sin exportar nada, igual que la contrasena de la base. En staging y produccion
+# lo sobreescribe AYNI_CIFRADO_CLAVE, que llega como secreto y nunca al repo.
+# Generar una nueva:  openssl rand -base64 32
+ayni:
+  cifrado:
+    clave: ${AYNI_CIFRADO_CLAVE:YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
+  # ─── Firma del token de acceso ─────────────────────────────────────────
+  # Clave HS256 en Base64, mínimo 32 bytes. Es distinta de la de cifrado a
+  # propósito: firmar y cifrar son finalidades distintas, y una clave que sirve
+  # para las dos obliga a rotarlas juntas aunque solo se comprometa una.
+  jwt:
+    clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
+  cookies:
+    # En local la aplicación se sirve por HTTP, y una cookie `Secure` sencillamente
+    # no llegaría: el navegador la descarta sin avisar y el ingreso parecería
+    # funcionar hasta que la renovación falla. En staging y producción, con HTTPS
+    # por delante, esto va SIEMPRE en true.
+    seguras: ${AYNI_COOKIES_SEGURAS:false}
+
+  # ─── Almacen de objetos (documentos KYC) ───────────────────────────────
+  # El bucket ya existe: lo crea minio-init en docker-compose.yml, privado
+  # (mc anonymous set none). Ver diseno-base.md §4.1.
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    endpoint-publico: ${MINIO_ENDPOINT_PUBLICO:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:ayni_minio}
+    secret-key: ${MINIO_SECRET_KEY:cambiar_en_local}
+    # En produccion es un bucket de S3, cuyo nombre es unico en todo AWS: por eso
+    # lleva el numero de cuenta y llega por entorno.
+    bucket-kyc: ${AYNI_BUCKET_KYC:ayni-kyc-documentos}
+
+  # ─── Cliente hacia kyc-service ──────────────────────────────────────────
+  # AYNI_KYC_SERVICE_URL ya llega al contenedor desde docker-compose.yml.
+  # El timeout de 10s (diseno-base.md §3.5) se fija en ConfiguracionDelClienteKyc,
+  # no aqui: RestClient no lo expone como propiedad Spring estandar.
+  kyc:
+    base-url: ${AYNI_KYC_SERVICE_URL:http://localhost:8000}
+
+# ─── Resiliencia de la llamada a kyc-service (AYNI-13 subtarea 10) ────────
+# Ver ADR-0020 para la justificacion de estos valores.
+resilience4j:
+  # El orden por defecto de resilience4j-spring-boot3 2.4.0 NO es
+  # CircuitBreaker-afuera/Retry-adentro (confirmado experimentalmente, ver
+  # ADR-0020): sin fijarlo aqui, el fallback de CircuitBreaker absorbe la
+  # excepcion en el PRIMER intento y Retry nunca llega a reintentar. Un
+  # numero menor se ejecuta mas afuera (Spring AOP @Order estandar).
+  circuitbreaker:
+    circuit-breaker-aspect-order: 1
+    instances:
+      kycService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        # No evita que el fallback se dispare para un 4xx (eso lo maneja
+        # AdaptadorVerificadorKyc.alAgotarLaResiliencia relanzando la
+        # excepcion tal cual); solo evita que un 4xx cuente como fallo en
+        # las metricas del circuito.
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+  retry:
+    retry-aspect-order: 2
+    instances:
+      kycService:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.ResourceAccessException
+        # HttpClientErrorException (4xx, ej. UUID invalido) queda fuera a
+        # proposito: reintentar una peticion mal formada no la arregla.
 
 server:
   port: 8081

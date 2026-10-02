@@ -1,0 +1,38 @@
+# Hallazgos de Gitleaks revisados uno por uno y descartados.
+#
+# Cada linea util es la huella exacta de un hallazgo: commit, fichero, regla y linea.
+# Es deliberadamente estrecho: excluir un directorio entero taparia tambien lo que se
+# filtre manana, mientras que una huella solo tapa lo que ya se miro.
+#
+# Este fichero NO desactiva ninguna regla: el conjunto por defecto sigue entero.
+#
+# ─── Lo que hay que entender antes de tocar esto ──────────────────────────────
+#
+# Gitleaks escanea el HISTORIAL del Pull Request, no su resultado. Un commit que
+# alguna vez contuvo una cadena de alta entropia queda marcado para siempre, por
+# muchos commits posteriores que la limpien. Limpiar el fichero no borra el commit
+# que lo ensucio.
+#
+# Consecuencia practica: cada intento de arreglarlo con un commit nuevo deja el
+# anterior intacto. Y si el comentario que justifica la exclusion transcribe el
+# valor excluido, ese comentario genera un hallazgo propio. Paso: las dos huellas
+# de abajo son exactamente eso.
+#
+# Regla para quien venga despues: describe que era el valor, no lo transcribas.
+
+# 1. El contrato de identity traia como ejemplo un token de acceso con pinta de JWT
+#    real. No era un secreto —una cadena inventada para documentar la forma del
+#    campo— pero su entropia disparaba `generic-api-key`. Ya esta sustituido por un
+#    marcador en `contracts/identity-service.openapi.yaml`.
+ae57cd11aa5c2bb656807c6f21bbc264930c7ed2:contracts/identity-service.openapi.yaml:generic-api-key:398
+
+# 2. El comentario que justificaba la exclusion anterior citaba el valor literal, y
+#    Gitleaks escanea tambien este fichero. El hallazgo era la propia explicacion.
+#    Ya reescrita sin transcribirlo.
+161ef77c5a1fc2641c1e3fe6dd3cbe19f858966b:.gitleaksignore:generic-api-key:9
+
+# 3. Un doble de prueba devolvia un URI otpauth con un secreto Base32 de alta entropia.
+#    Era un valor inventado para una prueba, no una credencial. Ya sustituido en el codigo
+#    por una cadena de entropia cero que sigue siendo Base32 valido y por tanto sirve
+#    igual como fixture.
+8b01d93f2d9351d718a6c23cbf336d164ebe5271:services/ayni-identity-service/src/test/java/pe/ayni/bank/identity/infrastructure/in/web/SesionControllerTest.java:generic-api-key:226

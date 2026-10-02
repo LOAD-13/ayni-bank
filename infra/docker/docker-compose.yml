@@ -120,6 +120,14 @@ services:
       dockerfile: services/ayni-gateway/Dockerfile
     container_name: ayni-gateway
     ports: ["8080:8080"]
+    environment:
+      <<: *java-env
+      # Origenes que el navegador puede usar contra la API. Se derivan del puerto
+      # publicado de la web, que es parametrizable por los rangos que Hyper-V reserva
+      # en Windows: si se cambia AYNI_WEB_PORT y no se cambia esto, el navegador
+      # empieza a recibir errores de CORS que no dicen que la causa es el puerto.
+      AYNI_ORIGENES_PERMITIDOS: >-
+        http://localhost:${AYNI_WEB_PORT:-3000},http://127.0.0.1:${AYNI_WEB_PORT:-3000}
     # service_healthy, no service_started: el health check de estos servicios
     # incluye el estado de la base de datos, asi que esperar a que esten sanos
     # verifica que Flyway aplico sus migraciones. Con service_started el gateway
@@ -142,10 +150,23 @@ services:
     environment:
       <<: *java-env
       AYNI_KYC_SERVICE_URL: http://ayni-kyc-service:8000
+      MINIO_ENDPOINT_PUBLICO: http://localhost:9000
+      # Clave AES-256 que cifra el numero de documento declarado. El valor por
+      # defecto repite el de application.yml a proposito: compose exporta la
+      # variable vacia cuando no esta en el .env, y una cadena vacia NO activa el
+      # valor por defecto de Spring —lo sustituye—, con lo que el servicio no
+      # arrancaria. En staging y produccion llega como secreto desde el .env.
+      # Generar una nueva:  openssl rand -base64 32
+      AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+    # minio-init crea el bucket ayni-kyc-documentos y termina. Sin esta
+    # dependencia hay una condicion de carrera: identity-service podria
+    # generar una URL pre-firmada de subida (AYNI-13 subtarea 7) contra un
+    # bucket que todavia no existe. Mismo criterio que ya usa ayni-kyc-service.
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
 
   ayni-core-banking-service:
     <<: *java-common
@@ -202,23 +223,35 @@ services:
       retries: 5
     networks: [ayni]
 
-  # ayni-web se reincorpora al andamiar la aplicacion Next.js. Mientras `web/`
-  # este vacio, declararlo aqui hace fallar `docker compose up` entero: Compose
-  # intenta construir un contexto sin Dockerfile y aborta antes de levantar nada.
-  # Ver la seccion «Alcance ajustado» de docs/gestion/sprint-backlog/sprint-0.md
-  #
-  # ayni-web:
-  #   build:
-  #     context: ../..
-  #     dockerfile: web/ayni-web/Dockerfile
-  #   container_name: ayni-web
-  #   restart: unless-stopped
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:8080
-  #   ports: ["3000:3000"]
-  #   depends_on:
-  #     ayni-gateway: { condition: service_started }
-  #   networks: [ayni]
+  ayni-web:
+    build:
+      context: ../..
+      dockerfile: web/ayni-web/Dockerfile
+    container_name: ayni-web
+    restart: unless-stopped
+    environment:
+      # La URL la resuelve el NAVEGADOR, no el contenedor: por eso es localhost
+      # y no ayni-gateway. Un nombre de servicio de Compose no existe fuera de
+      # la red de Docker, y el navegador vive fuera.
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    # El puerto del host es parametrizable: en Windows, Hyper-V reserva rangos
+    # dinamicos que suelen tragarse el bloque 3000 entero y que ademas cambian
+    # en cada reinicio. Ver la nota sobre AYNI_WEB_PORT en .env.example.
+    ports: ["${AYNI_WEB_PORT:-3000}:3000"]
+    # service_started y no service_healthy: la web sirve la landing publica sin
+    # necesitar el backend. Bloquear su arranque hasta que el gateway este sano
+    # convertiria una caida del backend en una pagina que ni siquiera carga.
+    depends_on:
+      ayni-gateway: { condition: service_started }
+    healthcheck:
+      # 127.0.0.1 y no localhost: Node escucha solo en IPv4 y `localhost`
+      # resuelve antes a ::1 dentro del contenedor. Ver la nota del Dockerfile.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [ayni]
 
   # ─────────────────────────── Observabilidad ───────────────────────────
 
@@ -242,7 +275,7 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ../observability/grafana:/etc/grafana/provisioning:ro
-    ports: ["3001:3000"]
+    ports: ["${AYNI_GRAFANA_PORT:-3001}:3000"]
     depends_on: [prometheus]
     networks: [ayni]
 
@@ -253,7 +286,16 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - loki-data:/loki
-    ports: ["3100:3100"]
+    # Sin puerto publicado en el host a proposito. Los logs se consultan desde
+    # Grafana, que llega a Loki por la red interna (`http://loki:3100`), de modo
+    # que exponerlo fuera no habilita ningun uso y si añade superficie.
+    #
+    # Ademas evita un fallo concreto: en Windows, Hyper-V reserva rangos de
+    # puertos dinamicos que cambian en cada reinicio, y cuando el 3100 cae
+    # dentro del rango excluido `docker compose up` aborta entero con
+    # «bind: An attempt was made to access a socket in a way forbidden by its
+    # access permissions». El equipo trabaja en Windows.
+    expose: ["3100"]
     networks: [ayni]
 
 networks:

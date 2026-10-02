@@ -23,8 +23,15 @@ No es un contrato ni una lista de tareas técnicas. El plan técnico de cada spr
 **Compromiso asociado — Product Goal:**
 
 > Que cualquier persona en Perú pueda abrir una cuenta de ahorro remunerada desde el navegador en
-> menos de 90 segundos, sin acudir a una agencia y sin pagar comisión de mantenimiento, con la
+> menos de 5 minutos, sin acudir a una agencia y sin pagar comisión de mantenimiento, con la
 > integridad contable y la trazabilidad que exige un sistema financiero.
+
+**Sobre los 5 minutos.** El Product Goal mide el **tiempo total del solicitante**, que incluye teclear
+sus datos, capturar las dos caras del documento y grabar la prueba de vivacidad. Es la cifra que la
+propuesta de valor promete públicamente y la que audita el `KPI-02`. No debe confundirse con el
+**tiempo de procesamiento de la plataforma** —validación, OCR, cotejo y apertura de la cuenta—, cuyo
+objetivo es inferior a 90 segundos y que solo depende del software. Ambos figuran por separado en
+`OBJ-02` del Acta de Constitución y en el documento de niveles de servicio.
 
 ---
 
@@ -80,7 +87,7 @@ Leyenda de estado: ✅ Hecho · 🟡 En curso · ⬜ Por hacer
 | 9 | `AYNI-36` | T-05 · Product Backlog priorizado y adquisiciones | Tarea | EP-00 | Alta | 3 | S0 | 🟡 |
 | 10 | `AYNI-29` | HU-18 · [NF] Entorno reproducible con un solo comando | Historia | EP-01 | Muy alta | 8 | S0 | 🟡 |
 | 11 | `AYNI-38` | T-07 · Esqueleto hexagonal de los cinco servicios | Tarea | EP-01 | Muy alta | 8 | S0 | ⬜ |
-| 12 | `AYNI-31` | HU-20 · [NF] Despliegue continuo con aprobación | Historia | EP-01 | Muy alta | 13 | S1 | ⬜ |
+| 12 | `AYNI-31` | HU-20 · [NF] Despliegue continuo con aprobación | Historia | EP-01 | Muy alta | 13 | S2 | ⬜ |
 | 13 | `AYNI-12` | HU-01 · Registro de usuario en Ayni Bank | Historia | EP-02 | Muy alta | 5 | S1 | ⬜ |
 | 14 | `AYNI-15` | HU-04 · Inicio de sesión seguro con segundo factor | Historia | EP-02 | Muy alta | 8 | S1 | ⬜ |
 | 15 | `AYNI-16` | HU-05 · Apertura automática de cuenta de ahorro | Historia | EP-03 | Muy alta | 8 | S1 | ⬜ |
@@ -98,6 +105,27 @@ Leyenda de estado: ✅ Hecho · 🟡 En curso · ⬜ Por hacer
 | 27 | `AYNI-28` | HU-17 · [NF] Accesibilidad y facilidad de aprendizaje | Historia | EP-06 | Media | 8 | S7 | ⬜ |
 | 28 | `AYNI-25` | HU-14 · [NF] Tiempo de respuesta bajo carga | Historia | EP-10 | Alta | 8 | S8 | ⬜ |
 | 29 | `AYNI-27` | HU-16 · [NF] Disponibilidad y recuperación ante fallos | Historia | EP-10 | Alta | 13 | S8 | ⬜ |
+| 30 | `AYNI-124` | HU-22 · Segundo factor a elección y verificación del contacto en el registro | Historia | EP-02 | Muy alta | 8 | S2 | ⬜ |
+| 31 | `AYNI-123` | HU-21 · Recuperación de la contraseña | Historia | EP-02 | Alta | 5 | S3 | ⬜ |
+| 32 | `AYNI-122` | T-11 · Validación del JWT en el gateway | Tarea | EP-01 | Muy alta | 3 | S2 | ⬜ |
+
+**Tres incorporaciones del 3 de septiembre de 2026**, todas nacidas de la revisión del docente en la
+sesión de la semana 4:
+
+- **`AYNI-124` · HU-22** — el DNI se puede robar, prestar o fotografiar, de modo que el control que
+  sostiene el onboarding es la posesión del segundo factor. Colocarlo **antes** de la captura del
+  documento detiene un registro fraudulento sin haber tratado un solo dato biométrico.
+- **`AYNI-123` · HU-21** — historia que el docente dio por incorporada en clase y que nunca llegó al
+  backlog, pese a que el enlace «¿Olvidaste tu contraseña?» existe en la interfaz desde el Sprint 1.
+- **`AYNI-122` · T-11** — reclasificación de la subtarea `AYNI-83`, que se anidó bajo HU-04 y no se
+  entregó en el Sprint 1. Validar el token es una preocupación transversal del gateway, no un
+  criterio de aceptación del inicio de sesión.
+
+> **Sobre la regla de alcance.** Las tres entran **sin retirar un ítem equivalente**, contra lo
+> establecido más arriba. Es una excepción consciente y aprobada por el Product Owner, no un
+> descuido: las tres corrigen huecos detectados en revisión, no amplían el producto. El sobrecoste
+> se absorbe con los sprints de holgura 7 y 8, y el efecto sobre la capacidad del Sprint 2 queda
+> anotado en su propio Sprint Backlog.
 
 > **Nota sobre el campo Prioridad:** el proyecto en Jira es *team-managed* y no expone el campo
 > `Prioridad`. La prioridad de negocio se consigna en la descripción de cada ítem y, sobre todo, en
@@ -110,9 +138,9 @@ Leyenda de estado: ✅ Hecho · 🟡 En curso · ⬜ Por hacer
 | Sprint | Periodo | Ítems | Puntos | Meta |
 |---|---|---|---|---|
 | Sprint 0 | 17–23 ago | 11 | 56 | Fundación lista para construir |
-| Sprint 1 | 24 ago – 6 sep | 4 | 34 | Esqueleto ambulante extremo a extremo |
-| Sprint 2 | 7–20 sep | 2 | 26 | Onboarding KYC real |
-| Sprint 3 | 21 sep – 4 oct | 2 | 18 | Núcleo transaccional y rendimiento |
+| Sprint 1 | 24 ago – 6 sep | 3 | 21 | Esqueleto ambulante extremo a extremo |
+| Sprint 2 | 7–20 sep | 5 | 50 | Onboarding KYC real |
+| Sprint 3 | 21 sep – 4 oct | 3 | 23 | Núcleo transaccional y rendimiento |
 | Sprint 4 | 5–18 oct | 2 | 21 | Transferencias y notificaciones |
 | Sprint 5 | 19 oct – 1 nov | 2 | 13 | Tarjeta de débito virtual |
 | Sprint 6 | 2–15 nov | 2 | 26 | Interoperabilidad y multimoneda |

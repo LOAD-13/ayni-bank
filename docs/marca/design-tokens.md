@@ -131,6 +131,7 @@ Escala base de 4 px: `4 · 8 · 12 · 16 · 24 · 32 · 48 · 64`.
 | `assets/logo.png` | Logotipo completo con bajada «BANCO PERUANO». Cabecera del sitio, documentos. |
 | `assets/icon.png` | Isotipo (monograma «A» con flecha). Favicon, avatar, tarjeta virtual. |
 | `assets/carrusel_1.jpg` … `carrusel_3.jpg` | Imágenes del carrusel de la landing pública. |
+| `assets/chip.png` | Chip dorado de la tarjeta de débito virtual. Decorativo: en la interfaz va con `alt` vacío y `aria-hidden`, porque nombrarlo no aporta nada a quien usa lector de pantalla. |
 
 **Área de protección:** alrededor del logotipo se reserva un margen libre equivalente a la altura
 de la letra «A» del monograma. **Tamaño mínimo:** 120 px de ancho para el logotipo completo,
@@ -148,6 +149,11 @@ Estos tokens se declaran una sola vez en `web/ayni-web/src/styles/tokens.css` co
 y se consumen desde la configuración de Tailwind. **Ningún componente define colores literales.**
 Si un valor hexadecimal aparece escrito directamente en un componente, la revisión de código lo
 rechaza.
+
+Los nombres de `:root` en ese fichero son **literalmente** los de este documento (`--azul-700`,
+`--dorado-500`). El bloque `@theme inline` los expone a Tailwind como utilidades
+—`bg-azul-700`, `text-gris-700`, `rounded-md`— sin copiar ningún valor, de modo que cambiar un
+color se sigue haciendo en un único sitio: aquí, y después en `tokens.css`.
 
 Los documentos de gestión (Acta, matrices, cronograma) emplean la misma paleta, de modo que la
 identidad es coherente entre el producto y su documentación.

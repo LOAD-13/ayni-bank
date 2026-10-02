@@ -1,0 +1,68 @@
+# Excepciones del análisis de vulnerabilidades.
+#
+# CÓMO SE USA ESTE FICHERO
+#
+# Una excepción aquí NO significa «esta vulnerabilidad no importa». Significa
+# que se evaluó su explotabilidad en este proyecto concreto, que se comprobó
+# que no existe versión corregida publicada, y que la exclusión caduca en una
+# fecha a partir de la cual Trivy vuelve a bloquear la integración.
+#
+# Toda entrada exige las cuatro cosas: identificador, por qué no es explotable
+# aquí, por qué no se puede corregir hoy, y fecha de caducidad. Sin las cuatro,
+# no entra. Es el plan de contingencia del riesgo R-16 de la matriz.
+
+vulnerabilities:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Apache Tomcat embebido 10.1.55 · tres CRÍTICAS sin versión corregida
+  #
+  # Afectan a los tres servicios que embeben Tomcat —identity, core-banking y
+  # notification—. El gateway usa Netty y no las arrastra; kyc-service es Python.
+  #
+  # NO HAY RUTA DE ACTUALIZACIÓN. Trivy informa como corregidas las versiones
+  # 10.1.58, 11.0.25 y 9.0.121, pero el 4 de septiembre de 2026 **ninguna de las
+  # tres está publicada en Maven Central**: las últimas disponibles son 10.1.55,
+  # 11.0.22 y 9.0.118. El aviso de seguridad se publicó antes que la corrección.
+  # Elevar la propiedad `tomcat.version` falla la resolución de dependencias.
+  #
+  # NO SON EXPLOTABLES EN ESTA APLICACIÓN. Las tres atacan mecanismos de
+  # autenticación y autorización gestionados por el contenedor, y este proyecto
+  # no usa ninguno:
+  #
+  #   · No hay `web.xml` ni elementos `<security-constraint>` en ningún servicio.
+  #   · No se configura autenticación DIGEST en ningún punto.
+  #   · No se configura autenticación FORM: `formLogin` y `httpBasic` no aparecen
+  #     en el código.
+  #   · La autorización la resuelve Spring Security con tokens JWT validados en
+  #     el gateway, por encima de la capa del contenedor.
+  #
+  # Verificable con:  grep -rniE "digest|formLogin|httpBasic|security-constraint" services/*/src/main
+  #
+  # QUÉ HACER AL LLEGAR LA FECHA. Comprobar si Apache publicó 10.1.58. Si está,
+  # elevar `tomcat.version` en el POM padre y borrar estas tres entradas. Si no,
+  # renovar la caducidad dejando constancia de la comprobación.
+  # ───────────────────────────────────────────────────────────────────────────
+
+  - id: CVE-2026-65182
+    statement: >-
+      Elusión de restricciones de seguridad por control de acceso incorrecto en
+      Tomcat. El proyecto no declara restricciones de seguridad del contenedor:
+      no existe web.xml ni ningún elemento security-constraint. La autorización
+      la resuelve Spring Security. Sin versión corregida publicada en Maven
+      Central al 4 de septiembre de 2026.
+    expired_at: 2026-10-06
+
+  - id: CVE-2026-65905
+    statement: >-
+      Elusión de autenticación mediante repetición limitada en el autenticador
+      DIGEST de Tomcat. El proyecto no usa autenticación DIGEST en ningún
+      servicio; el acceso se resuelve con JWT firmado y segundo factor. Sin
+      versión corregida publicada en Maven Central al 4 de septiembre de 2026.
+    expired_at: 2026-10-06
+
+  - id: CVE-2026-68525
+    statement: >-
+      Acceso no autorizado a recursos eludiendo la autenticación FORM de Tomcat.
+      El proyecto no usa autenticación FORM: no se configura formLogin ni
+      httpBasic en ningún servicio. Sin versión corregida publicada en Maven
+      Central al 4 de septiembre de 2026.
+    expired_at: 2026-10-06

@@ -1,6 +1,6 @@
 # Sprint Backlog — Sprint 3 · Núcleo Transaccional
 
-**21 de septiembre – 4 de octubre de 2026** · 2 semanas · 2 ítems · 18 puntos
+**21 de septiembre – 4 de octubre de 2026** · 2 semanas · 3 ítems · 23 puntos
 
 ## Sprint Goal
 
@@ -11,8 +11,9 @@
 
 ## Capacidad
 
-120 h disponibles · Comprometido: 96 h. Se reserva más holgura de lo habitual porque este sprint
-cierra con el primer despliegue a producción.
+120 h disponibles · Comprometido: 115 h (96 h del núcleo transaccional + 19 h de `AYNI-123`). La
+holgura que este sprint reservaba para el primer despliegue a producción se consume en parte con la
+incorporación de la recuperación de contraseña.
 
 ---
 
@@ -44,6 +45,25 @@ cierra con el primer despliegue a producción.
 | 6 | Panel principal con saldo, rendimiento del mes y TREA vigente | 5h |
 | 7 | Listado de movimientos con filtros y paginación | 5h |
 | 8 | Feature de Cucumber con los dos escenarios | 2h |
+
+### `AYNI-123` · HU-21 · Recuperación de la contraseña [5 pts]
+
+| # | Subtarea | Clave | Est. |
+|---|---|---|---|
+| 1 | Migración Flyway de la tabla `token_recuperacion` | `AYNI-137` | 1h |
+| 2 | Emisión de token de un solo uso con caducidad de 30 minutos | `AYNI-138` | 2h |
+| 3 | Endpoint `POST /api/v1/recuperacion` con respuesta indistinguible | `AYNI-139` | 2h |
+| 4 | Endpoint de confirmación y cambio de contraseña con la política vigente | `AYNI-140` | 3h |
+| 5 | Invalidar sesiones y familias de refresh al cambiar la contraseña | `AYNI-141` | 2h |
+| 6 | Correo de recuperación en `notification-service` | `AYNI-142` | 2h |
+| 7 | Las tres pantallas de recuperación, con el estado de enlace caducado | `AYNI-143` | 4h |
+| 8 | Feature de Cucumber con los cinco escenarios | `AYNI-144` | 3h |
+
+**Dos reglas que no se negocian en esta historia.** La respuesta a la petición de recuperación es
+**idéntica exista o no la cuenta** —mismo cuerpo y mismo tiempo—, por el mismo motivo que en el
+registro: ver ADR-0008. Y recuperar la contraseña **no es recuperar la cuenta**: quien tenga el
+segundo factor dado de alta sigue necesitándolo para entrar. Si no fuera así, el correo se
+convertiría en un único punto de fallo y todo lo construido en `HU-22` sería decorativo.
 
 ---
 

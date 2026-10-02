@@ -1,0 +1,57 @@
+# Contexto de construccion compartido.
+#
+# Todos los servicios se construyen con `context: ../..`, es decir, la raiz del
+# repositorio, para que el Dockerfile de cada uno pueda copiar los pom del resto
+# de modulos Maven. Docker lee unicamente el `.dockerignore` de la raiz del
+# contexto, de modo que este fichero es el que gobierna todas las imagenes: los
+# `.dockerignore` que viven dentro de cada servicio no se consultan.
+#
+# Sin estas exclusiones se envian al demonio los `target/` de Maven, los
+# `node_modules` de la web y el historial de git completo en cada build.
+
+.git/
+.github/
+.gitattributes
+.gitignore
+
+# Artefactos de construccion.
+#
+# Los patrones de la aplicacion web van con su ruta completa, NO como `**/out/` ni
+# `**/dist/`. Un `**/out/` generico tambien excluye
+# `services/*/src/main/java/**/domain/port/out/`, que es el paquete de puertos de
+# salida de la arquitectura hexagonal: el codigo compila en local y falla dentro de
+# la imagen con «package does not exist», sin que nada explique por que.
+**/target/
+**/node_modules/
+**/coverage/
+web/ayni-web/.next/
+web/ayni-web/out/
+web/ayni-web/dist/
+
+# Caches de herramientas
+**/__pycache__/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.venv/
+**/*.pyc
+
+# Entorno y secretos: nunca dentro de una imagen
+.env
+.env.*
+!.env.example
+**/*.local.*
+
+# Documentacion y activos que no participan en el build.
+# `contracts/` NO se excluye: de ahi genera Maven el cliente Java del
+# kyc-service en tiempo de construccion (AYNI-96).
+docs/
+assets/
+*.md
+!web/ayni-web/README.md
+LICENSE
+
+# Editores
+**/.idea/
+**/.vscode/
+**/*.iml

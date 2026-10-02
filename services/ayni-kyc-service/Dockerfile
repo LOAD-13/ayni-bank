@@ -9,7 +9,12 @@ WORKDIR /app
 
 # Se actualizan los paquetes del sistema base: la imagen oficial arrastra CVE
 # de util-linux con parche ya publicado en Debian.
-RUN apt-get update     && apt-get upgrade -y     && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 curl     && apt-get clean     && rm -rf /var/lib/apt/lists/*
+# libsm6, libxext6 y libxrender1: opencv-contrib-python (no headless) los
+# necesita para importarse. No se usa opencv-python-headless porque paddlex
+# (dependencia de paddleocr) fija opencv-contrib-python en una version exacta
+# sin margen (ver ADR-0014); las funciones de GUI de esos paquetes de sistema
+# nunca se invocan (no hay display en el contenedor, ni falta que hace).
+RUN apt-get update     && apt-get upgrade -y     && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 curl     && apt-get clean     && rm -rf /var/lib/apt/lists/*
 
 COPY services/ayni-kyc-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
