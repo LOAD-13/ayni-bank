@@ -78,7 +78,9 @@ ayni:
     endpoint-publico: ${MINIO_ENDPOINT_PUBLICO:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:ayni_minio}
     secret-key: ${MINIO_SECRET_KEY:cambiar_en_local}
-    bucket-kyc: ayni-kyc-documentos
+    # En produccion es un bucket de S3, cuyo nombre es unico en todo AWS: por eso
+    # lleva el numero de cuenta y llega por entorno.
+    bucket-kyc: ${AYNI_BUCKET_KYC:ayni-kyc-documentos}
 
   # ─── Cliente hacia kyc-service ──────────────────────────────────────────
   # AYNI_KYC_SERVICE_URL ya llega al contenedor desde docker-compose.yml.

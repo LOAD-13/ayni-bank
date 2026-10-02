@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
-# Imagen ARM64: la misma corre en la Raspberry Pi 5 (staging) y en Oracle Ampere (produccion).
-# Ver ADR-0005.
+# Imagen linux/amd64 para la instancia EC2 de produccion. Ver ADR-0026.
 
 # ── Dependencias ──────────────────────────────────────────────────────────
 # En su propia etapa para que cambiar codigo no obligue a reinstalar el arbol
@@ -19,6 +18,15 @@ WORKDIR /build
 COPY --from=deps /build/node_modules ./node_modules
 COPY web/ayni-web ./
 ENV NEXT_TELEMETRY_DISABLED=1
+# Las variables NEXT_PUBLIC_* se incrustan en el JavaScript al construir, no al
+# arrancar: por eso entran como argumentos de construccion. En produccion la API
+# se sirve en el mismo dominio que la web (Caddy enruta /api/* al gateway), asi
+# que la URL base queda vacia y las llamadas son relativas: sin CORS que
+# configurar ni dominio que recompilar si cambia la IP.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ARG NEXT_PUBLIC_APP_VERSION=desarrollo
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 RUN npm run build
 
 # ── Ejecucion ─────────────────────────────────────────────────────────────

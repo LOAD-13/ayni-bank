@@ -1,0 +1,45 @@
+# Ayni Bank — proxy de entrada en produccion.
+#
+# Caddy obtiene y renueva solo el certificado TLS de Let's Encrypt para el
+# dominio (sslip.io resuelve la IP elastica embebida en el nombre), redirige
+# HTTP a HTTPS y anade las cabeceras de seguridad. Es el unico contenedor con
+# puertos publicados: todo lo demas vive en la red interna de Docker.
+{
+	email {$AYNI_CORREO_TLS}
+}
+
+{$AYNI_DOMINIO} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Chequeo de salud publico: lo consultan el pipeline tras desplegar y
+	# cualquiera que quiera saber si el sistema esta arriba. Responde el
+	# gateway, que a su vez comprueba los servicios de detras.
+	handle /api/health {
+		rewrite * /actuator/health
+		reverse_proxy ayni-gateway:8080
+	}
+
+	# La API vive en el mismo dominio que la web: el navegador no hace
+	# peticiones entre origenes y la cookie de renovacion es de primer nivel.
+	handle /api/* {
+		reverse_proxy ayni-gateway:8080
+	}
+
+	handle {
+		reverse_proxy ayni-web:3000
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

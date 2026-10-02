@@ -4,8 +4,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
+
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Los repositorios de Spring Data de HU-05.
@@ -37,6 +42,15 @@ interface CuentaJpaRepository extends JpaRepository<CuentaEntity, UUID> {
      */
     @Query(value = "SELECT nextval('core.secuencia_cuenta')", nativeQuery = true)
     long siguienteCorrelativo();
+
+    /**
+     * {@code SELECT ... FOR UPDATE} sobre las cuentas indicadas, en orden de id.
+     *
+     * <p>El orden fijo evita que dos transferencias cruzadas se bloqueen mutuamente.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM CuentaEntity c WHERE c.id IN :ids ORDER BY c.id")
+    List<CuentaEntity> bloquearPorId(@Param("ids") List<UUID> ids);
 }
 
 interface TasaJpaRepository extends JpaRepository<CuentaEntity, UUID> {
@@ -58,6 +72,21 @@ interface TasaJpaRepository extends JpaRepository<CuentaEntity, UUID> {
 interface AsientoJpaRepository extends JpaRepository<AsientoEntity, UUID> {
 
     List<AsientoEntity> findByCuentaIdOrderByRegistradoEnAsc(UUID cuentaId);
+
+    List<AsientoEntity> findByCuentaIdOrderByRegistradoEnDesc(UUID cuentaId, Limit limite);
+
+    List<AsientoEntity> findByMovimientoId(UUID movimientoId);
+
+    /**
+     * El saldo calculado por la base: abonos menos cargos.
+     *
+     * <p>JPQL con parametro enlazado, no SQL concatenado. Sumar en la base evita traer
+     * miles de filas a memoria solo para sumarlas. La definicion del saldo sigue siendo la
+     * misma que {@code Cuenta.saldo}: lo comprueba una prueba de este adaptador.
+     */
+    @Query("SELECT COALESCE(SUM(CASE WHEN a.tipo = 'ABONO' THEN a.importe ELSE -a.importe END), 0) "
+            + "FROM AsientoEntity a WHERE a.cuentaId = :cuenta")
+    java.math.BigDecimal saldoDe(@Param("cuenta") UUID cuentaId);
 }
 
 interface OutboxJpaRepository extends JpaRepository<OutboxEntity, UUID> {
