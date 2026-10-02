@@ -3,7 +3,9 @@ package pe.ayni.bank.identity.domain.port.out;
 import java.util.Optional;
 import java.util.UUID;
 
+import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 
 /**
  * Expedientes de onboarding.
@@ -43,16 +45,26 @@ public interface RepositorioDeSolicitudesPort {
     void marcarAprobada(UUID solicitudId);
 
     /**
-     * Suma un intento fallido de verificacion y devuelve el total acumulado.
+     * Suma un intento fallido de verificacion de ese lado del DNI y devuelve el total
+     * acumulado para ese lado.
      *
      * <p>Devuelve el conteo actualizado, no solo el hecho de haberlo incrementado, porque
-     * quien decide si ya se agoto el limite es el caso de uso (ADR-0021), no este puerto: el
-     * puerto persiste, el dominio decide.
+     * quien decide si ya se agoto el limite es el caso de uso (ADR-0021, ADR-0028), no este
+     * puerto: el puerto persiste, el dominio decide.
      */
-    int registrarIntentoFallidoDeKyc(UUID solicitudId);
+    int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado);
 
     /** Lleva la solicitud a EN_REVISION_MANUAL. Ver ADR-0021. */
     void marcarEnRevisionManual(UUID solicitudId);
+
+    /** Si la solicitud ya espera a un operador: no admite mas intentos. */
+    boolean estaEnRevisionManual(UUID solicitudId);
+
+    /** Lo que el titular declaro en el paso 1, con el numero de documento descifrado. */
+    Optional<DatosDeclarados> datosDeclaradosDe(UUID solicitudId);
+
+    /** El DNI quedo verificado y confirmado: la solicitud pasa a DOCUMENTO_CARGADO. */
+    void marcarDocumentoCargado(UUID solicitudId);
 
     /**
      * El nombre de pila que declaro el titular, para poder saludarle.

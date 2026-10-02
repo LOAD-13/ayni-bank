@@ -103,6 +103,7 @@ def test_debe_aprobar_cuando_la_imagen_es_nitida_sin_reflejos_y_bien_encuadrada(
     assert resultado.es_nitida is True
     assert resultado.sin_reflejos is True
     assert resultado.bien_encuadrada is True
+    assert resultado.bien_iluminada is True
     assert resultado.es_valida is True
 
 
@@ -145,7 +146,7 @@ def test_debe_rechazar_por_encuadre_cuando_el_documento_toca_el_borde_de_la_foto
     assert resultado.es_valida is False
 
 
-def test_debe_rechazar_los_tres_controles_cuando_los_bytes_no_son_una_imagen_valida() -> None:
+def test_debe_rechazar_todos_los_controles_cuando_los_bytes_no_son_una_imagen_valida() -> None:
     # Dado
     almacen = AlmacenObjetosFake({"no-es-imagen": b"esto no es una imagen"})
     validador = ValidadorCalidadOpenCV(almacen)
@@ -157,4 +158,20 @@ def test_debe_rechazar_los_tres_controles_cuando_los_bytes_no_son_una_imagen_val
     assert resultado.es_nitida is False
     assert resultado.sin_reflejos is False
     assert resultado.bien_encuadrada is False
+    assert resultado.bien_iluminada is False
+    assert resultado.es_valida is False
+
+
+def test_debe_rechazar_por_iluminacion_cuando_la_foto_esta_muy_oscura() -> None:
+    # Dado: la misma foto valida, tomada con muy poca luz (brillo al 15%)
+    lienzo, _, _ = _lienzo_con_documento()
+    oscura = cv2.convertScaleAbs(lienzo, alpha=0.15, beta=0)
+    almacen = AlmacenObjetosFake({"documento-oscuro": _codificar(oscura)})
+    validador = ValidadorCalidadOpenCV(almacen)
+
+    # Cuando
+    resultado = validador.validar("documento-oscuro")
+
+    # Entonces
+    assert resultado.bien_iluminada is False
     assert resultado.es_valida is False

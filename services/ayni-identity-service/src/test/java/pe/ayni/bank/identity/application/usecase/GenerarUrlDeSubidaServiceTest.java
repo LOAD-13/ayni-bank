@@ -17,7 +17,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
@@ -52,6 +54,8 @@ class GenerarUrlDeSubidaServiceTest {
                 .startsWith("kyc/" + solicitudId + "/anverso-")
                 .endsWith(".jpg");
         assertThat(almacen.ultimoTipoDeContenido).isEqualTo("image/jpeg");
+        // El limite de 5 MB viaja a la politica de subida: lo impone el almacen, no el navegador.
+        assertThat(almacen.ultimoTamanoMaximo).isEqualTo(5L * 1024 * 1024);
     }
 
     @Test
@@ -110,13 +114,15 @@ class GenerarUrlDeSubidaServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"exe", "svg", "php", "jpgx"})
-    @DisplayName("una extension fuera del catalogo permitido se rechaza")
+    @ValueSource(strings = {"exe", "svg", "php", "jpgx", "pdf"})
+    @DisplayName("una extension fuera del catalogo permitido se rechaza, PDF incluido")
     void rechazaUnaExtensionNoPermitida(String extensionInvalida) {
+        // PDF fuera: kyc-service analiza con OpenCV, que no lee PDF, y lo rechazaria siempre
+        // como "no es un DNI" sin que el solicitante supiera por que.
         assertThatThrownBy(() ->
                 servicio.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, extensionInvalida))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("jpg, jpeg, png, webp o pdf");
+                .hasMessageContaining("jpg, jpeg, png o webp");
 
         assertThat(almacen.ultimaClaveDeObjeto).isNull();
     }
@@ -150,7 +156,22 @@ class GenerarUrlDeSubidaServiceTest {
         }
 
         @Override
-        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public boolean estaEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public Optional<DatosDeclarados> datosDeclaradosDe(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarDocumentoCargado(UUID solicitudId) {
             throw new UnsupportedOperationException("No usado en estas pruebas");
         }
 
@@ -168,18 +189,30 @@ class GenerarUrlDeSubidaServiceTest {
     private static final class AlmacenFalso implements AlmacenDeDocumentosPort {
         private String ultimaClaveDeObjeto;
         private String ultimoTipoDeContenido;
-        private final UrlDeSubida urlDevuelta =
-                new UrlDeSubida("https://minio.local/presigned", Instant.parse("2026-09-06T10:05:00Z"));
+        private long ultimoTamanoMaximo;
+        private final UrlDeSubida urlDevuelta = new UrlDeSubida("https://minio.local/ayni-kyc-documentos",
+                Map.of("policy", "p"), "kyc/x/anverso-y.jpg", Instant.parse("2026-09-06T10:05:00Z"));
 
         @Override
-        public UrlDeSubida generarUrlDeSubida(String claveDeObjeto, String tipoDeContenido) {
+        public UrlDeSubida generarUrlDeSubida(String claveDeObjeto, String tipoDeContenido, long tamanoMaximoBytes) {
             ultimaClaveDeObjeto = claveDeObjeto;
             ultimoTipoDeContenido = tipoDeContenido;
+            ultimoTamanoMaximo = tamanoMaximoBytes;
             return urlDevuelta;
         }
 
         @Override
         public String calcularHash(String claveDeObjeto) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public Optional<ObjetoAlmacenado> describir(String claveDeObjeto) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void eliminar(String claveDeObjeto) {
             throw new UnsupportedOperationException("No usado en estas pruebas");
         }
     }

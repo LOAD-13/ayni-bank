@@ -14,9 +14,11 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Boton } from "@/componentes/Boton";
 import {
   ErrorDeApi,
+  evaluarCaptura,
+  type LadoDelDni,
+  type MotivoDeRechazo,
   solicitarUrlDeSubida,
   subirDocumento,
-  type TipoDeDocumentoKyc,
 } from "@/lib/api";
 
 /**
@@ -26,11 +28,33 @@ import {
  */
 const PROPORCION_DNI = 85.6 / 53.98;
 
+/** Sin PDF: kyc-service analiza la imagen con OpenCV, que no lee PDF (ADR-0028). */
 const TIPOS_ACEPTADOS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
-  "application/pdf": "pdf",
+  "image/webp": "webp",
 };
+
+/** Qué repetir según el motivo del rechazo (escenarios 2 y 3 de HU-02). */
+const QUE_REPETIR: Record<MotivoDeRechazo, string> = {
+  NO_ES_DNI:
+    "No reconocimos un DNI en la foto. Fotografía tu DNI completo, sobre una superficie lisa.",
+  ENCUADRE: "Tu DNI no se ve completo. Encuádralo entero dentro del marco, sin cortar los bordes.",
+  DESENFOQUE: "La foto salió borrosa. Mantén el celular quieto y espera a que enfoque.",
+  REFLEJO: "Hay un reflejo sobre tu DNI. Inclínalo un poco o aléjate de la luz directa.",
+  ILUMINACION: "La foto está muy oscura o muy clara. Busca un lugar con luz pareja.",
+};
+
+export function mensajeDeRechazo(
+  motivo: MotivoDeRechazo | undefined,
+  intentosRestantes = 0,
+): string {
+  const queRepetir = QUE_REPETIR[motivo ?? "NO_ES_DNI"];
+  if (intentosRestantes <= 0) return queRepetir;
+  return `${queRepetir} ${
+    intentosRestantes === 1 ? "Te queda 1 intento." : `Te quedan ${intentosRestantes} intentos.`
+  }`;
+}
 const TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
 
 type Medio = "camara" | "archivo";
@@ -39,10 +63,13 @@ type Fase =
 
 interface Props {
   solicitudId: string;
-  tipoDocumento: TipoDeDocumentoKyc;
+  tipoDocumento: LadoDelDni;
   /** «Anverso» o «Reverso», para los textos de la pantalla. */
   cara: string;
+  /** La foto se aceptó: se puede seguir al paso siguiente. */
   onCompletado: () => void;
+  /** La solicitud quedó en manos de un operador, o se verificará cuando kyc-service vuelva. */
+  onDerivada: (estado: "EN_REVISION_MANUAL" | "VERIFICACION_DIFERIDA") => void;
 }
 
 function formatearTamano(bytes: number): string {
@@ -66,10 +93,17 @@ function formatearTamano(bytes: number): string {
  * cámara falle. Por eso el enlace a «Subir un archivo» está siempre visible, no solo
  * cuando `getUserMedia` rechaza. Ver ADR-0023 y sprint-backlog Sprint 2.
  *
- * **Qué falta a propósito.** El mensaje específico de por qué una foto no sirve depende de
- * `POST /kyc/verify` en Python, que todavía no existe — ver ADR-0022.
+ * **Después de subir, se evalúa.** La foto no se da por buena al llegar a MinIO: identity
+ * la manda evaluar a kyc-service y, si no es un DNI o no tiene calidad, la persona ve el
+ * motivo concreto y repite (escenarios 2 y 3, ADR-0028).
  */
-export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onCompletado }: Props) {
+export function CapturaDeDocumento({
+  solicitudId,
+  tipoDocumento,
+  cara,
+  onCompletado,
+  onDerivada,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const inputArchivoRef = useRef<HTMLInputElement>(null);
@@ -174,7 +208,7 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
 
     const extension = TIPOS_ACEPTADOS[archivo.type];
     if (!extension) {
-      setErrorDeArchivo("El archivo debe ser una foto JPG, PNG o un PDF.");
+      setErrorDeArchivo("El archivo debe ser una foto JPG, PNG o WEBP.");
       return;
     }
     if (archivo.size > TAMANO_MAXIMO_BYTES) {
@@ -194,12 +228,16 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
     setFase("revisando");
   }
 
-  function volverAElegir() {
+  function descartarFoto() {
     if (foto) URL.revokeObjectURL(foto.url);
     setFoto(null);
-    setErrorDeSubida(null);
     if (inputArchivoRef.current) inputArchivoRef.current.value = "";
     setFase(medio === "camara" ? "en-vivo" : "eligiendo-archivo");
+  }
+
+  function volverAElegir() {
+    setErrorDeSubida(null);
+    descartarFoto();
   }
 
   async function usarEstaImagen() {
@@ -208,13 +246,27 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
     setErrorDeSubida(null);
 
     try {
-      const { url } = await solicitarUrlDeSubida(solicitudId, tipoDocumento, foto.extension);
+      const destino = await solicitarUrlDeSubida(solicitudId, tipoDocumento, foto.extension);
       const archivo = new File([foto.blob], `${tipoDocumento.toLowerCase()}.${foto.extension}`, {
         type: foto.blob.type || "image/jpeg",
       });
-      await subirDocumento(url, archivo);
+      await subirDocumento(destino, archivo);
+      const resultado = await evaluarCaptura(solicitudId, tipoDocumento, destino.claveDeObjeto);
+
+      if (resultado.estado === "RECHAZADO") {
+        // La foto ya no existe en el servidor: se descarta aquí también y se vuelve a la
+        // cámara (o al selector), con el motivo a la vista.
+        setErrorDeSubida(mensajeDeRechazo(resultado.motivo, resultado.intentosRestantes));
+        descartarFoto();
+        return;
+      }
+
       detenerCamara();
-      onCompletado();
+      if (resultado.estado === "ACEPTADO") {
+        onCompletado();
+      } else {
+        onDerivada(resultado.estado);
+      }
     } catch (error) {
       setErrorDeSubida(
         error instanceof ErrorDeApi
@@ -333,7 +385,7 @@ export function CapturaDeDocumento({ solicitudId, tipoDocumento, cara, onComplet
 
           {fase === "subiendo" && (
             <p className="absolute inset-x-0 bottom-4 text-center text-[12.5px] font-semibold text-blanco">
-              Subiendo tu foto…
+              Revisando tu foto…
             </p>
           )}
         </div>
@@ -415,12 +467,12 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
         <p className="text-[14.5px] font-semibold text-azul-800">
           Arrastra tu archivo aquí o haz clic para elegirlo
         </p>
-        <p className="text-[12.5px] text-gris-500">JPG, PNG o PDF · máximo 5 MB</p>
+        <p className="text-[12.5px] text-gris-500">JPG, PNG o WEBP · máximo 5 MB</p>
         <input
           ref={inputRef}
           id={idDeInput}
           type="file"
-          accept="image/jpeg,image/png,application/pdf"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(e) => onArchivo(e.target.files)}
           className="sr-only"
         />

@@ -19,9 +19,11 @@ import pe.ayni.bank.identity.domain.model.Celular;
 import pe.ayni.bank.identity.domain.model.Consentimiento;
 import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
+import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.SolicitudNoAprobableException;
+import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.out.PublicadorDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
@@ -172,7 +174,22 @@ class AprobarSolicitudServiceTest {
         }
 
         @Override
-        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public boolean estaEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public Optional<DatosDeclarados> datosDeclaradosDe(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarDocumentoCargado(UUID solicitudId) {
             throw new UnsupportedOperationException("No usado en estas pruebas");
         }
 

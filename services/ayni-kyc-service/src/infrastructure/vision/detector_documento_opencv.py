@@ -10,7 +10,7 @@ from typing import Any
 from numpy.typing import NDArray
 
 from src.domain.port.verificador_identidad import AlmacenObjetosPort
-from src.infrastructure.vision.procesamiento_documento import procesar_documento
+from src.infrastructure.vision.procesamiento_documento import DocumentoProcesado, procesar_documento
 
 Matriz = NDArray[Any]
 
@@ -30,6 +30,10 @@ class DetectorDocumentoOpenCV:
         if procesado is None:
             return False
 
+        return self.coincide_con_dni(procesado)
+
+    def coincide_con_dni(self, procesado: DocumentoProcesado) -> bool:
+        """Evalua un documento ya descargado y enderezado, sin volver a leer MinIO."""
         return self._proporcion_coincide_con_dni(procesado.imagen_enderezada)
 
     def _proporcion_coincide_con_dni(self, imagen_enderezada: Matriz) -> bool:

@@ -22,8 +22,18 @@ import pe.ayni.bank.identity.domain.model.ComandoDeRegistro;
 import pe.ayni.bank.identity.domain.model.Consentimiento;
 import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
+import pe.ayni.bank.identity.domain.model.DatosConfirmados;
+import pe.ayni.bank.identity.domain.model.DatosDeclarados;
+import pe.ayni.bank.identity.domain.model.DatosDelDni;
+import pe.ayni.bank.identity.domain.model.EstadoDelPasoKyc;
+import pe.ayni.bank.identity.domain.model.FuenteDeLectura;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.LecturaDelDni;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeCaptura;
+import pe.ayni.bank.identity.domain.model.ResultadoDeCaptura;
+import pe.ayni.bank.identity.domain.model.ResultadoDeExtraccion;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
+import pe.ayni.bank.identity.domain.model.ResultadoDelIntentoKyc;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
@@ -172,10 +182,20 @@ class ControladoresDeIdentidadTest {
     class DocumentoKyc {
 
         private final GenerarUrlDeSubidaFalso casoDeUso = new GenerarUrlDeSubidaFalso();
-        private final DocumentoKycController controlador = new DocumentoKycController(casoDeUso);
+        private ResultadoDeCaptura resultadoDeCaptura = ResultadoDeCaptura.aceptada();
+        private ResultadoDeExtraccion resultadoDeExtraccion = ResultadoDeExtraccion.diferida();
+        private DatosConfirmados confirmadosRecibidos;
+        private final DocumentoKycController controlador = new DocumentoKycController(
+                casoDeUso,
+                (solicitudId, lado, clave) -> resultadoDeCaptura,
+                solicitudId -> resultadoDeExtraccion,
+                (solicitudId, confirmados) -> {
+                    confirmadosRecibidos = confirmados;
+                    return EstadoDelPasoKyc.ACEPTADO;
+                });
 
         @Test
-        @DisplayName("traslada la solicitud al caso de uso y devuelve la URL firmada")
+        @DisplayName("traslada la solicitud al caso de uso y devuelve el formulario firmado con su clave")
         void devuelveLaUrlDeSubida() {
             UUID solicitudId = UUID.randomUUID();
             var solicitud = new SolicitudDeUrlDeSubidaDto("ANVERSO", "jpg");
@@ -184,6 +204,8 @@ class ControladoresDeIdentidadTest {
 
             assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(respuesta.getBody().url()).isEqualTo(casoDeUso.urlDevuelta.url());
+            assertThat(respuesta.getBody().campos()).containsEntry("policy", "p");
+            assertThat(respuesta.getBody().claveDeObjeto()).isEqualTo(casoDeUso.urlDevuelta.claveDeObjeto());
             assertThat(casoDeUso.solicitudIdRecibido).isEqualTo(solicitudId);
             assertThat(casoDeUso.tipoDocumentoRecibido).isEqualTo(TipoDeDocumentoKyc.ANVERSO);
             assertThat(casoDeUso.extensionRecibida).isEqualTo("jpg");
@@ -203,6 +225,67 @@ class ControladoresDeIdentidadTest {
             assertThat(problema.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
             assertThat(problema.getTitle()).isEqualTo("La solicitud no existe");
         }
+
+        @Test
+        @DisplayName("una foto rechazada responde 200 con el motivo concreto y los intentos que quedan")
+        void unaFotoRechazadaDevuelveElMotivo() {
+            resultadoDeCaptura = ResultadoDeCaptura.rechazada(
+                    MotivoDeRechazoDeCaptura.DESENFOQUE, ResultadoDelIntentoKyc.puedeReintentar(2));
+
+            var respuesta = controlador.evaluarCaptura(UUID.randomUUID(),
+                    new SolicitudDeEvaluacionDto("ANVERSO", "kyc/x/anverso-y.jpg"));
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(respuesta.getBody()).isEqualTo(new ResultadoDeCapturaDto("RECHAZADO", "DESENFOQUE", 2));
+        }
+
+        @Test
+        @DisplayName("una foto aceptada no lleva motivo ni intentos")
+        void unaFotoAceptadaNoLlevaMotivo() {
+            var respuesta = controlador.evaluarCaptura(UUID.randomUUID(),
+                    new SolicitudDeEvaluacionDto("REVERSO", "kyc/x/reverso-y.jpg"));
+
+            assertThat(respuesta.getBody()).isEqualTo(new ResultadoDeCapturaDto("ACEPTADO", null, null));
+        }
+
+        @Test
+        @DisplayName("la lectura muestra el numero enmascarado: la respuesta no exige sesion todavia")
+        void laLecturaEnmascaraElNumero() {
+            resultadoDeExtraccion = ResultadoDeExtraccion.leida(new LecturaDelDni(
+                    new DatosDelDni("44556677", "ANA LUCIA", "QUISPE MAMANI", LocalDate.of(1990, 5, 15), "F",
+                            LocalDate.of(2021, 8, 20)),
+                    FuenteDeLectura.MRZ, true));
+
+            var cuerpo = controlador.extraerDatos(UUID.randomUUID()).getBody();
+
+            assertThat(cuerpo.estado()).isEqualTo("ACEPTADO");
+            assertThat(cuerpo.datos().numeroEnmascarado()).isEqualTo("****6677");
+            assertThat(cuerpo.datos().confiable()).isTrue();
+            assertThat(cuerpo.intentosRestantes()).isNull();
+            assertThat(cuerpo.toString()).doesNotContain("QUISPE").doesNotContain("44556677");
+        }
+
+        @Test
+        @DisplayName("una lectura diferida no lleva datos")
+        void unaLecturaDiferidaNoLlevaDatos() {
+            var cuerpo = controlador.extraerDatos(UUID.randomUUID()).getBody();
+
+            assertThat(cuerpo).isEqualTo(new ResultadoDeExtraccionDto("VERIFICACION_DIFERIDA", null, null));
+        }
+
+        @Test
+        @DisplayName("la confirmacion traslada los datos, con el numero vacio si no se corrigio")
+        void laConfirmacionTrasladaLosDatos() {
+            var dto = new SolicitudDeConfirmacionDto(null, "Ana Lucia", "Quispe Mamani",
+                    LocalDate.of(1990, 5, 15), "F", LocalDate.of(2021, 8, 20));
+
+            var respuesta = controlador.confirmarDatos(UUID.randomUUID(), dto);
+
+            assertThat(respuesta.getBody()).isEqualTo(new EstadoDelPasoDto("ACEPTADO"));
+            assertThat(confirmadosRecibidos.numero()).isNull();
+            assertThat(confirmadosRecibidos.apellidos()).isEqualTo("Quispe Mamani");
+            assertThat(dto.toString()).doesNotContain("Quispe");
+        }
     }
 
     // ─── Dobles ────────────────────────────────────────────────────────────
@@ -218,8 +301,8 @@ class ControladoresDeIdentidadTest {
     }
 
     private static final class GenerarUrlDeSubidaFalso implements GenerarUrlDeSubidaUseCase {
-        private final UrlDeSubida urlDevuelta =
-                new UrlDeSubida("https://minio.local/presigned", Instant.parse("2026-09-13T10:05:00Z"));
+        private final UrlDeSubida urlDevuelta = new UrlDeSubida("https://minio.local/ayni-kyc-documentos",
+                Map.of("policy", "p"), "kyc/x/anverso-y.jpg", Instant.parse("2026-09-13T10:05:00Z"));
         private UUID solicitudIdRecibido;
         private TipoDeDocumentoKyc tipoDocumentoRecibido;
         private String extensionRecibida;
@@ -286,7 +369,22 @@ class ControladoresDeIdentidadTest {
         }
 
         @Override
-        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
+        public int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public boolean estaEnRevisionManual(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public Optional<DatosDeclarados> datosDeclaradosDe(UUID solicitudId) {
+            throw new UnsupportedOperationException("No usado en estas pruebas");
+        }
+
+        @Override
+        public void marcarDocumentoCargado(UUID solicitudId) {
             throw new UnsupportedOperationException("No usado en estas pruebas");
         }
 

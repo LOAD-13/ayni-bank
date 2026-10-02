@@ -12,8 +12,7 @@ from src.infrastructure.vision.mrz_td1 import (
 )
 
 
-def _construir_mrz_valido() -> tuple[str, str, str]:
-    numero_doc = "87654321<"
+def _construir_mrz_valido(numero_doc: str = "87654321<") -> tuple[str, str, str]:
     chk_doc = _checksum(numero_doc)
     linea1 = f"I<PER{numero_doc}{chk_doc}" + "<" * 15
 
@@ -140,3 +139,49 @@ def test_numero_documento_verificado_es_independiente_de_los_otros_checksums() -
     assert resultado.numero_documento_verificado is True
     assert resultado.fecha_caducidad_verificada is False
     assert resultado.todos_los_checksums_validos is False
+
+
+def test_no_debe_verificar_un_numero_de_documento_que_no_son_8_digitos() -> None:
+    # Dado: un numero con una letra cuyo digito de control ICAO es correcto.
+    # El checksum solo prueba que el OCR leyo bien, no que sea un DNI.
+    linea1, linea2, linea3 = _construir_mrz_valido(numero_doc="A1234567<")
+
+    # Cuando
+    resultado = parsear_mrz(linea1, linea2, linea3)
+
+    # Entonces
+    assert resultado is not None
+    assert resultado.numero_documento == "A1234567"
+    assert resultado.numero_documento_verificado is False
+    assert resultado.todos_los_checksums_validos is False
+
+
+def test_no_debe_verificar_un_numero_de_documento_de_9_digitos() -> None:
+    linea1, linea2, linea3 = _construir_mrz_valido(numero_doc="123456789")
+
+    resultado = parsear_mrz(linea1, linea2, linea3)
+
+    assert resultado is not None
+    assert resultado.numero_documento_verificado is False
+
+
+def test_no_debe_tomar_un_rotulo_en_mayusculas_como_linea_de_mrz() -> None:
+    # Dado: lo que el OCR real leyo del reverso. "Departamento LIMA Provincia LIMA"
+    # sin espacios son 29 letras: antes desplazaba la ventana y el MRZ no validaba.
+    linea1, linea2, linea3 = _construir_mrz_valido()
+    texto_ocr = ["RENIEC", "LIMA", "Departamento LIMA Provincia LIMA", linea1, linea2, linea3]
+
+    # Cuando
+    resultado = encontrar_lineas_mrz(texto_ocr)
+
+    # Entonces
+    assert resultado == (linea1, linea2, linea3)
+
+
+def test_debe_preferir_la_ventana_que_valida_sus_digitos_verificadores() -> None:
+    # Dado: una linea con forma de MRZ (con '<') antes de las tres buenas
+    linea1, linea2, linea3 = _construir_mrz_valido()
+    texto_ocr = ["ABC<DEF<GHI<JKL<MNO<PQR<STU<VWX", linea1, linea2, linea3]
+
+    # Cuando / Entonces
+    assert encontrar_lineas_mrz(texto_ocr) == (linea1, linea2, linea3)
