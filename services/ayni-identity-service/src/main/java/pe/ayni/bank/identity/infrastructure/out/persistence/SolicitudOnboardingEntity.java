@@ -66,11 +66,11 @@ public class SolicitudOnboardingEntity {
     @Column(name = "fecha_nacimiento_declarada")
     private LocalDate fechaNacimientoDeclarada;
 
-    /** Fotos del anverso rechazadas. Ver ADR-0021 y ADR-0026. */
+    /** Fotos del anverso rechazadas. Ver ADR-0021 y ADR-0028. */
     @Column(name = "intentos_kyc_anverso", nullable = false)
     private short intentosKycAnverso;
 
-    /** Fotos del reverso rechazadas, o lecturas fallidas del OCR. Ver ADR-0026. */
+    /** Fotos del reverso rechazadas, o lecturas fallidas del OCR. Ver ADR-0028. */
     @Column(name = "intentos_kyc_reverso", nullable = false)
     private short intentosKycReverso;
 

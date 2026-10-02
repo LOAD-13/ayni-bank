@@ -22,7 +22,7 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.VerificadorKycPort;
 
 /**
- * HU-02 · Evalua la foto de un lado del DNI (escenarios 1 a 5, ADR-0026).
+ * HU-02 · Evalua la foto de un lado del DNI (escenarios 1 a 5, ADR-0028).
  *
  * <p>Sin {@code @Transactional}: la llamada a kyc-service puede tardar hasta 10 s, y no hay
  * motivo para tener una transaccion de base de datos abierta mientras tanto. Cada escritura

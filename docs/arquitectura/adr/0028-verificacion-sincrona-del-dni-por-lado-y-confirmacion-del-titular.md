@@ -1,4 +1,4 @@
-# ADR-0026 · Verificación síncrona del DNI por lado y confirmación del titular
+# ADR-0028 · Verificación síncrona del DNI por lado y confirmación del titular
 
 - **Estado:** aceptado
 - **Fecha:** 30 de septiembre de 2026

@@ -34,7 +34,7 @@ spring:
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
             # (`/api/v1/kyc/**`) no reescribia el prefijo y no llegaba a ningun endpoint,
             # pero de haberlo hecho habria expuesto a Internet la lectura de documentos
-            # KYC por clave. Ver ADR-0026.
+            # KYC por clave. Ver ADR-0028.
 
           globalcors:
             cors-configurations:

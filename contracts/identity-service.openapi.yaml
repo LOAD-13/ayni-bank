@@ -8,7 +8,7 @@ openapi: 3.0.3
 # Request igual que un cambio de codigo.
 #
 # Crece historia a historia. Hoy cubre HU-01 (registro), HU-02 (subida,
-# evaluacion, lectura y confirmacion del DNI, ADR-0026) y HU-04 (ingreso con
+# evaluacion, lectura y confirmacion del DNI, ADR-0028) y HU-04 (ingreso con
 # segundo factor).
 
 info:

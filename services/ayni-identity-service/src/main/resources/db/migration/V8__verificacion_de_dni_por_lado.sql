@@ -1,4 +1,4 @@
--- HU-02 · Verificacion del DNI de punta a punta (AYNI-13, ADR-0026)
+-- HU-02 · Verificacion del DNI de punta a punta (AYNI-13, ADR-0028)
 --
 -- Tres cambios:
 --
@@ -70,4 +70,4 @@ CREATE INDEX ix_lectura_solicitud ON lectura_dni (solicitud_id, leida_en DESC);
 
 COMMENT ON TABLE lectura_dni IS
     'Datos del DNI leidos por OCR (fuente MRZ o HEURISTICA_ANVERSO) o confirmados por el '
-    'titular (fuente TITULAR). Una fila por lectura; nunca se sobrescriben. Ver ADR-0026.';
+    'titular (fuente TITULAR). Una fila por lectura; nunca se sobrescriben. Ver ADR-0028.';

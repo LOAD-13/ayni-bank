@@ -298,7 +298,7 @@ describe("CapturaDeDocumento · AYNI-13 subtareas 12 y 13", () => {
       expect(screen.getByRole("button", { name: "Cambiar" })).toBeInTheDocument();
     });
 
-    it("un PDF ya no se acepta: kyc-service no puede analizarlo (ADR-0026)", async () => {
+    it("un PDF ya no se acepta: kyc-service no puede analizarlo (ADR-0028)", async () => {
       const usuario = userEvent.setup();
       await renderizarConCamaraLista();
       await usuario.click(screen.getByRole("button", { name: /subir un archivo en su lugar/i }));

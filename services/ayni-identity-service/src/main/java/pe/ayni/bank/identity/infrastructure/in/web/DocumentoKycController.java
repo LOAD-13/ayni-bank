@@ -29,7 +29,7 @@ import pe.ayni.bank.identity.domain.port.in.GenerarUrlDeSubidaUseCase;
  * <p>El flujo: pedir el formulario de subida → subir → pedir la evaluacion de la foto, para
  * el anverso y para el reverso → pedir la lectura de los datos → confirmarlos. Todos los
  * resultados de negocio (aceptado, rechazado, en revision) responden 200 con un {@code estado}:
- * no son errores, son pasos del flujo. Ver ADR-0026.
+ * no son errores, son pasos del flujo. Ver ADR-0028.
  */
 @RestController
 @RequestMapping("/api/v1/solicitudes")

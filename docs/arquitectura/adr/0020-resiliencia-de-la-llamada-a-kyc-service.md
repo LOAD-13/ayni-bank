@@ -4,7 +4,7 @@
 - **Fecha:** 12 de septiembre de 2026
 - **Historias afectadas:** HU-02 (verificación de identidad)
 - **Reemplaza a:** ninguno
-- **Actualizado por:** [ADR-0026](0026-verificacion-sincrona-del-dni-por-lado-y-confirmacion-del-titular.md) (qué se reintenta: ya no los timeouts de lectura)
+- **Actualizado por:** [ADR-0028](0028-verificacion-sincrona-del-dni-por-lado-y-confirmacion-del-titular.md) (qué se reintenta: ya no los timeouts de lectura)
 
 ## Contexto
 

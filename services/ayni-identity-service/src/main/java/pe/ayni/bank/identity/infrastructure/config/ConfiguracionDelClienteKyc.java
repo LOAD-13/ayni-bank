@@ -52,7 +52,7 @@ public class ConfiguracionDelClienteKyc {
      *
      * <p>PaddleOCR sobre las dos caras del DNI tarda ~9-11 s en un portatil (medido en la
      * prueba de punta a punta) y mas en la Raspberry Pi 5. Con 10 s, una lectura correcta se
-     * cortaria y la solicitud acabaria en revision manual. Ver ADR-0026.
+     * cortaria y la solicitud acabaria en revision manual. Ver ADR-0028.
      */
     @Bean
     public DocumentosApi documentosApiDeExtraccion(

@@ -16,7 +16,7 @@ WORKDIR /app
 # nunca se invocan (no hay display en el contenedor, ni falta que hace).
 # libgomp1: runtime de OpenMP que PaddlePaddle carga al importarse. Sin el, la
 # primera lectura de un DNI (o la precarga del OCR) falla con "libgomp.so.1:
-# cannot open shared object file" (HU-02, ADR-0026).
+# cannot open shared object file" (HU-02, ADR-0028).
 RUN apt-get update     && apt-get upgrade -y     && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 libsm6 libxext6 libxrender1 libgomp1 curl     && apt-get clean     && rm -rf /var/lib/apt/lists/*
 
 COPY services/ayni-kyc-service/requirements.txt .

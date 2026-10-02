@@ -3,7 +3,7 @@ package pe.ayni.bank.identity.domain.model;
 /**
  * Que pasa con la solicitud despues de registrar un intento de verificacion fallido.
  *
- * <p>Ver ADR-0021 y ADR-0026: al tercer fallo de un mismo lado del DNI la solicitud se
+ * <p>Ver ADR-0021 y ADR-0028: al tercer fallo de un mismo lado del DNI la solicitud se
  * deriva a revision manual en vez de dejar que el usuario siga intentando indefinidamente.
  *
  * @param intentosRestantes cuantas fotos mas de ese lado puede enviar; 0 si se derivo

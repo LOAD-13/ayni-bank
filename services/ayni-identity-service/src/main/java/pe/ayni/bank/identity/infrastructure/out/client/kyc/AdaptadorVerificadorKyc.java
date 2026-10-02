@@ -29,7 +29,7 @@ import pe.ayni.bank.identity.infrastructure.out.client.kyc.model.LadoDelDocument
 
 /**
  * Implementa VerificadorKycPort envolviendo DocumentosApi (cliente generado desde
- * {@code contracts/kyc-service.openapi.yaml}) con Retry + CircuitBreaker (ADR-0020, ADR-0026).
+ * {@code contracts/kyc-service.openapi.yaml}) con Retry + CircuitBreaker (ADR-0020, ADR-0028).
  *
  * <p><strong>El orden de las anotaciones importa, y no es el que aplica por
  * defecto.</strong> Se necesita CircuitBreaker decorando a Retry (afuera),

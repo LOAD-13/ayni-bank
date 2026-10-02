@@ -8,7 +8,7 @@ import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 
 /**
  * Verificacion del DNI en kyc-service (Python). El dominio no conoce el cliente OpenAPI
- * generado ni Resilience4j — ver diseno-base.md §3.4-3.5 y ADR-0026.
+ * generado ni Resilience4j — ver diseno-base.md §3.4-3.5 y ADR-0028.
  *
  * <p>Ambas operaciones lanzan {@link pe.ayni.bank.identity.domain.model.KycServiceNoDisponibleException}
  * si se agotan los reintentos o el circuito esta abierto.
