@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { PasoDeCredenciales } from "@/componentes/ingreso/PasoDeCredenciales";
 import { PasoDeSegundoFactor } from "@/componentes/ingreso/PasoDeSegundoFactor";
 import { ErrorDeApi, presentarCredenciales, verificarSegundoFactor } from "@/lib/api";
+import { guardarSesion } from "@/lib/sesion";
 
 /**
  * Los dos pasos del ingreso · HU-04.
@@ -46,10 +47,10 @@ export function FormularioDeIngreso() {
     setEnviando(true);
     setError(null);
     try {
-      await verificarSegundoFactor(desafioId, codigo);
-      // El token de acceso queda en memoria del cliente en HU-07, cuando exista el panel.
-      // Hoy el ingreso termina aquí y se anuncia como pendiente en lugar de simularlo.
-      router.push("/pendiente");
+      // El token de acceso queda solo en memoria (nunca en localStorage): si la página se
+      // recarga, se recupera con la cookie de renovación. Ver src/lib/sesion.ts.
+      guardarSesion(await verificarSegundoFactor(desafioId, codigo));
+      router.push("/banca");
     } catch (fallo) {
       interpretar(fallo);
     } finally {
