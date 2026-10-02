@@ -1,0 +1,525 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Ayni Bank - entorno de produccion v1 en AWS. Una instancia EC2 con Docker
+  Compose detras de Caddy (HTTPS automatico), PostgreSQL gestionado en RDS,
+  documentos KYC en S3, imagenes en ECR y despliegue continuo desde GitHub
+  Actions por OIDC + SSM (sin claves de larga duracion ni puerto SSH abierto).
+  Ver ADR-0026 y docs/despliegue/manual-de-despliegue.md.
+
+Parameters:
+  RepositorioGitHub:
+    Type: String
+    Default: LOAD-13/ayni-bank
+    Description: Unico repositorio autorizado a desplegar (propietario/nombre).
+  TipoDeInstancia:
+    Type: String
+    Default: m7i-flex.large
+    AllowedValues: [m7i-flex.large, c7i-flex.large]
+    Description: 8 GB de RAM. El servicio KYC (TensorFlow) por si solo ocupa mas de 1 GB.
+  ImagenBase:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+  CorreoDeAlertas:
+    Type: String
+    Default: jloadenegri@gmail.com
+  CrearProveedorOidc:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: El proveedor OIDC de GitHub es unico por cuenta; "false" si ya existe.
+
+Conditions:
+  ConProveedorOidc: !Equals [!Ref CrearProveedorOidc, "true"]
+
+Resources:
+
+  # ─── Red ──────────────────────────────────────────────────────────────────
+  # Solo 80 y 443 abiertos al mundo. No hay regla para el 22: la administracion
+  # va por AWS Systems Manager (Session Manager / Run Command), que no necesita
+  # puertos de entrada ni claves SSH que custodiar.
+  GrupoWeb:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Ayni Bank - HTTP/HTTPS publico, sin SSH
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: "HTTP (redirige a HTTPS)" }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTPS }
+      Tags: [{ Key: Proyecto, Value: ayni-bank }]
+
+  # La base de datos solo acepta conexiones desde la instancia de aplicacion.
+  GrupoBaseDeDatos:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Ayni Bank - PostgreSQL solo desde la aplicacion
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt GrupoWeb.GroupId
+          Description: PostgreSQL desde la instancia de Ayni
+      Tags: [{ Key: Proyecto, Value: ayni-bank }]
+
+  IpPublica:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags: [{ Key: Name, Value: ayni-bank-prod }]
+
+  # ─── Almacenamiento de objetos ────────────────────────────────────────────
+  BucketKyc:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub ayni-kyc-documentos-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      VersioningConfiguration: { Status: Enabled }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      # El navegador sube el DNI con una URL pre-firmada directamente a S3: sin
+      # esta regla el PUT se bloquea por CORS. Solo desde el dominio de Ayni.
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT]
+            AllowedOrigins:
+              - !Sub
+                - "https://ayni.${Ip}.sslip.io"
+                - Ip: !Join ["-", !Split [".", !Ref IpPublica]]
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: versiones-antiguas
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
+      Tags: [{ Key: Proyecto, Value: ayni-bank }]
+
+  # Forzar TLS en cualquier acceso al bucket.
+  PoliticaBucketKyc:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketKyc
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: SoloTls
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: [!GetAtt BucketKyc.Arn, !Sub "${BucketKyc.Arn}/*"]
+            Condition: { Bool: { aws:SecureTransport: "false" } }
+
+  # El cliente MinIO de los servicios (compatible con S3) necesita un par de
+  # claves: no sabe leer las credenciales del rol de la instancia. El usuario
+  # solo puede tocar el bucket KYC, y su clave vive en Secrets Manager.
+  UsuarioAlmacen:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: ayni-app-almacen
+      Policies:
+        - PolicyName: solo-bucket-kyc
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub "${BucketKyc.Arn}/*"
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !GetAtt BucketKyc.Arn
+
+  ClaveAlmacen:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref UsuarioAlmacen
+
+  SecretoAlmacen:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: ayni/prod/almacen
+      Description: Credenciales S3 del bucket KYC para los servicios
+      SecretString: !Sub '{"access_key":"${ClaveAlmacen}","secret_key":"${ClaveAlmacen.SecretAccessKey}"}'
+
+  # ─── Registro de imagenes ─────────────────────────────────────────────────
+  # Se conservan las 10 ultimas imagenes de cada servicio: es el margen de
+  # rollback. Lo anterior se borra solo para no pagar almacenamiento muerto.
+  RepoGateway:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-gateway
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+  RepoIdentity:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-identity-service
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+  RepoCore:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-core-banking-service
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+  RepoNotification:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-notification-service
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+  RepoKyc:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-kyc-service
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+  RepoWeb:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: ayni/ayni-web
+      ImageScanningConfiguration: { ScanOnPush: true }
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
+
+  # ─── Base de datos ────────────────────────────────────────────────────────
+  # PostgreSQL 17 gestionado: copias automaticas diarias con 7 dias de
+  # retencion y restauracion a un punto en el tiempo (PITR), Performance
+  # Insights y metricas en CloudWatch. La contrasena maestra la genera y rota
+  # RDS en Secrets Manager: nadie del equipo la conoce ni la escribe.
+  BaseDeDatos:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: ayni-bank-prod
+      Engine: postgres
+      EngineVersion: "17.11"
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: "20"
+      MaxAllocatedStorage: 40
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: ayni
+      MasterUsername: ayni_admin
+      ManageMasterUserPassword: true
+      VPCSecurityGroups: [!GetAtt GrupoBaseDeDatos.GroupId]
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: "08:00-08:30"          # 03:00 hora de Lima
+      PreferredMaintenanceWindow: "sun:09:00-sun:09:30"
+      CopyTagsToSnapshot: true
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: 7
+      EnableCloudwatchLogsExports: [postgresql]
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: true
+      Tags: [{ Key: Proyecto, Value: ayni-bank }]
+
+  # ─── Instancia de aplicacion ──────────────────────────────────────────────
+  RolInstancia:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ayni-ec2-app
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: leer-secretos-de-produccion
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters, ssm:GetParametersByPath]
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ayni/prod*"
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref SecretoAlmacen
+                  - !GetAtt BaseDeDatos.MasterUserSecret.SecretArn
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    kms:ViaService:
+                      - !Sub "ssm.${AWS::Region}.amazonaws.com"
+                      - !Sub "secretsmanager.${AWS::Region}.amazonaws.com"
+
+  PerfilInstancia:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: ayni-ec2-app
+      Roles: [!Ref RolInstancia]
+
+  Instancia:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ImagenBase
+      InstanceType: !Ref TipoDeInstancia
+      IamInstanceProfile: !Ref PerfilInstancia
+      SecurityGroupIds: [!GetAtt GrupoWeb.GroupId]
+      # IMDSv2 obligatorio; 2 saltos para que los contenedores lleguen al
+      # servicio de metadatos (lo necesita el agente de CloudWatch).
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 2
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: 30, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+      Tags:
+        - { Key: Name, Value: ayni-bank-prod }
+        - { Key: Proyecto, Value: ayni-bank }
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl unzip jq postgresql-client
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
+          apt-get update
+          apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+          systemctl enable --now docker
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip
+          unzip -q /tmp/awscli.zip -d /tmp && /tmp/aws/install
+          # 2 GB de swap: colchon ante el pico de memoria al arrancar los cuatro JVM a la vez.
+          fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+          mkdir -p /opt/ayni
+          echo "listo" > /opt/ayni/.aprovisionado
+
+  AsociacionIp:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt IpPublica.AllocationId
+      InstanceId: !Ref Instancia
+
+  # Si la instancia falla el chequeo del sistema (hardware de AWS), se recupera
+  # sola en otro host conservando IP, volumen y configuracion.
+  AlarmaRecuperacion:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ayni-ec2-recuperacion-automatica
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed_System
+      Dimensions: [{ Name: InstanceId, Value: !Ref Instancia }]
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions: [!Sub "arn:aws:automate:${AWS::Region}:ec2:recover"]
+
+  # ─── Alertas ──────────────────────────────────────────────────────────────
+  TemaAlertas:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ayni-alertas
+      Subscription: [{ Protocol: email, Endpoint: !Ref CorreoDeAlertas }]
+
+  AlarmaCpuBd:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ayni-rds-cpu-alta
+      AlarmDescription: CPU de la base de datos por encima del 80 % durante 10 minutos
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref BaseDeDatos }]
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: [!Ref TemaAlertas]
+
+  AlarmaAlmacenamientoBd:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ayni-rds-poco-espacio
+      AlarmDescription: Menos de 2 GB libres en la base de datos
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref BaseDeDatos }]
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 2147483648
+      ComparisonOperator: LessThanThreshold
+      AlarmActions: [!Ref TemaAlertas]
+
+  AlarmaConexionesBd:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: ayni-rds-conexiones-altas
+      AlarmDescription: Mas de 60 conexiones abiertas (el limite de db.t4g.micro ronda 80)
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions: [{ Name: DBInstanceIdentifier, Value: !Ref BaseDeDatos }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 60
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions: [!Ref TemaAlertas]
+
+  # ─── Apagado nocturno ─────────────────────────────────────────────────────
+  # Es un entorno academico: de 01:00 a 07:00 (Lima) nadie lo usa. Apagar la
+  # instancia esas seis horas ahorra un cuarto del coste de computo. La base de
+  # datos sigue encendida para no perder la ventana de copias de las 03:00.
+  RolProgramador:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ayni-programador-encendido
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: encender-apagar
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ec2:StartInstances, ec2:StopInstances]
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instancia}"
+
+  Apagar:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: ayni-apagar-0100
+      ScheduleExpression: cron(0 1 * * ? *)
+      ScheduleExpressionTimezone: America/Lima
+      FlexibleTimeWindow: { Mode: "OFF" }
+      Target:
+        Arn: arn:aws:scheduler:::aws-sdk:ec2:stopInstances
+        RoleArn: !GetAtt RolProgramador.Arn
+        Input: !Sub '{"InstanceIds":["${Instancia}"]}'
+
+  Encender:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: ayni-encender-0700
+      ScheduleExpression: cron(0 7 * * ? *)
+      ScheduleExpressionTimezone: America/Lima
+      FlexibleTimeWindow: { Mode: "OFF" }
+      Target:
+        Arn: arn:aws:scheduler:::aws-sdk:ec2:startInstances
+        RoleArn: !GetAtt RolProgramador.Arn
+        Input: !Sub '{"InstanceIds":["${Instancia}"]}'
+
+  # ─── Despliegue continuo desde GitHub Actions ─────────────────────────────
+  # GitHub obtiene credenciales temporales (15 min - 1 h) por OIDC. Solo el
+  # repositorio indicado, y solo desde la rama main, puede asumir el rol.
+  ProveedorOidcGitHub:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ConProveedorOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+
+  RolDespliegue:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ayni-github-despliegue
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${RepositorioGitHub}:ref:refs/heads/main"
+                  - !Sub "repo:${RepositorioGitHub}:environment:production"
+      Policies:
+        - PolicyName: publicar-y-desplegar
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: LoginEcr
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: PublicarImagenes
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                  - ecr:DescribeImages
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/ayni/*"
+              - Sid: OrdenarDespliegueEnLaInstancia
+                Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instancia}"
+                  - !Sub "arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript"
+              - Sid: LeerResultadoDelDespliegue
+                Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations]
+                Resource: "*"
+              - Sid: EncenderSiEstaApagada
+                Effect: Allow
+                Action: [ec2:StartInstances]
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instancia}"
+              - Sid: ConsultarEstado
+                Effect: Allow
+                Action: [ec2:DescribeInstances, ec2:DescribeInstanceStatus]
+                Resource: "*"
+
+Outputs:
+  Url:
+    Description: URL publica de la aplicacion
+    Value: !Sub
+      - "https://ayni.${Ip}.sslip.io"
+      - Ip: !Join ["-", !Split [".", !Ref IpPublica]]
+  IpPublica:
+    Value: !Ref IpPublica
+  InstanciaId:
+    Value: !Ref Instancia
+  EndpointBaseDeDatos:
+    Value: !GetAtt BaseDeDatos.Endpoint.Address
+  SecretoBaseDeDatos:
+    Value: !GetAtt BaseDeDatos.MasterUserSecret.SecretArn
+  SecretoAlmacen:
+    Value: !Ref SecretoAlmacen
+  BucketKyc:
+    Value: !Ref BucketKyc
+  RegistroEcr:
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
+  RolDespliegueArn:
+    Value: !GetAtt RolDespliegue.Arn

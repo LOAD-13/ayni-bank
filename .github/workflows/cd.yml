@@ -1,173 +1,220 @@
 name: CD
 
+# Cada merge a `main` llega solo a produccion, sin intervencion humana, pero
+# solo despues de volver a pasar la integracion continua completa sobre el
+# commit exacto que se va a desplegar. Ver ADR-0026.
+#
+#   push a main ─▶ CI completa ─▶ imagenes a ECR ─▶ despliegue por SSM
+#               ─▶ pruebas de humo contra la URL publica ─▶ tag + Release
+#                                       └─ si fallan ─▶ reversion automatica
 on:
   push:
-    branches: [develop]          # → despliegue automático a staging (Raspberry Pi 5)
-  release:
-    types: [published]           # → despliegue a producción, con aprobación manual
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: "Volver a desplegar una etiqueta ya publicada (sha corto). Vacio = el commit actual."
+        required: false
+        default: ""
 
 permissions:
-  contents: read
-  packages: write
+  contents: write        # crear el tag y la Release de la version
+  id-token: write        # credenciales temporales de AWS por OIDC
+  pull-requests: write   # lo exige el CI reutilizado
+  packages: read
+
+# Un despliegue cada vez. Uno nuevo espera a que termine el anterior en vez de
+# cancelarlo: cortar un despliegue a medias es peor que esperar dos minutos.
+concurrency:
+  group: produccion
+  cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/load-13/ayni
+  AWS_REGION: us-east-1
 
 jobs:
 
-  # ── Publicar imágenes multi-arquitectura ARM64 ──────────────────────────
+  # ── 1. La misma integracion continua que en los Pull Requests ───────────
+  ci:
+    name: Integración continua
+    if: github.event.inputs.etiqueta == ''
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  # ── 2. Version que se despliega ─────────────────────────────────────────
+  version:
+    name: Calcular versión
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      etiqueta: ${{ steps.v.outputs.etiqueta }}
+      nueva: ${{ steps.v.outputs.nueva }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: v
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION)
+          ETIQUETA="${{ github.event.inputs.etiqueta }}"
+          [[ -z "$ETIQUETA" ]] && ETIQUETA=$(git rev-parse --short=8 HEAD)
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then NUEVA=false; else NUEVA=true; fi
+          echo "version=$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "etiqueta=$ETIQUETA" >> "$GITHUB_OUTPUT"
+          echo "nueva=$NUEVA"       >> "$GITHUB_OUTPUT"
+          echo "### Versión ${VERSION} · imagen \`${ETIQUETA}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── 3. Publicar imagenes en ECR ─────────────────────────────────────────
   publicar:
-    name: Publicar imágenes en GHCR
+    name: Publicar imagen
+    needs: [ci, version]
+    if: github.event.inputs.etiqueta == ''
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: true
+      max-parallel: 3
       matrix:
-        servicio:
-          - ayni-gateway
-          - ayni-identity-service
-          - ayni-core-banking-service
-          - ayni-notification-service
-          - ayni-kyc-service
+        include:
+          - { servicio: ayni-gateway, dockerfile: services/ayni-gateway/Dockerfile }
+          - { servicio: ayni-identity-service, dockerfile: services/ayni-identity-service/Dockerfile }
+          - { servicio: ayni-core-banking-service, dockerfile: services/ayni-core-banking-service/Dockerfile }
+          - { servicio: ayni-notification-service, dockerfile: services/ayni-notification-service/Dockerfile }
+          - { servicio: ayni-kyc-service, dockerfile: services/ayni-kyc-service/Dockerfile }
+          - { servicio: ayni-web, dockerfile: web/ayni-web/Dockerfile }
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
+      - name: Credenciales temporales de AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROL_DESPLIEGUE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Iniciar sesión en ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - uses: docker/setup-buildx-action@v3
 
-      - name: Autenticarse en GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Calcular etiquetas
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.servicio }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=sha,format=short
-
-      # ARM64 porque staging (Raspberry Pi 5) y producción (Oracle Ampere)
-      # comparten arquitectura: la misma imagen corre en ambos sin recompilar.
-      - name: Construir y publicar (linux/arm64)
+      # Misma cache que el CI: la imagen ya se construyo y escaneo con Trivy en
+      # el job anterior, asi que aqui casi todo sale de cache.
+      - name: Construir y publicar
         uses: docker/build-push-action@v6
         with:
-          # El Dockerfile necesita la raiz como contexto: referencia el pom.xml padre
           context: .
-          file: services/${{ matrix.servicio }}/Dockerfile
-          platforms: linux/arm64
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          build-args: |
+            NEXT_PUBLIC_API_URL=
+            NEXT_PUBLIC_APP_VERSION=${{ needs.version.outputs.version }}
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/ayni/${{ matrix.servicio }}:${{ needs.version.outputs.etiqueta }}
+            ${{ steps.ecr.outputs.registry }}/ayni/${{ matrix.servicio }}:v${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Staging: automático, sin intervención ───────────────────────────────
-  staging:
-    name: Desplegar a staging
-    if: github.event_name == 'push'
-    needs: publicar
-    runs-on: [self-hosted, raspberry-pi]      # runner en la Raspberry Pi 5
+  # ── 4. Desplegar en produccion ──────────────────────────────────────────
+  desplegar:
+    name: Desplegar en AWS
+    needs: [version, publicar]
+    if: always() && !failure() && !cancelled()
+    runs-on: ubuntu-latest
     environment:
-      name: staging
-      url: https://staging.ayni.pe
+      name: production
+      url: ${{ vars.AYNI_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Credenciales temporales de AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROL_DESPLIEGUE }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Desplegar
+      # La instancia se apaga de 01:00 a 07:00. Si un merge llega a esa hora,
+      # se enciende en lugar de fallar.
+      - name: Asegurar que la instancia está encendida
         run: |
-          cd infra/docker
-          docker compose -f docker-compose.staging.yml pull
-          docker compose -f docker-compose.staging.yml up -d --remove-orphans
-          docker image prune -f
+          ID=${{ vars.AWS_INSTANCIA }}
+          ESTADO=$(aws ec2 describe-instances --instance-ids $ID --query 'Reservations[0].Instances[0].State.Name' --output text)
+          if [[ "$ESTADO" != "running" ]]; then
+            echo "Instancia en estado $ESTADO: encendiendo"
+            aws ec2 start-instances --instance-ids $ID >/dev/null
+            aws ec2 wait instance-status-ok --instance-ids $ID
+            sleep 60
+          fi
 
-      - name: Esperar a que los servicios estén sanos
-        run: ./infra/scripts/esperar-salud.sh https://staging.ayni.pe 180
+      - name: Ejecutar el despliegue en la instancia (SSM)
+        run: |
+          COMANDO=$(aws ssm send-command \
+            --instance-ids ${{ vars.AWS_INSTANCIA }} \
+            --document-name AWS-RunShellScript \
+            --comment "Ayni ${{ needs.version.outputs.version }} (${{ needs.version.outputs.etiqueta }})" \
+            --timeout-seconds 900 \
+            --parameters 'commands=[
+              "set -e",
+              "curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/infra/scripts/desplegar.sh -o /opt/ayni/desplegar.sh",
+              "chmod +x /opt/ayni/desplegar.sh",
+              "AYNI_COMMIT=${{ github.sha }} /opt/ayni/desplegar.sh ${{ needs.version.outputs.etiqueta }} ${{ needs.version.outputs.version }}"
+            ]' \
+            --query Command.CommandId --output text)
+          echo "Comando SSM: $COMANDO"
+          for i in $(seq 1 90); do
+            sleep 10
+            ESTADO=$(aws ssm get-command-invocation --command-id "$COMANDO" --instance-id ${{ vars.AWS_INSTANCIA }} --query Status --output text 2>/dev/null || echo Pending)
+            [[ "$ESTADO" =~ ^(Success|Failed|Cancelled|TimedOut)$ ]] && break
+          done
+          aws ssm get-command-invocation --command-id "$COMANDO" --instance-id ${{ vars.AWS_INSTANCIA }} \
+            --query StandardOutputContent --output text
+          echo "Estado final: $ESTADO"
+          [[ "$ESTADO" == "Success" ]]
 
-      - name: Pruebas de humo
-        run: ./infra/scripts/pruebas-humo.sh https://staging.ayni.pe
-
-  # ── Pruebas end-to-end sobre staging ────────────────────────────────────
-  e2e:
-    name: Pruebas E2E y seguridad en staging
-    if: github.event_name == 'push'
-    needs: staging
+  # ── 5. Pruebas de humo contra la URL publica ────────────────────────────
+  humo:
+    name: Pruebas de humo en producción
+    needs: [version, desplegar]
+    if: always() && needs.desplegar.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: npm, cache-dependency-path: web/ayni-web/package-lock.json }
+      - name: Verificar el sistema desplegado
+        run: ./infra/scripts/pruebas-humo.sh "${{ vars.AYNI_URL }}" "${{ needs.version.outputs.version }}"
 
-      - name: Suite Playwright
-        working-directory: web/ayni-web
-        env:
-          E2E_BASE_URL: https://staging.ayni.pe
-        run: npm ci && npx playwright install --with-deps && npm run test:e2e
-
-      - name: Escaneo dinámico OWASP ZAP
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: https://staging.ayni.pe
-          fail_action: false        # informa, no bloquea el despliegue de staging
-
-      - name: Publicar informes
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: informes-e2e
-          path: |
-            web/ayni-web/playwright-report/
-            report_html.html
-
-  # ── Producción: requiere aprobación explícita del Product Owner ─────────
-  produccion:
-    name: Desplegar a producción
-    if: github.event_name == 'release'
-    needs: publicar
+  # ── 6. Reversion automatica si el humo falla ────────────────────────────
+  revertir:
+    name: Revertir a la versión anterior
+    needs: [humo]
+    if: always() && needs.humo.result == 'failure'
     runs-on: ubuntu-latest
-    environment:
-      name: production          # ← protegida: exige aprobación manual en GitHub
-      url: https://ayni.pe
+    steps:
+      - name: Credenciales temporales de AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROL_DESPLIEGUE }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Volver a la configuracion anterior
+        run: |
+          COMANDO=$(aws ssm send-command --instance-ids ${{ vars.AWS_INSTANCIA }} \
+            --document-name AWS-RunShellScript --comment "Ayni: reversion automatica" \
+            --parameters 'commands=["cd /opt/ayni","for f in .env docker-compose.prod.yml Caddyfile; do [ -f $f.anterior ] && mv $f.anterior $f; done","docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans","grep ^ETIQUETA= .env | cut -d= -f2 > version-actual"]' \
+            --query Command.CommandId --output text)
+          aws ssm wait command-executed --command-id "$COMANDO" --instance-id ${{ vars.AWS_INSTANCIA }} || true
+          echo "::error::Las pruebas de humo fallaron: producción vuelve a la versión anterior."
+          exit 1
+
+  # ── 7. Etiquetar la version publicada ───────────────────────────────────
+  release:
+    name: Publicar Release
+    needs: [version, humo]
+    if: always() && needs.humo.result == 'success' && needs.version.outputs.nueva == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Respaldar la base de datos antes de desplegar
-        run: ./infra/scripts/respaldo-produccion.sh
+      - name: Crear tag y Release
         env:
-          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-
-      - name: Guardar la versión actual para poder revertir
-        id: anterior
-        run: echo "tag=$(./infra/scripts/version-desplegada.sh)" >> "$GITHUB_OUTPUT"
-        env:
-          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-
-      - name: Desplegar en Oracle Cloud
-        run: ./infra/scripts/desplegar-produccion.sh "${{ github.event.release.tag_name }}"
-        env:
-          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-
-      - name: Pruebas de humo post-despliegue
-        id: humo
-        run: ./infra/scripts/pruebas-humo.sh https://ayni.pe
-
-      # Si las pruebas de humo fallan, se revierte solo. No se deja producción rota.
-      - name: Revertir automáticamente si las pruebas fallan
-        if: failure() && steps.humo.outcome == 'failure'
-        run: ./infra/scripts/desplegar-produccion.sh "${{ steps.anterior.outputs.tag }}"
-        env:
-          SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
-          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-
-      - name: Registrar el despliegue
-        if: success()
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Versión ${{ github.event.release.tag_name }} desplegada en producción."
-          echo "Aprobado por: ${{ github.actor }}"
+          gh release create "v${{ needs.version.outputs.version }}" \
+            --target "${{ github.sha }}" \
+            --title "Ayni Bank v${{ needs.version.outputs.version }}" \
+            --generate-notes \
+            --notes "Desplegada en producción: ${{ vars.AYNI_URL }} · imagen \`${{ needs.version.outputs.etiqueta }}\`"

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
 import { PanelDeMarca } from "@/componentes/ingreso/PanelDeMarca";
+import { VersionDeLaAplicacion } from "@/componentes/VersionDeLaAplicacion";
 
 import { FormularioDeIngreso } from "./FormularioDeIngreso";
 
@@ -29,6 +30,8 @@ export default function PaginaDeIngreso() {
         <div className="w-full max-w-[468px] rounded-[20px] border border-azul-200 bg-blanco p-7 sm:p-9">
           <FormularioDeIngreso />
         </div>
+
+        <VersionDeLaAplicacion />
       </div>
     </main>
   );
