@@ -4,6 +4,7 @@
 - **Fecha:** 12 de septiembre de 2026
 - **Historias afectadas:** HU-02 (verificación de identidad)
 - **Reemplaza a:** ninguno
+- **Actualizado por:** [ADR-0026](0026-verificacion-sincrona-del-dni-por-lado-y-confirmacion-del-titular.md) (el contador pasa a ser por lado del DNI)
 
 ## Contexto
 
