@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Escaneo ZAP baseline
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ inputs.objetivo }}
           # Informa de todo lo que encuentra; no falla el job por hallazgos,
@@ -79,10 +79,9 @@ jobs:
       - name: Escaneo Nikto
         run: |
           mkdir -p informes && chmod 777 informes
-          # Nikto oficial en contenedor; -maxtime acota la ejecucion.
-          docker run --rm -v "$PWD/informes:/out" sullo/nikto:latest \
-            -h "${{ inputs.objetivo }}" -maxtime 300s \
-            -o /out/nikto.txt -Format txt || true
+          # Nikto desde su repositorio oficial (la imagen publicada ya no existe).
+          git clone --depth 1 https://github.com/sullo/nikto.git /tmp/nikto
+          perl /tmp/nikto/program/nikto.pl -h "${{ inputs.objetivo }}" -maxtime 300s             -o informes/nikto.txt -Format txt || true
           echo "── Resumen ──"; cat informes/nikto.txt || true
 
       - uses: actions/upload-artifact@v4
