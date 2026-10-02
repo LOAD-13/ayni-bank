@@ -82,6 +82,15 @@ ayni:
     # lleva el numero de cuenta y llega por entorno.
     bucket-kyc: ${AYNI_BUCKET_KYC:ayni-kyc-documentos}
 
+  # ─── Correo al cliente (solo perfil prod, Amazon SES) ──────────────────
+  # En la cuenta en modo sandbox de SES solo llega a correos verificados.
+  correo:
+    remitente: ${AYNI_CORREO_REMITENTE:Ayni Bank <no-responder@ayni.pe>}
+    region: ${AYNI_CORREO_REGION:us-east-1}
+  web:
+    # Base de los enlaces que llevan los correos (continuar el registro, ingresar).
+    url-publica: ${AYNI_URL_PUBLICA:http://localhost:3000}
+
   # ─── Cliente hacia kyc-service ──────────────────────────────────────────
   # AYNI_KYC_SERVICE_URL ya llega al contenedor desde docker-compose.yml.
   # El timeout de 10s (diseno-base.md §3.5) se fija en ConfiguracionDelClienteKyc,

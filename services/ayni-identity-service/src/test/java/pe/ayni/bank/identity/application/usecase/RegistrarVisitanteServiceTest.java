@@ -447,7 +447,7 @@ class RegistrarVisitanteServiceTest {
         private final List<String> avisosDeIntento = new ArrayList<>();
 
         @Override
-        public void enviarBienvenida(CorreoElectronico correo) {
+        public void enviarBienvenida(CorreoElectronico correo, java.util.UUID solicitudId) {
             bienvenidas.add(correo.valor());
         }
 

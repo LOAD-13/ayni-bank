@@ -256,6 +256,13 @@ Resources:
               - Effect: Allow
                 Action: [ssm:GetParameter, ssm:GetParameters, ssm:GetParametersByPath]
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ayni/prod*"
+              # Correo transaccional: solo enviar, y solo desde el remitente del proyecto.
+              - Effect: Allow
+                Action: [ses:SendEmail, ses:SendRawEmail]
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: jloadenegri@gmail.com
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource:

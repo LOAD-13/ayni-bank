@@ -2,6 +2,7 @@ package pe.ayni.bank.identity.infrastructure.out.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
@@ -13,6 +14,7 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeVerificacionKycPort;
  * {@code ayni-notification-service} a traves del outbox (ADR-0003), y eso llega con HU-13.
  */
 @Component
+@Profile("!prod")
 public class NotificadorDeVerificacionKycPorEventos implements NotificadorDeVerificacionKycPort {
 
     private static final Logger log =
