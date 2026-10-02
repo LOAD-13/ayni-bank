@@ -215,6 +215,12 @@ jobs:
       # verificación es engañarse.
       - name: Pruebas de navegador (responsividad, enlaces y WCAG 2.1 AA)
         run: npm run test:e2e
+      - name: Publicar informe de Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-playwright
+          path: web/ayni-web/informe-playwright/
 
   # ── 6. Imágenes de contenedor ───────────────────────────────────────────
   imagenes:
