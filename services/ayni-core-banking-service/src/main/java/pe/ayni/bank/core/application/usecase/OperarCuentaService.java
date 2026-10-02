@@ -21,9 +21,11 @@ import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.PublicadorDeEventosPort;
 import pe.ayni.bank.core.domain.port.out.RegistroDeIdempotenciaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -39,6 +41,9 @@ import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
  * <p>Si dos peticiones con la misma clave llegan a la vez, las dos superan la comprobacion
  * inicial, pero la segunda choca con la clave primaria de {@code operacion_idempotente}
  * al recordar y su transaccion entera se deshace: el dinero no se mueve dos veces.
+ *
+ * <p>Cada operacion deja su evento en la pista de auditoria (AYNI-158). Los rechazos
+ * tambien, en una transaccion propia, porque la de la operacion se deshace.
  */
 @Service
 public class OperarCuentaService implements OperarCuentaUseCase {
@@ -50,15 +55,18 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     private final LibroMayorPort libro;
     private final PublicadorDeEventosPort eventos;
     private final RegistroDeIdempotenciaPort idempotencia;
+    private final PistaDeAuditoriaPort auditoria;
     private final Clock reloj;
 
     public OperarCuentaService(RepositorioDeCuentasPort cuentas, LibroMayorPort libro,
                                PublicadorDeEventosPort eventos,
-                               RegistroDeIdempotenciaPort idempotencia, Clock reloj) {
+                               RegistroDeIdempotenciaPort idempotencia,
+                               PistaDeAuditoriaPort auditoria, Clock reloj) {
         this.cuentas = cuentas;
         this.libro = libro;
         this.eventos = eventos;
         this.idempotencia = idempotencia;
+        this.auditoria = auditoria;
         this.reloj = reloj;
     }
 
@@ -66,11 +74,47 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     @Transactional
     public Comprobante transferir(UUID usuarioId, String numeroDestino, Dinero importe,
                                   String concepto, UUID clave) {
+        try {
+            Resultado resultado = hacerTransferencia(usuarioId, numeroDestino, importe,
+                    concepto, clave);
+            auditar(resultado, TipoDeEventoDeOperacion.TRANSFERENCIA_REALIZADA, usuarioId);
+            return resultado.comprobante();
+        } catch (OperacionRechazadaException e) {
+            auditoria.registrarRechazo(usuarioId, e.motivo());
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional
+    public Comprobante depositarSimulado(UUID usuarioId, Dinero importe, UUID clave) {
+        try {
+            Resultado resultado = hacerDeposito(usuarioId, importe, clave);
+            auditar(resultado, TipoDeEventoDeOperacion.DEPOSITO_SIMULADO, usuarioId);
+            return resultado.comprobante();
+        } catch (OperacionRechazadaException e) {
+            auditoria.registrarRechazo(usuarioId, e.motivo());
+            throw e;
+        }
+    }
+
+    /** Una peticion repetida no movio dinero: queda como tal en la pista. */
+    private void auditar(Resultado resultado, TipoDeEventoDeOperacion siEsNueva, UUID usuarioId) {
+        auditoria.registrar(resultado.repetida() ? TipoDeEventoDeOperacion.OPERACION_REPETIDA : siEsNueva,
+                usuarioId, resultado.comprobante().movimientoId());
+    }
+
+    /** El comprobante y si salio de una peticion repetida. */
+    private record Resultado(Comprobante comprobante, boolean repetida) {
+    }
+
+    private Resultado hacerTransferencia(UUID usuarioId, String numeroDestino, Dinero importe,
+                                         String concepto, UUID clave) {
         Cuenta origen = cuentaDe(usuarioId, importe.moneda());
 
         Optional<Comprobante> repetida = repetida(clave, origen);
         if (repetida.isPresent()) {
-            return repetida.get();
+            return new Resultado(repetida.get(), true);
         }
 
         Cuenta destino = numeroValido(numeroDestino)
@@ -84,19 +128,17 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         Movimiento movimiento = Movimiento.transferencia(UUID.randomUUID(), origen, saldo,
                 destino, importe, concepto, reloj.instant());
 
-        return completar(movimiento, origen, clave,
+        return new Resultado(completar(movimiento, origen, clave,
                 new TransferenciaRealizada(movimiento.id(), origen.id(), destino.id(),
-                        importe.importe().toPlainString(), importe.moneda().name()));
+                        importe.importe().toPlainString(), importe.moneda().name())), false);
     }
 
-    @Override
-    @Transactional
-    public Comprobante depositarSimulado(UUID usuarioId, Dinero importe, UUID clave) {
+    private Resultado hacerDeposito(UUID usuarioId, Dinero importe, UUID clave) {
         Cuenta destino = cuentaDe(usuarioId, importe.moneda());
 
         Optional<Comprobante> repetida = repetida(clave, destino);
         if (repetida.isPresent()) {
-            return repetida.get();
+            return new Resultado(repetida.get(), true);
         }
 
         Cuenta fondeo = libro.cuentaDeFondeo(importe.moneda());
@@ -105,9 +147,9 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         Movimiento movimiento = Movimiento.depositoSimulado(UUID.randomUUID(), fondeo, destino,
                 importe, reloj.instant());
 
-        return completar(movimiento, destino, clave,
+        return new Resultado(completar(movimiento, destino, clave,
                 new DepositoSimuladoRegistrado(movimiento.id(), destino.id(),
-                        importe.importe().toPlainString(), importe.moneda().name()));
+                        importe.importe().toPlainString(), importe.moneda().name())), false);
     }
 
     private Comprobante completar(Movimiento movimiento, Cuenta delTitular, UUID clave,
