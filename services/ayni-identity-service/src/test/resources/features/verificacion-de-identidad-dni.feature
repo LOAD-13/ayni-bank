@@ -2,40 +2,21 @@
 #
 # HU-02 · Verificación de identidad mediante fotografía del DNI · AYNI-13
 #
-# Jira aprobó cinco escenarios para esta historia. Aquí solo se automatizan dos: el
-# agotamiento de intentos y la caída de kyc-service. Los otros tres —captura correcta,
-# documento que no es un DNI, calidad insuficiente— dependen de un caso de uso de
-# integración Java↔Python que todavía no existe (ver ADR-0024 y la deuda anotada en el plan
-# de AYNI-13). registro-de-usuario.feature sostiene una regla explícita: un escenario
-# copiado de Jira se prueba contra código real, siempre — nunca se deja fingiendo que pasa
-# ni "pendiente". Escribir aquí los otros tres sin poder cumplir esa regla sería romperla,
-# así que no se escriben hasta que la integración exista.
+# Los cinco escenarios aprobados en Jira, más uno para el criterio de aceptación que no
+# tenía escenario propio («el solicitante puede corregir manualmente cualquier dato mal
+# extraído antes de confirmar»). Se ejecutan contra los casos de uso reales
+# (EvaluarCapturaDeDni, ExtraerDatosDelDni, ConfirmarDatosDelDni y
+# GestionarFalloDeVerificacionKyc) con adaptadores en memoria para MinIO y kyc-service: mismo
+# criterio que registro-de-usuario.feature, sin HTTP ni Resilience4j real. Que el circuito se
+# abra de verdad ante un kyc-service caído lo prueba AdaptadorVerificadorKycTest.
 #
-# Los dos escenarios que sí se automatizan se copian de Jira con tres diferencias, todas
-# documentadas en vez de ocultadas:
+# Diferencias con el texto de Jira, documentadas en vez de ocultadas:
 #
-# 1. Jira describe el estado como "EN_REVISION"; el estado que el sistema persiste de
-#    verdad es "EN_REVISION_MANUAL" (V2__usuario_persona_y_solicitud_de_onboarding.sql).
-#    Los pasos comprueban el estado real.
-# 2. Jira habla de "3 capturas del MISMO LADO" del documento. El contador que existe
-#    (ADR-0021, `solicitud_onboarding.intentos_verificacion_kyc`) es uno solo por
-#    solicitud, no uno por anverso y otro por reverso — cuenta intentos fallidos en total,
-#    sin distinguir de qué lado vinieron.
-# 3. Encontrada al ejecutar este mismo escenario contra el código real (que es exactamente
-#    para lo que sirve esta prueba): Jira narra "falla 3 veces, intenta una cuarta, y esa
-#    cuarta deriva". ADR-0021 implementó "el tercer fallo mismo deriva" — no hay un cuarto
-#    intento que llegue a procesarse. Se prefiere no tocar ahora una lógica ya enviada,
-#    probada y documentada por una ambigüedad del propio texto de Jira (su criterio de
-#    aceptación en prosa dice "máximo 3 intentos... antes de derivar", que coincide con el
-#    código, no con la narrativa del escenario). Los pasos de abajo reflejan el
-#    comportamiento real: dos fallos previos, un tercero que deriva.
-#
-# Se ejecutan contra GestionarFalloDeVerificacionKycService con adaptadores en memoria, no
-# contra HTTP ni Resilience4j real — mismo criterio que registro-de-usuario.feature. Por eso
-# "el circuit breaker abre" del escenario 2 no se observa aquí como tal (eso ya lo prueba
-# AdaptadorVerificadorKycTest, subtarea 10, que sí necesita un contexto Spring para el proxy
-# AOP): lo que este escenario prueba es la reacción del sistema una vez que la resiliencia
-# ya se agotó y llamó a `derivarPorServicioNoDisponible`.
+# 1. Jira dice "EN_REVISION"; el estado que el sistema persiste es "EN_REVISION_MANUAL"
+#    (V2__usuario_persona_y_solicitud_de_onboarding.sql). Los pasos comprueban el real.
+# 2. Escenario 4: el tercer fallo del mismo lado ya deriva (ADR-0021, ADR-0026). La cuarta
+#    captura que narra Jira se responde como derivada, sin evaluarse ni volver a avisar.
+# 3. "kyc-vision-service" es ayni-kyc-service.
 
 Característica: Verificación de identidad mediante fotografía del DNI
   Como solicitante
@@ -43,17 +24,50 @@ Característica: Verificación de identidad mediante fotografía del DNI
   Para no tener que escribirlos a mano ni acudir a una agencia a acreditar mi identidad
 
   Antecedentes:
-    Dado que existe una solicitud de onboarding para "ana.quispe@example.pe"
+    Dado que "ana.quispe@example.pe" completó su registro declarando el DNI "44556677"
+
+  Escenario: Captura correcta de ambos lados
+    Dado que el solicitante accede al paso de verificación de identidad
+    Cuando el solicitante captura el anverso y el reverso de su DNI con calidad suficiente
+    Entonces el sistema detecta que ambas imágenes corresponden a un DNI peruano
+    Y el sistema extrae los datos mediante OCR y los muestra para confirmación
+    Y el sistema almacena ambas imágenes en MinIO registrando su hash SHA-256
+
+  Escenario: La imagen no es un documento de identidad
+    Dado que el solicitante captura una fotografía de un objeto que no es un DNI
+    Cuando el sistema analiza la imagen
+    Entonces el sistema rechaza la captura
+    Y el sistema no almacena la imagen
+    Y el sistema indica al solicitante que debe fotografiar su DNI
+
+  Esquema del escenario: Calidad insuficiente
+    Dado que el solicitante captura el DNI con <problema>
+    Cuando el sistema evalúa la calidad de la imagen
+    Entonces el sistema rechaza la captura
+    Y el sistema indica el motivo concreto "<motivo>" para que el solicitante repita
+
+    Ejemplos:
+      | problema            | motivo      |
+      | desenfoque          | DESENFOQUE  |
+      | reflejos            | REFLEJO     |
+      | encuadre incompleto | ENCUADRE    |
+      | poca luz            | ILUMINACION |
 
   Escenario: Agotamiento de intentos
-    Dado que el solicitante ha fallado 2 capturas del mismo lado del documento
-    Cuando el solicitante intenta una tercera captura
-    Entonces el sistema deriva la solicitud a revisión manual
+    Dado que el solicitante ha fallado 3 capturas del mismo lado del documento
+    Cuando el solicitante intenta una cuarta captura
+    Entonces el sistema deriva la solicitud a revisión manual con estado EN_REVISION_MANUAL
     Y el sistema notifica al solicitante que su caso será revisado por un operador
 
   Escenario: El servicio de visión no responde
     Dado que el servicio kyc-vision-service está caído o excede el timeout de 10 segundos
     Cuando el solicitante envía la captura de su DNI
     Entonces el sistema no falla con error técnico
-    Y el sistema registra la solicitud en revisión manual
+    Y el sistema registra la solicitud en estado EN_REVISION_MANUAL
     Y el sistema informa al solicitante que su verificación continuará en breve
+
+  Escenario: Corrección de un dato mal extraído antes de confirmar
+    Dado que el OCR leyó del anverso el nombre "ANA LUClA" en lugar de "ANA LUCIA"
+    Cuando el solicitante corrige el nombre a "Ana Lucía" y confirma sus datos
+    Entonces el sistema acepta los datos confirmados
+    Y el sistema conserva tanto lo que leyó el OCR como lo que confirmó el solicitante

@@ -86,9 +86,12 @@ ayni:
   # no aqui: RestClient no lo expone como propiedad Spring estandar.
   kyc:
     base-url: ${AYNI_KYC_SERVICE_URL:http://localhost:8000}
+    # Solo la lectura por OCR; evaluar cada foto mantiene los 10 s del diseno
+    # (§3.5). Medido: ~9-11 s en un portatil. Ajustar tras medir en la Pi 5.
+    timeout-de-extraccion: ${AYNI_KYC_TIMEOUT_EXTRACCION:30s}
 
 # ─── Resiliencia de la llamada a kyc-service (AYNI-13 subtarea 10) ────────
-# Ver ADR-0020 para la justificacion de estos valores.
+# Ver ADR-0020 y ADR-0026 para la justificacion de estos valores.
 resilience4j:
   # El orden por defecto de resilience4j-spring-boot3 2.4.0 NO es
   # CircuitBreaker-afuera/Retry-adentro (confirmado experimentalmente, ver
@@ -110,7 +113,7 @@ resilience4j:
           - org.springframework.web.client.HttpServerErrorException
           - org.springframework.web.client.ResourceAccessException
         # No evita que el fallback se dispare para un 4xx (eso lo maneja
-        # AdaptadorVerificadorKyc.alAgotarLaResiliencia relanzando la
+        # AdaptadorVerificadorKyc.relanzarONoDisponible relanzando la
         # excepcion tal cual); solo evita que un 4xx cuente como fallo en
         # las metricas del circuito.
         ignore-exceptions:
@@ -123,11 +126,18 @@ resilience4j:
         wait-duration: 500ms
         enable-exponential-backoff: true
         exponential-backoff-multiplier: 2
-        retry-exceptions:
-          - org.springframework.web.client.HttpServerErrorException
-          - org.springframework.web.client.ResourceAccessException
-        # HttpClientErrorException (4xx, ej. UUID invalido) queda fuera a
-        # proposito: reintentar una peticion mal formada no la arregla.
+        # Que se reintenta lo decide ReintentoAnteKycNoDisponible, y solo el: los
+        # 5xx y los errores de E/S, salvo los timeouts de lectura. No se declara
+        # retry-exceptions a proposito: Resilience4j lo combina con el predicado
+        # con un O, y volveria a reintentar los timeouts.
+        #
+        # Por que no los timeouts: con 3 intentos de 10 s el solicitante esperaba
+        # ~31 s antes de ver "tu verificacion continuara en breve" (escenario 5
+        # de HU-02). Ahora un kyc-service lento se abandona a los 10 s; uno caido
+        # (conexion rechazada) sigue reintentandose, porque falla al instante.
+        # Los 4xx (ej. clave inexistente) tampoco: reintentar una peticion mal
+        # formada no la arregla. ADR-0026.
+        retry-exception-predicate: pe.ayni.bank.identity.infrastructure.config.ReintentoAnteKycNoDisponible
 
 server:
   port: 8081

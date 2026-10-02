@@ -8,6 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 /** Fila de {@code identity.solicitud_onboarding}. */
 @Entity
@@ -65,9 +66,26 @@ public class SolicitudOnboardingEntity {
     @Column(name = "fecha_nacimiento_declarada")
     private LocalDate fechaNacimientoDeclarada;
 
-    /** Intentos fallidos de verificacion consumidos. Ver ADR-0021. */
-    @Column(name = "intentos_verificacion_kyc", nullable = false)
-    private short intentosVerificacionKyc;
+    /** Fotos del anverso rechazadas. Ver ADR-0021 y ADR-0026. */
+    @Column(name = "intentos_kyc_anverso", nullable = false)
+    private short intentosKycAnverso;
+
+    /** Fotos del reverso rechazadas, o lecturas fallidas del OCR. Ver ADR-0026. */
+    @Column(name = "intentos_kyc_reverso", nullable = false)
+    private short intentosKycReverso;
+
+    /**
+     * Bloqueo optimista: sin el, dos fallos simultaneos del mismo lado leen el mismo contador
+     * y uno de los dos incrementos se pierde. Ver V8.
+     *
+     * <p>{@code Long} y no {@code long}: nulo en una solicitud recien creada es lo que le dice
+     * a Spring Data que es nueva y hay que insertarla. Con un primitivo, el id asignado a mano
+     * la haria pasar por existente, y Hibernate 6.6 rechaza fusionar una entidad versionada
+     * que no esta en la base.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     protected SolicitudOnboardingEntity() {
         // Exigido por JPA.
@@ -90,15 +108,28 @@ public class SolicitudOnboardingEntity {
         this.actualizadaEn = momento;
     }
 
-    /** Suma un intento fallido y devuelve el total acumulado. Ver ADR-0021. */
-    short incrementarIntentosDeVerificacionKyc(Instant momento) {
-        this.intentosVerificacionKyc++;
+    /**
+     * Suma un intento fallido de ese lado y devuelve el total acumulado. Nunca pasa de
+     * {@code maximo}: la restriccion de la tabla lo prohibe, y quien decide que hacer al
+     * llegar ahi es el caso de uso.
+     */
+    short incrementarIntentosDeVerificacionKyc(boolean anverso, short maximo, Instant momento) {
         this.actualizadaEn = momento;
-        return this.intentosVerificacionKyc;
+        if (anverso) {
+            this.intentosKycAnverso = (short) Math.min(this.intentosKycAnverso + 1, maximo);
+            return this.intentosKycAnverso;
+        }
+        this.intentosKycReverso = (short) Math.min(this.intentosKycReverso + 1, maximo);
+        return this.intentosKycReverso;
     }
 
     void derivarARevisionManual(Instant momento) {
         this.estado = "EN_REVISION_MANUAL";
+        this.actualizadaEn = momento;
+    }
+
+    void marcarDocumentoCargado(Instant momento) {
+        this.estado = "DOCUMENTO_CARGADO";
         this.actualizadaEn = momento;
     }
 
@@ -126,6 +157,30 @@ public class SolicitudOnboardingEntity {
 
     String getEstado() {
         return estado;
+    }
+
+    String getApellidosDeclarados() {
+        return apellidosDeclarados;
+    }
+
+    String getTipoDocumentoDeclarado() {
+        return tipoDocumentoDeclarado;
+    }
+
+    String getDocumentoDeclarado() {
+        return documentoDeclarado;
+    }
+
+    LocalDate getFechaNacimientoDeclarada() {
+        return fechaNacimientoDeclarada;
+    }
+
+    short getIntentosKycAnverso() {
+        return intentosKycAnverso;
+    }
+
+    short getIntentosKycReverso() {
+        return intentosKycReverso;
     }
 
     /**
