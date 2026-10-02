@@ -61,6 +61,9 @@ class DatosIdentidadExtraidos:
     confiar en la lectura) o de heuristicas sobre el anverso (fallback sin
     forma de validar que el OCR leyo bien - ver ADR-0009 sobre lecturas
     plausibles pero erroneas).
+
+    `fecha_emision` es opcional: el MRZ no la trae y se lee del anverso, donde
+    el OCR puede no encontrarla. El titular la completa al confirmar sus datos.
     """
 
     dni: str
@@ -70,3 +73,4 @@ class DatosIdentidadExtraidos:
     sexo: str
     fuente: FuenteDatosIdentidad
     confiable: bool
+    fecha_emision: date | None = None
