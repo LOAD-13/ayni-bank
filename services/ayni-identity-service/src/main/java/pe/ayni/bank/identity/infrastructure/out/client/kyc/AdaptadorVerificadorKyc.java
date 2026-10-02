@@ -103,14 +103,17 @@ public class AdaptadorVerificadorKyc implements VerificadorKycPort {
      * recibir un error tecnico.
      */
     private static Optional<LecturaDelDni> aLectura(DatosExtraidos datos) {
-        if (datos.getFuente() == null) {
+        // El contrato marca la fuente como obligatoria, pero lo que llega por la red no se
+        // da por bueno: sin fuente no hay lectura.
+        Optional<FuenteDeLectura> fuente = Optional.ofNullable(datos.getFuente())
+                .map(f -> FuenteDeLectura.valueOf(f.getValue()));
+        if (fuente.isEmpty()) {
             return Optional.empty();
         }
         try {
             DatosDelDni dni = new DatosDelDni(datos.getDni(), datos.getNombres(), datos.getApellidos(),
                     datos.getFechaNacimiento(), datos.getSexo(), datos.getFechaEmision());
-            return Optional.of(new LecturaDelDni(dni,
-                    FuenteDeLectura.valueOf(datos.getFuente().getValue()),
+            return Optional.of(new LecturaDelDni(dni, fuente.get(),
                     Boolean.TRUE.equals(datos.getConfiable())));
         } catch (IllegalArgumentException e) {
             log.warn("kyc-service devolvio datos del DNI que no cumplen las reglas del dominio: {}", e.getMessage());
