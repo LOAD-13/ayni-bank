@@ -155,8 +155,17 @@ jobs:
       - name: Tipado estricto (mypy)
         run: mypy --strict src/
 
-      - name: Pruebas
-        run: pytest -q
+      - name: Pruebas con cobertura
+        run: pytest -q --cov=src --cov-report=term --cov-report=html:informe-cobertura --cov-report=xml:cobertura.xml
+
+      - name: Publicar informe de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-python
+          path: |
+            services/ayni-kyc-service/informe-cobertura/
+            services/ayni-kyc-service/cobertura.xml
 
       # La validacion del contrato OpenAPI se activa en el Sprint 2, cuando
       # exista contracts/kyc-service.openapi.yaml (AYNI-95).
@@ -185,7 +194,13 @@ jobs:
       - name: Verificación de tipos
         run: npm run typecheck
       - name: Pruebas
-        run: npm run test -- --coverage
+        run: npm run test -- --coverage --coverage.reporter=text --coverage.reporter=lcov --coverage.reporter=html
+      - name: Publicar informe de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-web
+          path: web/ayni-web/coverage/
       - name: Construir
         run: npm run build
       # Las pruebas de navegador necesitan el binario de Chromium, que no viene con el

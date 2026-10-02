@@ -50,6 +50,8 @@ node_modules/
 web/**/out/
 web/**/dist/
 coverage/
+informe-cobertura/
+cobertura.xml
 *.tsbuildinfo
 .pnpm-store/
 
