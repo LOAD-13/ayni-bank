@@ -46,19 +46,27 @@ class AdaptadorLibroMayorTest {
     }
 
     private static CuentaEntity fila(UUID id, String numero) {
-        Cuenta cuenta = Cuenta.abrir(id, UUID.randomUUID(), (short) 1, new NumeroDeCuenta(numero),
+        return fila(id, UUID.randomUUID(), numero);
+    }
+
+    private static CuentaEntity fila(UUID id, UUID titular, String numero) {
+        Cuenta cuenta = Cuenta.abrir(id, titular, (short) 1, new NumeroDeCuenta(numero),
                 Moneda.PEN, AHORA);
         return new CuentaEntity(cuenta.id(), cuenta.usuarioId(), cuenta.productoId(),
                 cuenta.numero().valor(), cuenta.cci().valor(), "PEN", "ACTIVA", AHORA);
     }
 
     @Test
-    @DisplayName("la cuenta de fondeo no se encuentra por numero: nadie puede transferirle")
-    void elFondeoNoEsUnDestino() {
-        when(cuentas.findByNumero("00110000000001")).thenReturn(Optional.of(fila(FONDEO, "00110000000001")));
+    @DisplayName("las cuentas tecnicas no se encuentran por numero: nadie puede transferirles")
+    void lasCuentasTecnicasNoSonDestino() {
+        when(cuentas.findByNumero("00110000000001")).thenReturn(Optional.of(
+                fila(FONDEO, UUID.fromString("00000000-0000-0000-0000-000000000001"), "00110000000001")));
+        when(cuentas.findByNumero("00110000000002")).thenReturn(Optional.of(
+                fila(UUID.randomUUID(), UUID.fromString("00000000-0000-0000-0000-000000000002"), "00110000000002")));
         when(cuentas.findByNumero("00111000000040")).thenReturn(Optional.of(fila(UUID.randomUUID(), "00111000000040")));
 
         assertThat(adaptador().buscarPorNumero(new NumeroDeCuenta("00110000000001"))).isEmpty();
+        assertThat(adaptador().buscarPorNumero(new NumeroDeCuenta("00110000000002"))).isEmpty();
         assertThat(adaptador().buscarPorNumero(new NumeroDeCuenta("00111000000040"))).isPresent();
     }
 
