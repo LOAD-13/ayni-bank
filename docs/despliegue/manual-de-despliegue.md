@@ -27,7 +27,7 @@ flowchart LR
 |---|---|---|
 | Región | `us-east-1` | |
 | Instancia | `ayni-bank-prod` | IP elástica, sin SSH. No se enciende sola; se apaga cada día a las 23:00 (Lima) |
-| Base de datos | `ayni-bank-prod` | `db.t4g.micro`, 20 GB gp3 cifrados, copias 7 días, PITR |
+| Base de datos | `ayni-bank-prod` | `db.t4g.micro`, 20 GB gp3 cifrados, copia diaria y PITR de 1 día (límite del plan gratuito) |
 | Bucket | `ayni-kyc-documentos-<cuenta>` | Privado, cifrado, versionado, solo TLS |
 | Registro | `ayni/*` en ECR | 6 repositorios, escaneo al publicar, 10 imágenes por servicio |
 | URL | `https://ayni.<ip-con-guiones>.sslip.io` | Certificado de Let's Encrypt emitido por Caddy |
@@ -111,7 +111,7 @@ Para comprobar a simple vista que llegó: la pantalla de ingreso muestra **«ver
 | Ver los contenedores | `cd /opt/ayni && docker compose -f docker-compose.prod.yml ps` |
 | Ver los registros | `docker logs ayni-core-banking-service --since 10m` |
 | Salud | `curl https://<url>/api/health` |
-| Métricas de la base | Consola RDS → `ayni-bank-prod` → *Monitoring* y *Performance Insights* |
+| Métricas de la base | Consola RDS → `ayni-bank-prod` → *Monitoring* y *Logs & events* (CloudWatch) |
 | Restaurar la base a un instante | Consola RDS → *Restore to point in time* (crea una instancia nueva) |
 | Encender fuera de horario | `aws ec2 start-instances --instance-ids <InstanciaId>` |
 

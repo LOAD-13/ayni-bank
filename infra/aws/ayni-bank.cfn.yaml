@@ -194,9 +194,8 @@ Resources:
         LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Conservar las 10 ultimas","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}'
 
   # ─── Base de datos ────────────────────────────────────────────────────────
-  # PostgreSQL 17 gestionado: copias automaticas diarias con 7 dias de
-  # retencion y restauracion a un punto en el tiempo (PITR), Performance
-  # Insights y metricas en CloudWatch. La contrasena maestra la genera y rota
+  # PostgreSQL 17 gestionado: copias automaticas diarias y restauracion
+  # a un punto en el tiempo (PITR), y metricas y logs en CloudWatch. La contrasena maestra la genera y rota
   # RDS en Secrets Manager: nadie del equipo la conoce ni la escribe.
   BaseDeDatos:
     Type: AWS::RDS::DBInstance
@@ -208,7 +207,6 @@ Resources:
       EngineVersion: "17.11"
       DBInstanceClass: db.t4g.micro
       AllocatedStorage: "20"
-      MaxAllocatedStorage: 40
       StorageType: gp3
       StorageEncrypted: true
       DBName: ayni
@@ -217,12 +215,13 @@ Resources:
       VPCSecurityGroups: [!GetAtt GrupoBaseDeDatos.GroupId]
       PubliclyAccessible: false
       MultiAZ: false
-      BackupRetentionPeriod: 7
+      # El plan gratuito de AWS limita la retencion de copias automaticas a 1 dia
+      # (PITR dentro de ese dia). Se complementa con instantaneas manuales antes de
+      # cada cambio de esquema; ver el manual de despliegue.
+      BackupRetentionPeriod: 1
       PreferredBackupWindow: "08:00-08:30"          # 03:00 hora de Lima
       PreferredMaintenanceWindow: "sun:09:00-sun:09:30"
       CopyTagsToSnapshot: true
-      EnablePerformanceInsights: true
-      PerformanceInsightsRetentionPeriod: 7
       EnableCloudwatchLogsExports: [postgresql]
       AutoMinorVersionUpgrade: true
       DeletionProtection: true

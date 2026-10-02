@@ -44,7 +44,7 @@ evidencias de monitoreo y administración de la base de datos en producción.
 | Cómputo | EC2 `m7i-flex.large`, Ubuntu 24.04, `amd64` | 8 GB; el KYC solo ocupa más de 1 GB. Elegible en el plan gratuito |
 | Entrada | Caddy en la propia instancia | HTTPS automático de Let's Encrypt, cabeceras de seguridad y un único puerto público |
 | Dominio | `ayni.<ip>.sslip.io` sobre una IP elástica | Certificado válido sin comprar un dominio |
-| Base de datos | RDS PostgreSQL 17 `db.t4g.micro`, cifrada | Copias diarias, PITR de 7 días, Performance Insights, alarmas |
+| Base de datos | RDS PostgreSQL 17 `db.t4g.micro`, cifrada | Copia diaria con restauración a un punto en el tiempo (1 día, el máximo del plan gratuito), métricas y logs en CloudWatch, alarmas |
 | Documentos KYC | S3, privado, cifrado, solo TLS | Sustituye a MinIO; el cliente MinIO de los servicios es compatible |
 | Imágenes | ECR, escaneo al publicar, se guardan las 10 últimas | La instancia descarga con su rol de IAM: sin tokens personales |
 | Administración | AWS Systems Manager | **No hay puerto SSH abierto ni claves que custodiar** |
