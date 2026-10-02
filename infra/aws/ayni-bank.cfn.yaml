@@ -384,10 +384,12 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions: [!Ref TemaAlertas]
 
-  # ─── Apagado nocturno ─────────────────────────────────────────────────────
-  # Es un entorno academico: de 01:00 a 07:00 (Lima) nadie lo usa. Apagar la
-  # instancia esas seis horas ahorra un cuarto del coste de computo. La base de
-  # datos sigue encendida para no perder la ventana de copias de las 03:00.
+  # ─── Apagado diario ───────────────────────────────────────────────────────
+  # La cuenta esta en el plan gratuito: todo se descuenta de los creditos y el
+  # computo es lo que mas consume. Por eso la instancia NO se enciende sola:
+  # la enciende el pipeline cuando hay algo que desplegar, o el equipo antes de
+  # una demo. Y se apaga sola cada noche a las 23:00 (Lima) por si alguien la
+  # deja encendida. La base de datos sigue activa para no perder sus copias.
   RolProgramador:
     Type: AWS::IAM::Role
     Properties:
@@ -399,35 +401,23 @@ Resources:
             Principal: { Service: scheduler.amazonaws.com }
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: encender-apagar
+        - PolicyName: apagar
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: [ec2:StartInstances, ec2:StopInstances]
+                Action: [ec2:StopInstances]
                 Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instancia}"
 
   Apagar:
     Type: AWS::Scheduler::Schedule
     Properties:
-      Name: ayni-apagar-0100
-      ScheduleExpression: cron(0 1 * * ? *)
+      Name: ayni-apagar-2300
+      ScheduleExpression: cron(0 23 * * ? *)
       ScheduleExpressionTimezone: America/Lima
       FlexibleTimeWindow: { Mode: "OFF" }
       Target:
         Arn: arn:aws:scheduler:::aws-sdk:ec2:stopInstances
-        RoleArn: !GetAtt RolProgramador.Arn
-        Input: !Sub '{"InstanceIds":["${Instancia}"]}'
-
-  Encender:
-    Type: AWS::Scheduler::Schedule
-    Properties:
-      Name: ayni-encender-0700
-      ScheduleExpression: cron(0 7 * * ? *)
-      ScheduleExpressionTimezone: America/Lima
-      FlexibleTimeWindow: { Mode: "OFF" }
-      Target:
-        Arn: arn:aws:scheduler:::aws-sdk:ec2:startInstances
         RoleArn: !GetAtt RolProgramador.Arn
         Input: !Sub '{"InstanceIds":["${Instancia}"]}'
 

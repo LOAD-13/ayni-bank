@@ -130,8 +130,8 @@ jobs:
           role-to-assume: ${{ vars.AWS_ROL_DESPLIEGUE }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # La instancia se apaga de 01:00 a 07:00. Si un merge llega a esa hora,
-      # se enciende en lugar de fallar.
+      # La instancia solo esta encendida cuando hace falta (plan gratuito: se
+      # paga con creditos). Si esta apagada, el despliegue la enciende.
       - name: Asegurar que la instancia está encendida
         run: |
           ID=${{ vars.AWS_INSTANCIA }}

@@ -26,7 +26,7 @@ flowchart LR
 | Recurso | Nombre | Notas |
 |---|---|---|
 | Región | `us-east-1` | |
-| Instancia | `ayni-bank-prod` | IP elástica, sin SSH, se apaga de 01:00 a 07:00 (Lima) |
+| Instancia | `ayni-bank-prod` | IP elástica, sin SSH. No se enciende sola; se apaga cada día a las 23:00 (Lima) |
 | Base de datos | `ayni-bank-prod` | `db.t4g.micro`, 20 GB gp3 cifrados, copias 7 días, PITR |
 | Bucket | `ayni-kyc-documentos-<cuenta>` | Privado, cifrado, versionado, solo TLS |
 | Registro | `ayni/*` en ECR | 6 repositorios, escaneo al publicar, 10 imágenes por servicio |

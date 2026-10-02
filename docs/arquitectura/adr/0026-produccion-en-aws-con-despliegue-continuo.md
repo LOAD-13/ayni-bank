@@ -49,7 +49,7 @@ evidencias de monitoreo y administración de la base de datos en producción.
 | Imágenes | ECR, escaneo al publicar, se guardan las 10 últimas | La instancia descarga con su rol de IAM: sin tokens personales |
 | Administración | AWS Systems Manager | **No hay puerto SSH abierto ni claves que custodiar** |
 | Secretos | Parameter Store y Secrets Manager | Se inyectan en cada despliegue; nunca están en git |
-| Ahorro | Apagado de 01:00 a 07:00 (EventBridge Scheduler) | Un cuarto menos de cómputo |
+| Ahorro | No se enciende sola: la enciende el pipeline al desplegar; se apaga cada día a las 23:00 | El plan gratuito descuenta todo de los créditos y el cómputo es lo que más consume |
 
 **Pipeline** (`.github/workflows/cd.yml`), en cada *push* a `main`:
 
