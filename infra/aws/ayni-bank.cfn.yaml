@@ -11,6 +11,12 @@ Parameters:
     Type: String
     Default: LOAD-13/ayni-bank
     Description: Unico repositorio autorizado a desplegar (propietario/nombre).
+  SujetoInmutable:
+    Type: String
+    Default: LOAD-13@104539394/ayni-bank@1334805971
+    Description: >-
+      Prefijo inmutable del sujeto OIDC del repositorio (gh api
+      repos/OWNER/REPO/actions/oidc/customization/sub -> sub_claim_prefix, sin "repo:").
   TipoDeInstancia:
     Type: String
     Default: m7i-flex.large
@@ -447,9 +453,16 @@ Resources:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
+                # Dos formatos del sujeto: el clasico (propietario/repo) y el
+                # inmutable que GitHub usa en este repositorio, que anade los
+                # identificadores numericos (propietario@id/repo@id) para que un
+                # repositorio renombrado o recreado con el mismo nombre no herede
+                # el acceso.
                 token.actions.githubusercontent.com:sub:
                   - !Sub "repo:${RepositorioGitHub}:ref:refs/heads/main"
                   - !Sub "repo:${RepositorioGitHub}:environment:production"
+                  - !Sub "repo:${SujetoInmutable}:ref:refs/heads/main"
+                  - !Sub "repo:${SujetoInmutable}:environment:production"
       Policies:
         - PolicyName: publicar-y-desplegar
           PolicyDocument:

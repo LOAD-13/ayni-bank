@@ -1,0 +1,107 @@
+name: Pruebas de seguridad web
+
+# Escaneo de vulnerabilidades web del sistema Ayni Bank, exigido por el APF2
+# (artefacto 7 · prueba de seguridad web). Se ejecuta A MANO desde la pestaña
+# Actions, nunca de forma automatica, para no atacar el sistema sin querer ni
+# bloquear el pipeline de CI/CD. Solo apunta a nuestra propia URL de produccion.
+#
+# Cuatro herramientas, cada una en su trabajo, y todas suben su informe como
+# artefacto de la ejecucion:
+#   1. OWASP ZAP (baseline)  escaneo pasivo del OWASP Top 10: cabeceras,
+#                            cookies, fugas de informacion, CSP, etc.
+#   2. Nmap                  puertos abiertos y servicios expuestos.
+#   3. Nikto                 configuracion del servidor web y ficheros conocidos.
+#   4. testssl.sh            configuracion TLS del certificado.
+
+on:
+  workflow_dispatch:
+    inputs:
+      objetivo:
+        description: "URL a escanear (debe ser un sistema propio y autorizado)"
+        required: true
+        default: "https://ayni.184-194-190-144.sslip.io"
+
+# Solo lectura: este workflow no escribe en el repositorio.
+permissions:
+  contents: read
+
+concurrency:
+  group: seguridad-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── OWASP ZAP · escaneo pasivo del OWASP Top 10 ─────────────────────────
+  zap:
+    name: OWASP ZAP (baseline)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escaneo ZAP baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ inputs.objetivo }}
+          # Informa de todo lo que encuentra; no falla el job por hallazgos,
+          # porque el objetivo es recoger evidencia, no bloquear nada.
+          fail_action: false
+          cmd_options: "-a"
+          artifact_name: zap-baseline
+
+  # ── Nmap · puertos y servicios ──────────────────────────────────────────
+  nmap:
+    name: Nmap (puertos y servicios)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar Nmap
+        run: sudo apt-get update && sudo apt-get install -y nmap
+
+      - name: Escanear puertos y servicios
+        run: |
+          HOST=$(echo "${{ inputs.objetivo }}" | sed -E 's#^https?://##; s#/.*$##')
+          mkdir -p informes
+          echo "Objetivo: $HOST" | tee informes/nmap.txt
+          # -sV detecta la version del servicio; --script ssl-enum-ciphers lista
+          # las suites TLS. Solo puertos 80 y 443, que es lo unico que publicamos.
+          sudo nmap -sV -Pn -p 80,443 --script ssl-enum-ciphers "$HOST" \
+            | tee -a informes/nmap.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nmap
+          path: informes/nmap.txt
+
+  # ── Nikto · configuracion del servidor web ──────────────────────────────
+  nikto:
+    name: Nikto (servidor web)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escaneo Nikto
+        run: |
+          mkdir -p informes
+          # Nikto oficial en contenedor; -maxtime acota la ejecucion.
+          docker run --rm -v "$PWD/informes:/out" sullo/nikto:latest \
+            -h "${{ inputs.objetivo }}" -maxtime 300s \
+            -o /out/nikto.txt -Format txt || true
+          echo "── Resumen ──"; cat informes/nikto.txt || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nikto
+          path: informes/nikto.txt
+
+  # ── testssl.sh · configuracion TLS ──────────────────────────────────────
+  tls:
+    name: testssl.sh (configuracion TLS)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Analizar la configuracion TLS
+        run: |
+          HOST=$(echo "${{ inputs.objetivo }}" | sed -E 's#^https?://##; s#/.*$##')
+          mkdir -p informes
+          docker run --rm -v "$PWD/informes:/out" drwetter/testssl.sh:latest \
+            --quiet --color 0 --logfile /out/testssl.txt "$HOST:443" || true
+          echo "── Resumen ──"; tail -40 informes/testssl.txt || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: testssl
+          path: informes/testssl.txt
