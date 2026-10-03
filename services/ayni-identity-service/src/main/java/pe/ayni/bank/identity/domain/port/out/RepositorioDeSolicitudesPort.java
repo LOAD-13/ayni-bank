@@ -73,4 +73,13 @@ public interface RepositorioDeSolicitudesPort {
      * suena a carta del banco; «Listo, Ana» suena a alguien hablandole a una persona.
      */
     Optional<String> nombreDePilaDe(UUID usuarioId);
+
+    /**
+     * La solicitud de apertura que el usuario todavia puede continuar (iniciada y sin
+     * caducar). La banca la usa para ofrecer «continuar la verificacion» a quien entra sin
+     * cuenta abierta.
+     */
+    default Optional<UUID> solicitudVigenteDe(UUID usuarioId) {
+        return Optional.empty();
+    }
 }

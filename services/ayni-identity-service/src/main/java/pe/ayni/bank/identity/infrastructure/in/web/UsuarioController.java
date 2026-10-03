@@ -46,7 +46,8 @@ public class UsuarioController {
         return new ResumenDto(
                 solicitudes.nombreDePilaDe(usuarioId).orElse(null),
                 usuario.correo().enmascarado(),
-                usuario.estado().name());
+                usuario.estado().name(),
+                solicitudes.solicitudVigenteDe(usuarioId).orElse(null));
     }
 
     @ExceptionHandler(UsuarioDesconocidoException.class)
@@ -62,7 +63,9 @@ public class UsuarioController {
      * @param correo enmascarado: la pantalla solo tiene que recordar a donde se envio el
      *               aviso, y para eso basta {@code a**@ejemplo.pe}
      */
-    public record ResumenDto(String nombreDePila, String correo, String estado) {
+    /** @param solicitudPendiente la apertura que aun se puede continuar, o nulo */
+    public record ResumenDto(String nombreDePila, String correo, String estado,
+                             UUID solicitudPendiente) {
     }
 
     static class UsuarioDesconocidoException extends RuntimeException {
