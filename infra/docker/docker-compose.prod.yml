@@ -144,6 +144,9 @@ services:
       MINIO_ENDPOINT: https://s3.us-east-1.amazonaws.com
       MINIO_ACCESS_KEY: ${S3_ACCESS_KEY}
       MINIO_SECRET_KEY: ${S3_SECRET_KEY}
+      # Sin esto kyc-service usa el nombre por defecto y S3 responde NoSuchBucket:
+      # toda verificacion del DNI acababa en revision manual.
+      MINIO_BUCKET_KYC: ${AYNI_BUCKET_KYC}
       AYNI_UMBRAL_SIMILITUD_FACIAL: "0.80"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]

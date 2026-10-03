@@ -93,12 +93,14 @@ Resources:
       # esta regla el PUT se bloquea por CORS. Solo desde el dominio de Ayni.
       CorsConfiguration:
         CorsRules:
-          - AllowedMethods: [PUT]
+          # POST: la subida del DNI y la selfie usa una politica prefirmada (formulario).
+          - AllowedMethods: [PUT, POST]
             AllowedOrigins:
               - !Sub
                 - "https://ayni.${Ip}.sslip.io"
                 - Ip: !Join ["-", !Split [".", !Ref IpPublica]]
             AllowedHeaders: ["*"]
+            ExposedHeaders: [ETag]
             MaxAge: 3000
       LifecycleConfiguration:
         Rules:
