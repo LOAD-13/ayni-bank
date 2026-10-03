@@ -4,8 +4,12 @@ import {
   Camera,
   FileImage,
   FileUp,
+  Hand,
+  Layers,
   RotateCcw,
+  Scan,
   ShieldCheck,
+  Sun,
   TriangleAlert,
   Upload,
 } from "lucide-react";
@@ -278,21 +282,20 @@ export function CapturaDeDocumento({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-[22px] font-bold text-azul-700">DNI · {cara}</h1>
-        <p className="mt-1 text-[14.5px] text-gris-700">
+        <h1 className="text-[26px] font-bold leading-tight text-azul-800 sm:text-[32px]">
+          Captura el {cara.toLowerCase()} de tu DNI
+        </h1>
+        <p className="mt-2 text-[15px] text-gris-700">
           {medio === "camara"
-            ? "Coloca tu DNI dentro del marco, en un lugar bien iluminado y sin reflejos."
-            : "Sube una foto o un escaneo claro, sin reflejos ni recortes."}
+            ? "Encuadra el documento dentro del marco, en un lugar bien iluminado y sin reflejos."
+            : "Sube una foto o un escaneo claro de tu DNI, sin reflejos ni recortes."}
         </p>
       </div>
 
-      <p className="flex items-start gap-2.5 rounded-[12px] border border-azul-200 bg-azul-050 p-4 text-[12.5px] text-azul-800">
-        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
-        La imagen se transmite y se guarda cifrada. Se usa solo para verificar tu identidad y puedes
-        pedir su eliminación en cualquier momento (Ley N.º 29733).
-      </p>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_368px]">
+      <div className="flex flex-col gap-5">
 
       {errorDeSubida && (
         <p
@@ -325,8 +328,8 @@ export function CapturaDeDocumento({
         <div
           role="status"
           aria-live="polite"
-          className="relative overflow-hidden rounded-[16px] bg-gris-900"
-          style={{ aspectRatio: "4 / 3" }}
+          className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-700 to-noche"
+          style={{ aspectRatio: "16 / 10" }}
         >
           {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
               de pantalla pueda anunciar: el estado con significado (`fase`) se dice
@@ -346,10 +349,10 @@ export function CapturaDeDocumento({
                   ID-1). Encuadrar el documento dentro de él es, literalmente,
                   encuadrarlo bien. */}
               <div
-                className="w-full max-w-[360px] rounded-[14px] border-4 border-dashed border-dorado-500"
+                className="w-full max-w-[420px] rounded-[14px] border-[3px] border-exito"
                 style={{ aspectRatio: PROPORCION_DNI }}
               />
-              <p className="rounded-full bg-noche/70 px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
+              <p className="rounded-full bg-exito px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
                 Encuadra tu DNI dentro del marco
               </p>
             </div>
@@ -437,7 +440,45 @@ export function CapturaDeDocumento({
           )}
         </button>
       )}
+      </div>
+
+      <ConsejosDeCaptura />
+      </div>
     </div>
+  );
+}
+
+const CONSEJOS = [
+  { Icono: Sun, texto: "Busca luz pareja y evita reflejos sobre el plástico." },
+  { Icono: Scan, texto: "Que se vean las cuatro esquinas dentro del marco." },
+  { Icono: Layers, texto: "Retira la funda o la mica del documento." },
+  { Icono: Hand, texto: "Apóyalo en una superficie firme y no lo muevas." },
+];
+
+/** La columna lateral del diseño: cómo lograr la foto a la primera y qué pasa con ella. */
+function ConsejosDeCaptura() {
+  return (
+    <aside className="flex flex-col gap-5">
+      <h2 className="text-[18px] font-bold text-azul-800">Para que salga a la primera</h2>
+      <ul className="flex flex-col gap-4">
+        {CONSEJOS.map(({ Icono, texto }) => (
+          <li key={texto} className="flex items-start gap-3.5 text-[14.5px] text-gris-700">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-azul-050 text-azul-700"
+            >
+              <Icono className="h-4 w-4" />
+            </span>
+            <span className="pt-1.5">{texto}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="flex items-start gap-2.5 rounded-[14px] bg-azul-050 p-4 text-[13px] leading-relaxed text-azul-800">
+        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
+        La imagen se transmite y se guarda cifrada. Se usa solo para verificar tu identidad y puedes
+        pedir su eliminación en cualquier momento (Ley N.º 29733).
+      </p>
+    </aside>
   );
 }
 
@@ -459,7 +500,7 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
           e.preventDefault();
           onArchivo(e.dataTransfer.files);
         }}
-        className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
+        className={`flex min-h-[340px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
           error ? "border-error bg-blanco" : "border-gris-300 bg-azul-050 hover:bg-azul-100"
         }`}
       >
@@ -494,7 +535,7 @@ interface TarjetaDeArchivoCargadoProps {
 
 function TarjetaDeArchivoCargado({ nombre, tamanoBytes, subiendo }: TarjetaDeArchivoCargadoProps) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
+    <div className="flex min-h-[340px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
       <div className="flex w-full max-w-[420px] items-center gap-3 rounded-[12px] border border-gris-300 bg-blanco p-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-azul-100">
           <FileImage aria-hidden="true" className="h-5 w-5 text-azul-600" />

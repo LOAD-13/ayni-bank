@@ -227,18 +227,14 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-bold text-azul-700">Selfie de verificación</h1>
-        <p className="mt-1 text-[14.5px] text-gris-700">
-          Asegúrate de estar en un lugar bien iluminado, sin lentes ni gorra, y mira directamente a
-          la cámara.
+        <h1 className="text-[26px] font-bold leading-tight text-azul-800 sm:text-[32px]">
+          Prueba de vida
+        </h1>
+        <p className="mt-2 text-[15px] text-gris-700">
+          Tomamos una foto en vivo para confirmar que eres tú y estás presente. Busca buena luz,
+          sin lentes ni gorra, y mira directamente a la cámara.
         </p>
       </div>
-
-      <p className="flex items-start gap-2.5 rounded-[12px] border border-azul-200 bg-azul-050 p-4 text-[12.5px] text-azul-800">
-        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
-        La imagen se transmite y se guarda cifrada. Se usa solo para verificar tu identidad mediante
-        cotejo facial (Ley N.º 29733).
-      </p>
 
       {errorDeSubida && (
         <p
@@ -254,8 +250,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
         <div
           role="status"
           aria-live="polite"
-          className="relative overflow-hidden rounded-[16px] bg-gris-900"
-          style={{ aspectRatio: "3 / 4" }}
+          className="relative aspect-[3/4] overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-700 to-noche sm:aspect-[16/9]"
         >
           <video
             ref={videoRef}
@@ -271,7 +266,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
           {fase === "en-vivo" && (
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 p-8">
               <div
-                className={`w-full max-w-[280px] rounded-full border-4 border-dashed transition-colors duration-300 ${
+                className={`h-[70%] max-h-[420px] rounded-full border-4 transition-colors duration-300 ${
                   rostrosDetectados === 1 ? "border-exito" : "border-error"
                 }`}
                 style={{ aspectRatio: "3 / 4" }}
@@ -317,8 +312,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
 
       {(fase === "revisando" || fase === "subiendo") && foto && (
         <div
-          className="relative overflow-hidden rounded-[16px] bg-gris-900"
-          style={{ aspectRatio: "3 / 4" }}
+          className="relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-[20px] bg-noche"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={foto.url} alt="Tu selfie capturada" className="h-full w-full object-cover" />
@@ -357,6 +351,13 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
           </Boton>
         </div>
       )}
+
+      <p className="flex items-start gap-2.5 rounded-[14px] bg-azul-050 p-4 text-[13px] leading-relaxed text-azul-800">
+        <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
+        La imagen se transmite y se guarda cifrada. Se usa solo para comprobar que eres tú y
+        compararla con la foto de tu DNI. Tu rostro es dato sensible según la Ley N.º 29733: puedes
+        revocar el permiso y pedir su eliminación cuando quieras.
+      </p>
     </div>
   );
 }

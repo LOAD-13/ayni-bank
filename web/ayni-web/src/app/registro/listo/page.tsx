@@ -30,7 +30,7 @@ export default async function PaginaDeCuentaLista({
   return (
     <div className="min-h-screen bg-azul-050">
       <header className="border-b border-gris-300 bg-blanco">
-        <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-3.5">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-6 py-5 lg:px-16">
           <Link href="/">
             <LogotipoAyni altura={16} tono="oscuro" />
           </Link>
@@ -38,11 +38,11 @@ export default async function PaginaDeCuentaLista({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[760px] px-5 pt-9 sm:px-6">
+      <div className="mx-auto w-full max-w-[1440px] px-6 pt-9 lg:px-16">
         <PasosDelOnboarding actual={5} completado />
       </div>
 
-      <main className="mx-auto w-full max-w-[680px] px-5 py-9 sm:px-6">
+      <main className="mx-auto w-full max-w-[920px] px-5 py-9 sm:px-6">
         {titular ? (
           <EstadoDeLaCuenta usuarioId={titular} />
         ) : (
