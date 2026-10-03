@@ -28,7 +28,7 @@ const NAVEGACION = [
   { href: "/pendiente", texto: "Cuentas", Icono: Wallet },
   { href: "/pendiente", texto: "Tarjetas", Icono: CreditCard },
   { href: "/pendiente", texto: "Estados de cuenta", Icono: ReceiptText },
-  { href: "/pendiente", texto: "Configuración", Icono: Settings },
+  { href: "/banca/configuracion", texto: "Configuración", Icono: Settings },
 ];
 
 /**
