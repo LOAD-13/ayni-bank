@@ -16,7 +16,11 @@ from paddleocr import PaddleOCR
 
 from src.domain.model.resultado_verificacion import DatosIdentidadExtraidos, FuenteDatosIdentidad
 from src.domain.port.verificador_identidad import AlmacenObjetosPort
-from src.infrastructure.vision.heuristicas_anverso import extraer_fecha_emision, extraer_por_heuristicas
+from src.infrastructure.vision.heuristicas_anverso import (
+    extraer_fecha_emision,
+    extraer_por_heuristicas,
+    extraer_segundo_apellido,
+)
 from src.infrastructure.vision.mrz_td1 import encontrar_lineas_mrz, parsear_mrz
 from src.infrastructure.vision.procesamiento_documento import procesar_documento
 
@@ -76,11 +80,22 @@ class ExtractorDatosPaddleOCR:
         datos_desde_mrz = self._datos_desde_mrz(texto_reverso) or self._datos_desde_mrz(texto_anverso)
         if datos_desde_mrz is not None:
             fecha_emision = extraer_fecha_emision(texto_anverso) if texto_anverso else None
-            return replace(datos_desde_mrz, fecha_emision=fecha_emision)
+            apellidos = self._apellidos_completos(datos_desde_mrz.apellidos, texto_anverso)
+            return replace(datos_desde_mrz, apellidos=apellidos, fecha_emision=fecha_emision)
 
         if texto_anverso is None:
             return None
         return extraer_por_heuristicas(texto_anverso)
+
+    @staticmethod
+    def _apellidos_completos(apellidos_mrz: str, texto_anverso: list[str] | None) -> str:
+        """El MRZ del DNI peruano puede traer solo el primer apellido: se completa con el anverso."""
+        if not texto_anverso or " " in apellidos_mrz.strip():
+            return apellidos_mrz
+        segundo = extraer_segundo_apellido(texto_anverso)
+        if segundo is None or segundo == apellidos_mrz.strip():
+            return apellidos_mrz
+        return f"{apellidos_mrz.strip()} {segundo}"
 
     @staticmethod
     def _datos_desde_mrz(lineas_texto: list[str] | None) -> DatosIdentidadExtraidos | None:

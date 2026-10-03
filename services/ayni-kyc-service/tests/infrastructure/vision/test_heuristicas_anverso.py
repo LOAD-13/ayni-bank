@@ -1,6 +1,10 @@
 """Pruebas de las heuristicas de fallback: sin FastAPI, sin red, sin disco."""
 from src.domain.model.resultado_verificacion import FuenteDatosIdentidad
-from src.infrastructure.vision.heuristicas_anverso import extraer_fecha_emision, extraer_por_heuristicas
+from src.infrastructure.vision.heuristicas_anverso import (
+    extraer_fecha_emision,
+    extraer_por_heuristicas,
+    extraer_segundo_apellido,
+)
 
 
 def test_debe_extraer_los_campos_cuando_las_etiquetas_estan_en_lineas_separadas() -> None:
@@ -138,3 +142,15 @@ def test_debe_extraer_la_fecha_de_emision_aunque_no_haya_otros_datos() -> None:
     assert fecha is not None
     assert fecha.isoformat() == "2020-02-03"
     assert extraer_fecha_emision(["SEXO", "F"]) is None
+
+
+def test_debe_encontrar_el_segundo_apellido_aunque_el_ocr_deforme_el_rotulo() -> None:
+    # Texto tal como PaddleOCR lee un DNI azul real: rotulo deformado y "Fecha Emision"
+    # colado entre el rotulo y el valor, porque estan a la misma altura.
+    texto = ["LOA", "raner Apelido", "Segundo A pelido", "Fecha Emisión", "DENEGRI", "21082623"]
+
+    assert extraer_segundo_apellido(texto) == "DENEGRI"
+
+
+def test_no_debe_inventar_un_segundo_apellido_si_tras_el_rotulo_no_hay_letras() -> None:
+    assert extraer_segundo_apellido(["Segundo Apellido", "Fecha Emision", "21 08 2023"]) is None

@@ -202,3 +202,22 @@ def test_debe_leer_el_mrz_del_anverso_en_el_dni_azul() -> None:
     assert resultado.confiable is True
     assert resultado.fecha_emision is not None
     assert resultado.fecha_emision.isoformat() == "2023-08-21"
+
+
+def test_debe_completar_con_el_anverso_el_segundo_apellido_que_el_mrz_no_trae() -> None:
+    imagen = _imagen_documento_generica()
+    almacen = AlmacenObjetosFake({"anverso": imagen, "reverso": imagen})
+    linea1, linea2, _ = _construir_mrz_valido()
+    linea3 = "LOA<<JOAQUIN<ALFONSO" + "<" * 10
+    motor = MotorOcrFake(
+        respuestas=[
+            ["CONSTANCIA DE SUFRAGIO"],
+            ["Segundo A pelido", "Fecha Emision", "DENEGRI", linea1, linea2, linea3],
+        ]
+    )
+
+    resultado = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor).extraer("anverso", "reverso")
+
+    assert resultado is not None
+    assert resultado.apellidos == "LOA DENEGRI"
+    assert resultado.nombres == "JOAQUIN ALFONSO"
