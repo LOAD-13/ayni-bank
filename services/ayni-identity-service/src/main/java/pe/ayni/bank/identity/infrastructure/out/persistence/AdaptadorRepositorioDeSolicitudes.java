@@ -145,6 +145,14 @@ public class AdaptadorRepositorioDeSolicitudes implements RepositorioDeSolicitud
                 .map(nombres -> nombres.split(" ")[0]);
     }
 
+    @Override
+    public Optional<UUID> solicitudVigenteDe(UUID usuarioId) {
+        return repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuarioId)
+                .filter(fila -> "INICIADA".equals(fila.getEstado()))
+                .filter(fila -> fila.getExpiraEn().isAfter(reloj.instant()))
+                .map(SolicitudOnboardingEntity::getId);
+    }
+
     private SolicitudOnboardingEntity nueva(UUID usuarioId) {
         Instant ahora = reloj.instant();
         return new SolicitudOnboardingEntity(

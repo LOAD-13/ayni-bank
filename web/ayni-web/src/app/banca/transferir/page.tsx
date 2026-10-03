@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import { CampoDeTexto } from "@/componentes/CampoDeTexto";
+import { MarcoDeOperacion } from "@/componentes/banca/MarcoDeOperacion";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { TarjetaDeComprobante } from "@/componentes/banca/TarjetaDeComprobante";
 import { ErrorDeApi, transferir, type Comprobante } from "@/lib/api";
@@ -84,12 +85,11 @@ export default function PaginaDeTransferencia() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-h1 font-bold text-azul-800">Transferir</h1>
-      <p className="mt-1 text-body text-gris-700">
-        A otra cuenta Ayni, al instante y sin comisión. Máximo S/ 5 000.00 por operación.
-      </p>
-
+    <MarcoDeOperacion
+      titulo="Transferir"
+      subtitulo="A otra cuenta Ayni, al instante y sin comisión."
+      limite="Desde S/ 1.00 hasta S/ 5 000.00 por transferencia."
+    >
       {error && (
         <p
           role="alert"
@@ -161,7 +161,7 @@ export default function PaginaDeTransferencia() {
           <Boton type="submit">Continuar</Boton>
         </form>
       )}
-    </div>
+    </MarcoDeOperacion>
   );
 }
 

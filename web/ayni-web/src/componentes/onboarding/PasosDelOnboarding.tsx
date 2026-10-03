@@ -19,7 +19,7 @@ interface Props {
 export function PasosDelOnboarding({ actual, completado = false }: Props) {
   return (
     <nav aria-label="Progreso del registro" className="overflow-x-auto">
-      <ol className="mx-auto flex min-w-[560px] max-w-[720px] items-start">
+      <ol className="mx-auto flex w-full min-w-[560px] items-start">
         {PASOS.map((texto, indice) => {
           const numero = indice + 1;
           const cumplido = completado ? numero <= actual : numero < actual;

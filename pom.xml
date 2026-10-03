@@ -85,7 +85,10 @@
             **/infrastructure/config/**,
             **/domain/port/**,
             **/infrastructure/out/persistence/*Entity.java,
-            **/infrastructure/in/web/*Dto.java
+            **/infrastructure/in/web/*Dto.java,
+            **/infrastructure/out/client/*/api/**,
+            **/infrastructure/out/client/*/invoker/**,
+            **/infrastructure/out/client/*/model/**
         </sonar.coverage.exclusions>
         <!-- Umbral de cobertura del dominio exigido por la Definition of Done -->
         <jacoco.dominio.minimo>0.80</jacoco.dominio.minimo>
@@ -185,6 +188,22 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
+                <!-- Lo mismo que excluye SonarCloud, y ademas el cliente HTTP que
+                     openapi-generator genera desde contracts/: es codigo que no
+                     escribimos ni probamos nosotros, y contarlo hundia el porcentaje
+                     de identity sin decir nada de la calidad de sus pruebas. -->
+                <configuration>
+                    <excludes>
+                        <exclude>**/*Application.class</exclude>
+                        <exclude>**/infrastructure/config/**</exclude>
+                        <exclude>**/domain/port/**</exclude>
+                        <exclude>**/infrastructure/out/persistence/*Entity.class</exclude>
+                        <exclude>**/infrastructure/in/web/*Dto.class</exclude>
+                        <exclude>**/infrastructure/out/client/*/api/**</exclude>
+                        <exclude>**/infrastructure/out/client/*/invoker/**</exclude>
+                        <exclude>**/infrastructure/out/client/*/model/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals><goal>prepare-agent</goal></goals>

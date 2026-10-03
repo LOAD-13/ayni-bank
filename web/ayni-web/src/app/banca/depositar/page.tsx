@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import { CampoDeTexto } from "@/componentes/CampoDeTexto";
+import { MarcoDeOperacion } from "@/componentes/banca/MarcoDeOperacion";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { TarjetaDeComprobante } from "@/componentes/banca/TarjetaDeComprobante";
 import { depositarSimulado, ErrorDeApi, type Comprobante } from "@/lib/api";
@@ -54,10 +55,11 @@ export default function PaginaDeDeposito() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="text-h1 font-bold text-azul-800">Depositar</h1>
-      <p className="mt-1 text-body text-gris-700">Añade saldo de prueba a tu cuenta Ayni.</p>
-
+    <MarcoDeOperacion
+      titulo="Depositar"
+      subtitulo="Añade saldo de prueba a tu cuenta Ayni."
+      limite="Hasta S/ 2 000.00 por depósito simulado."
+    >
       <p className="mt-5 flex gap-3 rounded-lg border border-azul-200 bg-blanco p-4 text-small text-gris-700">
         <Info aria-hidden="true" className="h-5 w-5 shrink-0 text-azul-700" />
         Entorno académico: el depósito es simulado, pero se registra como cualquier movimiento real,
@@ -90,6 +92,6 @@ export default function PaginaDeDeposito() {
           Depositar
         </Boton>
       </form>
-    </div>
+    </MarcoDeOperacion>
   );
 }

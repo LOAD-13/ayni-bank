@@ -107,6 +107,10 @@ mv observabilidad.nuevo observabilidad
 chmod -R a+rX observabilidad
 
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRO" >/dev/null
+# Antes de descargar, fuera las imagenes que no usa ningun contenedor: las de la version
+# en marcha se conservan (son las del rollback). Sin esto el disco de 30 GB se lleno con
+# versiones antiguas y el agente de SSM murio a mitad del despliegue de la 1.1.0.
+docker image prune -af >/dev/null || true
 registrar "Descargando imagenes ${ETIQUETA}"
 docker compose --env-file .env -f docker-compose.prod.yml pull --quiet
 registrar "Arrancando la version ${VERSION} (${ETIQUETA})"
