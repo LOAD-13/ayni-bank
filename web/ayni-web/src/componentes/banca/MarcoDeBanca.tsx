@@ -82,7 +82,7 @@ export function MarcoDeBanca({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1440px] grid-cols-1 lg:grid-cols-[248px_1fr]">
+      <div className="grid grid-cols-1 lg:grid-cols-[248px_1fr]">
         <nav
           aria-label="Banca por internet"
           className="flex gap-1 overflow-x-auto border-b border-azul-100 bg-blanco p-3 lg:min-h-[calc(100vh-61px)] lg:flex-col lg:border-r lg:border-b-0 lg:p-4"
