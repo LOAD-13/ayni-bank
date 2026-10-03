@@ -47,7 +47,8 @@ public class UsuarioController {
                 solicitudes.nombreDePilaDe(usuarioId).orElse(null),
                 usuario.correo().enmascarado(),
                 usuario.estado().name(),
-                solicitudes.solicitudVigenteDe(usuarioId).orElse(null));
+                solicitudes.solicitudVigenteDe(usuarioId).orElse(null),
+                solicitudes.estadoDeLaUltimaSolicitudDe(usuarioId).orElse(null));
     }
 
     @ExceptionHandler(UsuarioDesconocidoException.class)
@@ -65,7 +66,7 @@ public class UsuarioController {
      */
     /** @param solicitudPendiente la apertura que aun se puede continuar, o nulo */
     public record ResumenDto(String nombreDePila, String correo, String estado,
-                             UUID solicitudPendiente) {
+                             UUID solicitudPendiente, String estadoSolicitud) {
     }
 
     static class UsuarioDesconocidoException extends RuntimeException {

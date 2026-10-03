@@ -143,6 +143,7 @@ components:
         - DESENFOQUE
         - REFLEJO
         - ILUMINACION
+        - LADO_INCORRECTO
 
     EvaluacionRequest:
       type: object

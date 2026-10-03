@@ -26,7 +26,10 @@ from src.domain.port.verificador_identidad import AlmacenObjetosPort, ExtractorD
 from src.infrastructure.auditoria import log_audit_event
 from src.infrastructure.config import settings
 from src.infrastructure.storage.almacen_objetos_minio import AlmacenObjetosMinIO
-from src.infrastructure.vision.detector_documento_opencv import DetectorDocumentoOpenCV
+from src.infrastructure.vision.detector_documento_opencv import (
+    DetectorDocumentoOpenCV,
+    tiene_rostro_del_titular,
+)
 from src.infrastructure.vision.procesamiento_documento import decodificar_imagen, procesar_documento
 from src.infrastructure.vision.validador_calidad_opencv import ValidadorCalidadOpenCV
 
@@ -114,7 +117,9 @@ def _no_encontrado() -> JSONResponse:
     return _error(404, "NOT_FOUND", "El documento indicado no existe en el almacen.")
 
 
-def _evaluar(imagen_bytes: bytes, almacen: AlmacenObjetosPort) -> ResultadoEvaluacionCaptura:
+def _evaluar(
+    imagen_bytes: bytes, almacen: AlmacenObjetosPort, lado: str = "ANVERSO"
+) -> ResultadoEvaluacionCaptura:
     # Detector y validador no necesitan el almacen para evaluar una imagen ya
     # descargada; se les pasa el mismo para respetar su constructor.
     validador = ValidadorCalidadOpenCV(almacen)
@@ -123,7 +128,10 @@ def _evaluar(imagen_bytes: bytes, almacen: AlmacenObjetosPort) -> ResultadoEvalu
     if procesado is not None:
         if not DetectorDocumentoOpenCV(almacen).coincide_con_dni(procesado):
             return ResultadoEvaluacionCaptura(es_dni=False, calidad=None)
-        return ResultadoEvaluacionCaptura(es_dni=True, calidad=validador.evaluar(procesado))
+        lado_incorrecto = lado == "REVERSO" and tiene_rostro_del_titular(procesado.imagen_enderezada)
+        return ResultadoEvaluacionCaptura(
+            es_dni=True, calidad=validador.evaluar(procesado), lado_incorrecto=lado_incorrecto
+        )
 
     imagen = decodificar_imagen(imagen_bytes)
     if imagen is None:
@@ -144,7 +152,7 @@ def evaluar_captura(
     if len(imagen_bytes) > TAMANO_MAXIMO_BYTES:
         return _error(400, "BAD_REQUEST", "La imagen excede el limite de 5 MB.")
 
-    resultado = _evaluar(imagen_bytes, almacen)
+    resultado = _evaluar(imagen_bytes, almacen, solicitud.lado)
 
     motivo = resultado.motivo_rechazo
     log_audit_event(

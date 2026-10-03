@@ -98,6 +98,9 @@ _CANDIDATOS = 8
 # Un contorno que cubre casi toda la imagen es el borde de un documento ya
 # recortado: se usa la imagen entera en vez de un contorno pegado a los bordes.
 _FRACCION_AREA_RECORTADA = 0.85
+# Misma franja que usa el validador para el encuadre: un contorno dentro de ella esta
+# pegado al marco, que es lo que pasa con un DNI recortado al borde.
+_MARGEN_DEL_MARCO = 0.02
 
 
 def _contornos_candidatos(imagen: Matriz) -> list[Matriz]:
@@ -139,8 +142,15 @@ def _contornos_candidatos(imagen: Matriz) -> list[Matriz]:
 
 
 def _ocupa_toda_la_imagen(contorno: Matriz, imagen: Matriz) -> bool:
-    area_imagen = float(imagen.shape[0] * imagen.shape[1])
-    return bool(cv2.contourArea(contorno.astype(np.float32)) >= area_imagen * _FRACCION_AREA_RECORTADA)
+    """Si el contorno es el borde de una imagen ya recortada: casi toda el area, o pegado al marco."""
+    alto, ancho = imagen.shape[:2]
+    area_imagen = float(alto * ancho)
+    if cv2.contourArea(contorno.astype(np.float32)) >= area_imagen * _FRACCION_AREA_RECORTADA:
+        return True
+    margen_x, margen_y = ancho * _MARGEN_DEL_MARCO, alto * _MARGEN_DEL_MARCO
+    return bool(
+        any(x <= margen_x or x >= ancho - margen_x or y <= margen_y or y >= alto - margen_y for x, y in contorno)
+    )
 
 
 def _como_documento_recortado(imagen: Matriz) -> DocumentoProcesado | None:

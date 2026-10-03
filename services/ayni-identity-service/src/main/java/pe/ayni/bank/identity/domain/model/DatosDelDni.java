@@ -2,8 +2,10 @@ package pe.ayni.bank.identity.domain.model;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -55,8 +57,20 @@ public record DatosDelDni(String numero, String nombres, String apellidos,
         return declarados.tipoDocumento() == TipoDocumento.DNI
                 && numero.equals(declarados.numeroDocumento())
                 && fechaNacimiento.equals(declarados.fechaNacimiento())
-                && normalizar(nombres).equals(normalizar(declarados.nombres()))
-                && normalizar(apellidos).equals(normalizar(declarados.apellidos()));
+                && contieneCadaPalabra(nombres, declarados.nombres())
+                && contieneCadaPalabra(apellidos, declarados.apellidos());
+    }
+
+    /**
+     * Cada palabra declarada aparece en el documento. Quien se registra como «Joaquin» y en
+     * el DNI figura «JOAQUIN ALFONSO» es la misma persona; una palabra que el DNI no tiene
+     * («Joaquina», «Alberto») sigue sin coincidir. Numero y fecha de nacimiento, que son los
+     * que identifican, se comparan exactos.
+     */
+    private static boolean contieneCadaPalabra(String delDocumento, String declarado) {
+        Set<String> palabras = Set.of(normalizar(delDocumento).split(" "));
+        String normalizado = normalizar(declarado);
+        return !normalizado.isEmpty() && Arrays.stream(normalizado.split(" ")).allMatch(palabras::contains);
     }
 
     /**

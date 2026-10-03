@@ -57,3 +57,16 @@ def test_con_varios_problemas_se_informa_el_que_conviene_corregir_primero(
 
     assert resultado.aceptada is False
     assert resultado.motivo_rechazo is motivo
+
+
+def test_un_anverso_enviado_como_reverso_se_rechaza_por_lado_incorrecto() -> None:
+    resultado = ResultadoEvaluacionCaptura(es_dni=True, calidad=_calidad(), lado_incorrecto=True)
+
+    assert resultado.aceptada is False
+    assert resultado.motivo_rechazo is MotivoRechazoCaptura.LADO_INCORRECTO
+
+
+def test_el_lado_incorrecto_se_informa_antes_que_la_calidad() -> None:
+    resultado = ResultadoEvaluacionCaptura(es_dni=True, calidad=_calidad(nitida=False), lado_incorrecto=True)
+
+    assert resultado.motivo_rechazo is MotivoRechazoCaptura.LADO_INCORRECTO

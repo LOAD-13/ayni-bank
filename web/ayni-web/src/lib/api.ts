@@ -176,6 +176,8 @@ export interface Titular {
   estado: string;
   /** Solicitud de apertura que aún se puede continuar, si la hay. */
   solicitudPendiente?: string | null;
+  /** Estado de la última solicitud de apertura (EN_REVISION_MANUAL, CADUCADA…). */
+  estadoSolicitud?: string | null;
 }
 
 export async function consultarTitular(usuarioId: string): Promise<Titular> {
@@ -288,7 +290,8 @@ export type EstadoDelPasoKyc =
   "ACEPTADO" | "RECHAZADO" | "EN_REVISION_MANUAL" | "VERIFICACION_DIFERIDA";
 
 /** Por qué se rechazó una foto, para decirle a la persona qué repetir. */
-export type MotivoDeRechazo = "NO_ES_DNI" | "ENCUADRE" | "DESENFOQUE" | "REFLEJO" | "ILUMINACION";
+export type MotivoDeRechazo =
+  "NO_ES_DNI" | "ENCUADRE" | "DESENFOQUE" | "REFLEJO" | "ILUMINACION" | "LADO_INCORRECTO";
 
 export interface ResultadoDeCaptura {
   estado: EstadoDelPasoKyc;

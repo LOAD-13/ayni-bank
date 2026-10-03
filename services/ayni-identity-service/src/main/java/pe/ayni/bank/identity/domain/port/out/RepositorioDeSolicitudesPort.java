@@ -82,4 +82,9 @@ public interface RepositorioDeSolicitudesPort {
     default Optional<UUID> solicitudVigenteDe(UUID usuarioId) {
         return Optional.empty();
     }
+
+    /** El estado de la ultima solicitud del usuario, para explicarle en la banca donde esta. */
+    default Optional<String> estadoDeLaUltimaSolicitudDe(UUID usuarioId) {
+        return Optional.empty();
+    }
 }
