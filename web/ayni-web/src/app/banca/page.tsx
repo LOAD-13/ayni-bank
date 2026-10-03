@@ -112,7 +112,14 @@ export default function PanelDeBanca() {
         )}
       </header>
 
-      {estado.tipo === "sin-cuenta" ? (
+      {estado.tipo === "cargando" && !actualizado ? (
+        <div
+          role="status"
+          className="h-40 animate-pulse rounded-[20px] border border-azul-200 bg-blanco"
+        >
+          <span className="sr-only">Cargando tu resumen…</span>
+        </div>
+      ) : estado.tipo === "sin-cuenta" ? (
         <CuentaPendiente titular={titular} />
       ) : (
         <>
@@ -420,8 +427,8 @@ function CuentaPendiente({ titular }: { titular: Titular | null }) {
       <p className="mt-2 max-w-2xl text-body text-gris-800">
         {solicitud
           ? "Falta verificar tu identidad: una foto de cada lado de tu DNI y una selfie. Toma unos tres minutos y tu cuenta se abre al terminar."
-          : titular?.estado === "EN_REVISION"
-            ? "Estamos revisando tu identidad. Te avisaremos por correo en cuanto termine."
+          : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
+            ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
             : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
       </p>
       {solicitud && (
