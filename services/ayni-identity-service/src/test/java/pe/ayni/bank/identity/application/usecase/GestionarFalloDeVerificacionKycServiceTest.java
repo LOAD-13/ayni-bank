@@ -3,48 +3,40 @@ package pe.ayni.bank.identity.application.usecase;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import pe.ayni.bank.identity.aceptacion.DoblesEnMemoria;
 import pe.ayni.bank.identity.domain.model.Celular;
 import pe.ayni.bank.identity.domain.model.Consentimiento;
 import pe.ayni.bank.identity.domain.model.ContrasenaCifrada;
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
-import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.ResultadoDelIntentoKyc;
+import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.Usuario;
-import pe.ayni.bank.identity.domain.port.out.NotificadorDeVerificacionKycPort;
-import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
-import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
 
 /**
- * AYNI-13 subtarea 11: limite de tres intentos y derivacion a revision manual (ADR-0021).
- * Subtarea 14: aviso al solicitante cuando eso ocurre (ADR-0024).
+ * AYNI-13: limite de tres intentos POR LADO y derivacion a revision manual (ADR-0021,
+ * ADR-0028), y el aviso al solicitante cuando eso ocurre (ADR-0024).
  */
 class GestionarFalloDeVerificacionKycServiceTest {
 
     private static final Instant AHORA = Instant.parse("2026-09-12T10:15:30Z");
 
-    private SolicitudesFalsas solicitudes;
-    private UsuariosFalsos usuarios;
-    private NotificadorFalso notificador;
+    private DoblesEnMemoria.Solicitudes solicitudes;
+    private DoblesEnMemoria.NotificadorDeVerificacionKyc notificador;
     private GestionarFalloDeVerificacionKycService servicio;
     private UUID solicitudId;
     private Usuario titular;
 
     @BeforeEach
     void prepararEscenario() {
-        solicitudes = new SolicitudesFalsas();
-        usuarios = new UsuariosFalsos();
-        notificador = new NotificadorFalso();
+        solicitudes = new DoblesEnMemoria.Solicitudes();
+        DoblesEnMemoria.Usuarios usuarios = new DoblesEnMemoria.Usuarios();
+        notificador = new DoblesEnMemoria.NotificadorDeVerificacionKyc();
         servicio = new GestionarFalloDeVerificacionKycService(solicitudes, usuarios, notificador);
 
         titular = Usuario.registrar(UUID.randomUUID(),
@@ -52,35 +44,60 @@ class GestionarFalloDeVerificacionKycServiceTest {
                 new ContrasenaCifrada("$argon2id$loquesea"),
                 Consentimiento.otorgar(true, AHORA, "v1"), AHORA);
         usuarios.guardar(titular);
-
-        solicitudId = UUID.randomUUID();
-        solicitudes.titulares.put(solicitudId, titular.id());
+        solicitudId = solicitudes.abrirPara(titular.id(), null);
     }
 
     @Test
-    @DisplayName("el primer y el segundo fallo dejan reintentar, sin tocar el estado")
+    @DisplayName("el primer y el segundo fallo dejan reintentar, con los intentos que quedan")
     void losPrimerosFallosPermitenReintentar() {
-        assertThat(servicio.registrarFalloDeUsuario(solicitudId))
-                .isEqualTo(ResultadoDelIntentoKyc.PUEDE_REINTENTAR);
-        assertThat(servicio.registrarFalloDeUsuario(solicitudId))
-                .isEqualTo(ResultadoDelIntentoKyc.PUEDE_REINTENTAR);
+        assertThat(servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO))
+                .isEqualTo(ResultadoDelIntentoKyc.puedeReintentar(2));
+        assertThat(servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO))
+                .isEqualTo(ResultadoDelIntentoKyc.puedeReintentar(1));
 
-        assertThat(solicitudes.intentos.get(solicitudId)).isEqualTo(2);
         assertThat(solicitudes.enRevisionManual).isEmpty();
-        assertThat(notificador.avisados).isEmpty();
+        assertThat(notificador.avisadosDeRevisionManual).isEmpty();
     }
 
     @Test
-    @DisplayName("el tercer fallo agota el limite, deriva a revision manual y avisa al titular")
+    @DisplayName("el tercer fallo del mismo lado agota el limite, deriva y avisa al titular")
     void elTercerFalloDeriva() {
-        servicio.registrarFalloDeUsuario(solicitudId);
-        servicio.registrarFalloDeUsuario(solicitudId);
+        servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.REVERSO);
+        servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.REVERSO);
 
-        ResultadoDelIntentoKyc resultado = servicio.registrarFalloDeUsuario(solicitudId);
+        ResultadoDelIntentoKyc resultado = servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.REVERSO);
 
-        assertThat(resultado).isEqualTo(ResultadoDelIntentoKyc.DERIVADA_A_REVISION_MANUAL);
+        assertThat(resultado).isEqualTo(ResultadoDelIntentoKyc.derivada());
         assertThat(solicitudes.enRevisionManual).containsExactly(solicitudId);
-        assertThat(notificador.avisados).containsExactly(titular.correo());
+        assertThat(notificador.avisadosDeRevisionManual).containsExactly("ana.quispe@example.pe");
+    }
+
+    @Test
+    @DisplayName("los intentos se cuentan por lado: dos del anverso y dos del reverso no derivan")
+    void losIntentosSonPorLado() {
+        servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO);
+        servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO);
+        servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.REVERSO);
+        ResultadoDelIntentoKyc cuarto = servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.REVERSO);
+
+        assertThat(cuarto).isEqualTo(ResultadoDelIntentoKyc.puedeReintentar(1));
+        assertThat(solicitudes.intentosDe(solicitudId, TipoDeDocumentoKyc.ANVERSO)).isEqualTo(2);
+        assertThat(solicitudes.intentosDe(solicitudId, TipoDeDocumentoKyc.REVERSO)).isEqualTo(2);
+        assertThat(solicitudes.enRevisionManual).isEmpty();
+    }
+
+    @Test
+    @DisplayName("un fallo sobre una solicitud ya derivada no suma ni vuelve a avisar (escenario 4)")
+    void unFalloTrasDerivarNoSumaNiAvisa() {
+        for (int i = 0; i < 3; i++) {
+            servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO);
+        }
+
+        ResultadoDelIntentoKyc cuarto = servicio.registrarFalloDeUsuario(solicitudId, TipoDeDocumentoKyc.ANVERSO);
+
+        assertThat(cuarto).isEqualTo(ResultadoDelIntentoKyc.derivada());
+        assertThat(solicitudes.intentosDe(solicitudId, TipoDeDocumentoKyc.ANVERSO)).isEqualTo(3);
+        assertThat(notificador.avisadosDeRevisionManual).hasSize(1);
     }
 
     @Test
@@ -89,112 +106,28 @@ class GestionarFalloDeVerificacionKycServiceTest {
         servicio.derivarPorServicioNoDisponible(solicitudId);
 
         assertThat(solicitudes.enRevisionManual).containsExactly(solicitudId);
-        // No paso por el contador de intentos: nunca se llamo a registrarIntentoFallidoDeKyc.
-        assertThat(solicitudes.intentos).doesNotContainKey(solicitudId);
-        assertThat(notificador.avisados).containsExactly(titular.correo());
+        assertThat(solicitudes.intentosKyc).doesNotContainKey(solicitudId);
+        assertThat(notificador.avisadosDeRevisionManual).containsExactly("ana.quispe@example.pe");
     }
 
     @Test
-    @DisplayName("los intentos se cuentan por solicitud, no de forma global")
-    void losIntentosSonPorSolicitud() {
-        UUID otraSolicitud = UUID.randomUUID();
-        solicitudes.titulares.put(otraSolicitud, titular.id());
+    @DisplayName("una discrepancia deriva una sola vez aunque se repita")
+    void unaDiscrepanciaDerivaUnaSolaVez() {
+        servicio.derivarPorDiscrepancia(solicitudId);
+        servicio.derivarPorDiscrepancia(solicitudId);
 
-        servicio.registrarFalloDeUsuario(solicitudId);
-        servicio.registrarFalloDeUsuario(solicitudId);
-        servicio.registrarFalloDeUsuario(otraSolicitud);
-
-        assertThat(solicitudes.intentos.get(solicitudId)).isEqualTo(2);
-        assertThat(solicitudes.intentos.get(otraSolicitud)).isEqualTo(1);
-        assertThat(solicitudes.enRevisionManual).isEmpty();
+        assertThat(solicitudes.enRevisionManual).containsExactly(solicitudId);
+        assertThat(notificador.avisadosDeRevisionManual).hasSize(1);
     }
 
     @Test
     @DisplayName("un senuelo sin titular no genera ningun aviso")
     void unSenueloNoGeneraAviso() {
-        UUID senuelo = UUID.randomUUID();
-        solicitudes.titulares.put(senuelo, null);
+        UUID senuelo = solicitudes.abrirSenuelo();
 
         servicio.derivarPorServicioNoDisponible(senuelo);
 
         assertThat(solicitudes.enRevisionManual).containsExactly(senuelo);
-        assertThat(notificador.avisados).isEmpty();
-    }
-
-    // ─── Dobles ────────────────────────────────────────────────────────────
-
-    private static final class SolicitudesFalsas implements RepositorioDeSolicitudesPort {
-        private final Map<UUID, UUID> titulares = new HashMap<>();
-        private final Map<UUID, Integer> intentos = new HashMap<>();
-        private final List<UUID> enRevisionManual = new ArrayList<>();
-
-        @Override
-        public UUID abrirPara(UUID usuarioId, IdentidadDeclarada identidad) {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-
-        @Override
-        public UUID abrirSenuelo() {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-
-        @Override
-        public Optional<UUID> titularDe(UUID solicitudId) {
-            return Optional.ofNullable(titulares.get(solicitudId));
-        }
-
-        @Override
-        public void marcarAprobada(UUID solicitudId) {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-
-        @Override
-        public int registrarIntentoFallidoDeKyc(UUID solicitudId) {
-            return intentos.merge(solicitudId, 1, Integer::sum);
-        }
-
-        @Override
-        public void marcarEnRevisionManual(UUID solicitudId) {
-            enRevisionManual.add(solicitudId);
-        }
-
-        @Override
-        public Optional<String> nombreDePilaDe(UUID usuarioId) {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-    }
-
-    private static final class UsuariosFalsos implements RepositorioDeUsuariosPort {
-        private final List<Usuario> guardados = new ArrayList<>();
-
-        @Override
-        public boolean existeCorreo(CorreoElectronico correo) {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-
-        @Override
-        public Optional<Usuario> buscarPorCorreo(CorreoElectronico correo) {
-            throw new UnsupportedOperationException("No usado en estas pruebas");
-        }
-
-        @Override
-        public Optional<Usuario> buscarPorId(UUID id) {
-            return guardados.stream().filter(u -> u.id().equals(id)).findFirst();
-        }
-
-        @Override
-        public Usuario guardar(Usuario usuario) {
-            guardados.add(usuario);
-            return usuario;
-        }
-    }
-
-    private static final class NotificadorFalso implements NotificadorDeVerificacionKycPort {
-        private final List<CorreoElectronico> avisados = new ArrayList<>();
-
-        @Override
-        public void avisarEnRevisionManual(CorreoElectronico correo) {
-            avisados.add(correo);
-        }
+        assertThat(notificador.avisadosDeRevisionManual).isEmpty();
     }
 }

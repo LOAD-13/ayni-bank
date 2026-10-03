@@ -98,3 +98,6 @@ interface OutboxJpaRepository extends JpaRepository<OutboxEntity, UUID> {
 interface OperacionIdempotenteJpaRepository
         extends JpaRepository<OperacionIdempotenteEntity, UUID> {
 }
+
+interface EventoAuditoriaJpaRepository extends JpaRepository<EventoAuditoriaEntity, Long> {
+}

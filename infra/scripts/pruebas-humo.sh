@@ -45,6 +45,7 @@ HTTP="http://${URL#https://}"
 CABECERAS=$(curl -sSI --max-time 20 "${URL}/")
 grep -qi '^strict-transport-security' <<<"$CABECERAS" && ok "Cabecera HSTS presente" || falla "Falta HSTS"
 grep -qi '^x-frame-options: *deny' <<<"$CABECERAS" && ok "X-Frame-Options: DENY" || falla "Falta X-Frame-Options"
+grep -qi "^content-security-policy:.*frame-ancestors 'none'" <<<"$CABECERAS" && ok "Content-Security-Policy presente" || falla "Falta Content-Security-Policy"
 grep -qi '^x-powered-by' <<<"$CABECERAS" && falla "Se expone X-Powered-By" || ok "Sin X-Powered-By"
 
 # 6. Un cuerpo invalido se rechaza con 400, no con 200 ni 500

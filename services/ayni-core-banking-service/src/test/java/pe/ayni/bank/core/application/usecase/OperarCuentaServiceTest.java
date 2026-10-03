@@ -30,8 +30,10 @@ import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.RegistroDeIdempotenciaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
 
@@ -45,6 +47,7 @@ class OperarCuentaServiceTest {
     private final Cuentas cuentas = new Cuentas(libro);
     private final List<String> eventos = new ArrayList<>();
     private final Map<UUID, UUID> claves = new HashMap<>();
+    private final List<String> pista = new ArrayList<>();
 
     private final OperarCuentaService servicio = new OperarCuentaService(cuentas, libro,
             (tipo, id, evento, carga) -> eventos.add(evento),
@@ -59,6 +62,17 @@ class OperarCuentaServiceTest {
                     claves.put(clave, resultado);
                 }
             },
+            new PistaDeAuditoriaPort() {
+                @Override
+                public void registrar(TipoDeEventoDeOperacion tipo, UUID usuarioId, UUID movimientoId) {
+                    pista.add(tipo.name());
+                }
+
+                @Override
+                public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
+                    pista.add("RECHAZO:" + motivo.name());
+                }
+            },
             Clock.fixed(AHORA, ZoneOffset.UTC));
 
     private final UUID ana = UUID.randomUUID();
@@ -68,6 +82,20 @@ class OperarCuentaServiceTest {
 
     private static Dinero soles(String importe) {
         return Dinero.de(importe, Moneda.PEN);
+    }
+
+    @Test
+    @DisplayName("la pista registra depositos, transferencias, repetidas y rechazos")
+    void pistaDeAuditoria() {
+        UUID clave = UUID.randomUUID();
+        servicio.depositarSimulado(ana, soles("100.00"), clave);
+        servicio.depositarSimulado(ana, soles("100.00"), clave);
+        servicio.transferir(ana, deBeto.numero().valor(), soles("30.00"), "Almuerzo", UUID.randomUUID());
+        assertThatThrownBy(() -> servicio.transferir(ana, deBeto.numero().valor(), soles("999.00"),
+                "Demasiado", UUID.randomUUID())).isInstanceOf(OperacionRechazadaException.class);
+
+        assertThat(pista).containsExactly("DEPOSITO_SIMULADO", "OPERACION_REPETIDA",
+                "TRANSFERENCIA_REALIZADA", "RECHAZO:SALDO_INSUFICIENTE");
     }
 
     @Test

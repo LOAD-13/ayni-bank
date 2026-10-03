@@ -1,5 +1,6 @@
 package pe.ayni.bank.core.infrastructure.in.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempotenciaReutilizadaException;
 import pe.ayni.bank.core.domain.model.Asiento;
@@ -49,8 +52,10 @@ class OperacionesControllerTest {
     private final RepositorioDeCuentasPort cuentas = mock(RepositorioDeCuentasPort.class);
     private final LibroMayorPort libro = mock(LibroMayorPort.class);
     private final OperarCuentaUseCase operar = mock(OperarCuentaUseCase.class);
+    private final SimpleMeterRegistry registro = new SimpleMeterRegistry();
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new OperacionesController(cuentas, libro, operar)).build();
+            .standaloneSetup(new OperacionesController(cuentas, libro, operar,
+                    new MetricasDeOperaciones(registro))).build();
 
     private final UUID titular = UUID.randomUUID();
     private final Cuenta cuenta = Cuenta.abrir(UUID.randomUUID(), titular, (short) 1,
@@ -126,6 +131,11 @@ class OperacionesControllerTest {
                 .andExpect(jsonPath("$.importe").value("150.00"))
                 .andExpect(jsonPath("$.saldoDisponible").value("850.00"))
                 .andExpect(jsonPath("$.cuentaDestino").value("**********0031"));
+
+        assertThat(registro.counter("ayni.operaciones", "tipo", "TRANSFERENCIA", "resultado", "ACEPTADA")
+                .count()).isEqualTo(1.0);
+        assertThat(registro.counter("ayni.operaciones.importe.soles", "tipo", "TRANSFERENCIA").count())
+                .isEqualTo(c.importe().importe().doubleValue());
     }
 
     @Test
@@ -174,6 +184,11 @@ class OperacionesControllerTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.codigo").value("SALDO_INSUFICIENTE"))
                 .andExpect(jsonPath("$.title").value("Saldo insuficiente"));
+
+        assertThat(registro.counter("ayni.operaciones.rechazos", "motivo", "SALDO_INSUFICIENTE").count())
+                .isEqualTo(1.0);
+        assertThat(registro.counter("ayni.operaciones", "tipo", "TRANSFERENCIA", "resultado", "RECHAZADA")
+                .count()).isEqualTo(1.0);
     }
 
     @Test

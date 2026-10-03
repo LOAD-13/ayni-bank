@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -30,6 +31,7 @@ import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
+import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -55,12 +57,14 @@ public class OperacionesController {
     private final RepositorioDeCuentasPort cuentas;
     private final LibroMayorPort libro;
     private final OperarCuentaUseCase operar;
+    private final MetricasDeOperaciones metricas;
 
     public OperacionesController(RepositorioDeCuentasPort cuentas, LibroMayorPort libro,
-                                 OperarCuentaUseCase operar) {
+                                 OperarCuentaUseCase operar, MetricasDeOperaciones metricas) {
         this.cuentas = cuentas;
         this.libro = libro;
         this.operar = operar;
+        this.metricas = metricas;
     }
 
     @GetMapping("/api/v1/cuentas/mia")
@@ -106,8 +110,14 @@ public class OperacionesController {
 
     /** 422: la peticion esta bien formada pero una regla de negocio la impide. */
     @ExceptionHandler(OperacionRechazadaException.class)
-    public ResponseEntity<ProblemDetail> alRechazar(OperacionRechazadaException rechazo) {
+    public ResponseEntity<ProblemDetail> alRechazar(OperacionRechazadaException rechazo,
+                                                    HttpServletRequest peticion) {
         MotivoDeRechazo motivo = rechazo.motivo();
+        if ("POST".equals(peticion.getMethod())) {
+            metricas.rechazada(peticion.getRequestURI().endsWith("/depositos-simulados")
+                    ? TipoDeMovimiento.DEPOSITO_SIMULADO
+                    : TipoDeMovimiento.TRANSFERENCIA, motivo);
+        }
         HttpStatus estado = motivo == MotivoDeRechazo.SIN_CUENTA
                 ? HttpStatus.NOT_FOUND
                 : HttpStatus.UNPROCESSABLE_ENTITY;
@@ -146,7 +156,8 @@ public class OperacionesController {
         return new Dinero(new BigDecimal(importe), Moneda.PEN);
     }
 
-    private static ResponseEntity<ComprobanteDto> creado(Comprobante comprobante) {
+    private ResponseEntity<ComprobanteDto> creado(Comprobante comprobante) {
+        metricas.aceptada(comprobante);
         return ResponseEntity
                 .created(URI.create("/api/v1/movimientos/" + comprobante.movimientoId()))
                 .body(ComprobanteDto.desde(comprobante));

@@ -195,17 +195,30 @@ export async function registrar(solicitud: SolicitudDeRegistro): Promise<Respues
 /** Que cara/imagen del proceso de verificacion se esta subiendo · HU-02. */
 export type TipoDeDocumentoKyc = "ANVERSO" | "REVERSO" | "SELFIE";
 
+/** Los dos lados del DNI, que son los que se evaluan y se leen. */
+export type LadoDelDni = "ANVERSO" | "REVERSO";
+
+/**
+ * Formulario pre-firmado para subir un documento directo a MinIO.
+ *
+ * Es una politica POST y no una URL PUT: MinIO rechaza la subida si el archivo supera
+ * 5 MB o no es del tipo pedido, sin depender de que el navegador lo compruebe.
+ */
 export interface UrlDeSubida {
-  /** URL pre-firmada de subida (PUT). El navegador sube el archivo directamente aqui. */
+  /** Destino del formulario (el bucket). */
   url: string;
-  /** Momento en que la URL deja de ser valida (5 minutos despues de emitida). */
+  /** Campos a enviar tal cual, antes del archivo: clave, tipo, politica y firma. */
+  campos: Record<string, string>;
+  /** Clave con la que queda guardado; se devuelve al pedir la evaluacion. */
+  claveDeObjeto: string;
+  /** Momento en que el formulario deja de ser valido (5 minutos despues de emitido). */
   expiraEn: string;
 }
 
 /**
- * Pide la URL con la que subir un documento KYC directamente a MinIO.
+ * Pide el formulario con el que subir un documento KYC directamente a MinIO.
  *
- * No sube nada todavia: solo firma el destino. El PUT real lo hace
+ * No sube nada todavia: solo firma el destino. La subida real la hace
  * {@link subirDocumento}, con el archivo elegido por la persona.
  */
 export async function solicitarUrlDeSubida(
@@ -220,22 +233,24 @@ export async function solicitarUrlDeSubida(
 }
 
 /**
- * Sube el archivo directamente a MinIO con la URL pre-firmada.
+ * Sube el archivo directamente a MinIO con el formulario pre-firmado.
  *
  * A diferencia de {@link pedir}, esta llamada NO pasa por el gateway ni lleva
- * `credentials`/`Content-Type: application/json`: la URL ya trae su propia
- * autorizacion firmada, y el cuerpo es el archivo, no JSON. Ver diseno-base.md
- * §3.4-3.5: "las imagenes no atraviesan la API".
+ * `credentials`: el formulario ya trae su propia autorizacion firmada. Los campos van
+ * primero y el archivo al final, porque S3 ignora todo lo que llegue despues del campo
+ * `file`. Ver diseno-base.md §3.4-3.5: "las imagenes no atraviesan la API".
  */
-export async function subirDocumento(urlDeSubida: string, archivo: File): Promise<void> {
+export async function subirDocumento(destino: UrlDeSubida, archivo: File): Promise<void> {
+  const formulario = new FormData();
+  for (const [campo, valor] of Object.entries(destino.campos)) {
+    formulario.append(campo, valor);
+  }
+  formulario.append("file", archivo);
+
   let respuesta: Response;
 
   try {
-    respuesta = await fetch(urlDeSubida, {
-      method: "PUT",
-      headers: { "Content-Type": archivo.type },
-      body: archivo,
-    });
+    respuesta = await fetch(destino.url, { method: "POST", body: formulario });
   } catch {
     throw new ErrorDeApi(
       {
@@ -249,10 +264,97 @@ export async function subirDocumento(urlDeSubida: string, archivo: File): Promis
 
   if (!respuesta.ok) {
     throw new ErrorDeApi(
-      { title: "No pudimos subir el documento", status: respuesta.status },
+      {
+        title: "No pudimos subir el documento",
+        // La politica rechaza el archivo con 400 (EntityTooLarge, mas de 5 MB) o 403 (tipo
+        // distinto del firmado). Comprobado contra MinIO en la prueba de punta a punta.
+        detail:
+          respuesta.status === 400 || respuesta.status === 403
+            ? "El archivo no cumple los requisitos: debe ser una foto de 5 MB como máximo."
+            : undefined,
+        status: respuesta.status,
+      },
       respuesta.status,
     );
   }
+}
+
+/** Cómo termina un paso de la verificación del DNI · HU-02. */
+export type EstadoDelPasoKyc =
+  "ACEPTADO" | "RECHAZADO" | "EN_REVISION_MANUAL" | "VERIFICACION_DIFERIDA";
+
+/** Por qué se rechazó una foto, para decirle a la persona qué repetir. */
+export type MotivoDeRechazo = "NO_ES_DNI" | "ENCUADRE" | "DESENFOQUE" | "REFLEJO" | "ILUMINACION";
+
+export interface ResultadoDeCaptura {
+  estado: EstadoDelPasoKyc;
+  /** Solo si se rechazó. */
+  motivo?: MotivoDeRechazo;
+  /** Solo si se rechazó: fotos que quedan de ese lado. */
+  intentosRestantes?: number;
+}
+
+/** Pide que se evalúe la foto recién subida de un lado del DNI. */
+export async function evaluarCaptura(
+  solicitudId: string,
+  tipoDocumento: LadoDelDni,
+  claveDeObjeto: string,
+): Promise<ResultadoDeCaptura> {
+  return pedir<ResultadoDeCaptura>(`/api/v1/solicitudes/${solicitudId}/documentos`, {
+    tipoDocumento,
+    claveDeObjeto,
+  });
+}
+
+/** Lo que leyó el OCR, para que el titular lo confirme. El número llega enmascarado. */
+export interface DatosLeidosDelDni {
+  numeroEnmascarado: string;
+  nombres: string;
+  apellidos: string;
+  /** `aaaa-mm-dd`. */
+  fechaNacimiento: string;
+  sexo: "M" | "F";
+  /** Ausente si el OCR no la encontró. */
+  fechaEmision?: string;
+  /** Si vienen del MRZ con sus dígitos verificadores válidos. */
+  confiable: boolean;
+}
+
+export interface ResultadoDeExtraccion {
+  estado: EstadoDelPasoKyc;
+  datos?: DatosLeidosDelDni;
+  /** Solo si no se pudo leer: fotos del reverso que quedan. */
+  intentosRestantes?: number;
+}
+
+/** Lee por OCR los datos del DNI a partir de las dos fotos aceptadas. */
+export async function extraerDatosDelDni(solicitudId: string): Promise<ResultadoDeExtraccion> {
+  // POST con cuerpo vacío: lanza el OCR, no es una consulta.
+  return pedir<ResultadoDeExtraccion>(
+    `/api/v1/solicitudes/${solicitudId}/documentos/extraccion`,
+    {},
+  );
+}
+
+export interface DatosConfirmados {
+  /** Vacío conserva el número leído; solo se envía si el titular lo corrige. */
+  numero?: string;
+  nombres: string;
+  apellidos: string;
+  fechaNacimiento: string;
+  sexo: "M" | "F";
+  fechaEmision: string;
+}
+
+/** El titular confirma o corrige lo leído; se contrasta con lo que declaró al registrarse. */
+export async function confirmarDatosDelDni(
+  solicitudId: string,
+  datos: DatosConfirmados,
+): Promise<{ estado: "ACEPTADO" | "EN_REVISION_MANUAL" }> {
+  return pedir<{ estado: "ACEPTADO" | "EN_REVISION_MANUAL" }>(
+    `/api/v1/solicitudes/${solicitudId}/identidad/confirmacion`,
+    datos,
+  );
 }
 
 /**

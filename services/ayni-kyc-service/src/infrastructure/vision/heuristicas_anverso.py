@@ -6,6 +6,11 @@ anverso las etiquetas conocidas del DNI peruano y el texto que las sigue.
 
 Sin checksum ni forma de validar la lectura: por eso el resultado siempre
 se marca `confiable=False` (ver DatosIdentidadExtraidos).
+
+Los rotulos del DNI real son "Primer Apellido", "Segundo Apellido" y
+"Pre Nombres" (o "Prenombres" en el DNIe). Cada tupla de etiquetas va de la
+mas larga a la mas corta: si "APELLIDO" se probara antes que "PRIMER APELLIDO",
+el resto de la linea ("PRIMER") se devolveria como si fuera el apellido.
 """
 import re
 from datetime import date
@@ -13,24 +18,38 @@ from datetime import date
 from src.domain.model.resultado_verificacion import DatosIdentidadExtraidos, FuenteDatosIdentidad
 
 _PATRON_DNI = re.compile(r"\b\d{8}\b")
-_PATRON_FECHA = re.compile(r"\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b")
+# El DNI imprime las fechas separadas por espacios ("15 05 1990"); el OCR a veces
+# devuelve barras, guiones o puntos en su lugar.
+_PATRON_FECHA = re.compile(r"\b(\d{1,2})[/\-.\s](\d{1,2})[/\-.\s](\d{4})\b")
 
-_ETIQUETAS_APELLIDOS = ("APELLIDOS", "APELLIDO PATERNO", "APELLIDO")
-_ETIQUETAS_NOMBRES = ("PRENOMBRES", "NOMBRES", "NOMBRE")
-_ETIQUETAS_FECHA_NACIMIENTO = ("FECHA DE NACIMIENTO", "NACIMIENTO", "F. NACIMIENTO")
+_ETIQUETAS_PRIMER_APELLIDO = ("PRIMER APELLIDO", "APELLIDO PATERNO")
+_ETIQUETAS_SEGUNDO_APELLIDO = ("SEGUNDO APELLIDO", "APELLIDO MATERNO")
+_ETIQUETAS_APELLIDOS = ("APELLIDOS",)
+_ETIQUETAS_NOMBRES = ("PRE NOMBRES", "PRENOMBRES", "NOMBRES", "NOMBRE")
+_ETIQUETAS_FECHA_NACIMIENTO = ("FECHA DE NACIMIENTO", "F. NACIMIENTO", "NACIMIENTO")
+_ETIQUETAS_FECHA_EMISION = ("FECHA DE EMISION", "FECHA EMISION", "F. EMISION", "EMISION")
 _ETIQUETAS_SEXO = ("SEXO",)
+
+_TODAS_LAS_ETIQUETAS = (
+    _ETIQUETAS_PRIMER_APELLIDO
+    + _ETIQUETAS_SEGUNDO_APELLIDO
+    + _ETIQUETAS_APELLIDOS
+    + _ETIQUETAS_NOMBRES
+    + _ETIQUETAS_FECHA_NACIMIENTO
+    + _ETIQUETAS_FECHA_EMISION
+    + _ETIQUETAS_SEXO
+)
 
 
 def extraer_por_heuristicas(lineas_texto: list[str]) -> DatosIdentidadExtraidos | None:
     """Retorna None si no se pudieron identificar los 5 campos requeridos."""
-    lineas = [linea.strip().upper() for linea in lineas_texto if linea.strip()]
+    lineas = _normalizar(lineas_texto)
 
     dni = _buscar_dni(lineas)
-    apellidos = _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_APELLIDOS)
+    apellidos = _buscar_apellidos(lineas)
     nombres = _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_NOMBRES)
     sexo = _buscar_sexo(lineas)
-    fecha_nacimiento_texto = _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_FECHA_NACIMIENTO)
-    fecha_nacimiento = _parsear_fecha_dd_mm_yyyy(fecha_nacimiento_texto) if fecha_nacimiento_texto else None
+    fecha_nacimiento = _buscar_fecha_tras_etiqueta(lineas, _ETIQUETAS_FECHA_NACIMIENTO)
     if fecha_nacimiento is None:
         fecha_nacimiento = _buscar_primera_fecha(lineas)
 
@@ -45,7 +64,24 @@ def extraer_por_heuristicas(lineas_texto: list[str]) -> DatosIdentidadExtraidos 
         sexo=sexo,
         fuente=FuenteDatosIdentidad.HEURISTICA_ANVERSO,
         confiable=False,
+        fecha_emision=_buscar_fecha_tras_etiqueta(lineas, _ETIQUETAS_FECHA_EMISION),
     )
+
+
+def extraer_fecha_emision(lineas_texto: list[str]) -> date | None:
+    """Fecha de emision leida del anverso.
+
+    El MRZ del reverso no la trae (solo nacimiento y caducidad), asi que se lee
+    del anverso tambien cuando el resto de datos vino del MRZ.
+    """
+    return _buscar_fecha_tras_etiqueta(_normalizar(lineas_texto), _ETIQUETAS_FECHA_EMISION)
+
+
+def _normalizar(lineas_texto: list[str]) -> list[str]:
+    # Sin tildes para que "EMISIÓN" y "EMISION" se reconozcan igual: el OCR no
+    # siempre las lee.
+    tabla = str.maketrans("ÁÉÍÓÚ", "AEIOU")
+    return [linea.strip().upper().translate(tabla) for linea in lineas_texto if linea.strip()]
 
 
 def _buscar_dni(lineas: list[str]) -> str | None:
@@ -56,6 +92,15 @@ def _buscar_dni(lineas: list[str]) -> str | None:
     return None
 
 
+def _buscar_apellidos(lineas: list[str]) -> str | None:
+    primero = _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_PRIMER_APELLIDO)
+    if primero is None:
+        return _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_APELLIDOS)
+
+    segundo = _buscar_valor_tras_etiqueta(lineas, _ETIQUETAS_SEGUNDO_APELLIDO)
+    return f"{primero} {segundo}" if segundo else primero
+
+
 def _buscar_valor_tras_etiqueta(lineas: list[str], etiquetas: tuple[str, ...]) -> str | None:
     for indice, linea in enumerate(lineas):
         for etiqueta in etiquetas:
@@ -63,9 +108,20 @@ def _buscar_valor_tras_etiqueta(lineas: list[str], etiquetas: tuple[str, ...]) -
                 resto_misma_linea = linea.replace(etiqueta, "").strip(" :-")
                 if resto_misma_linea:
                     return resto_misma_linea
-                if indice + 1 < len(lineas):
+                if indice + 1 < len(lineas) and not _es_etiqueta(lineas[indice + 1]):
                     return lineas[indice + 1].strip()
+                break
     return None
+
+
+def _es_etiqueta(linea: str) -> bool:
+    """Una linea que solo contiene un rotulo no es el valor del rotulo anterior."""
+    return any(linea.replace(etiqueta, "").strip(" :-") == "" for etiqueta in _TODAS_LAS_ETIQUETAS)
+
+
+def _buscar_fecha_tras_etiqueta(lineas: list[str], etiquetas: tuple[str, ...]) -> date | None:
+    texto = _buscar_valor_tras_etiqueta(lineas, etiquetas)
+    return _parsear_fecha_dd_mm_yyyy(texto) if texto else None
 
 
 def _buscar_sexo(lineas: list[str]) -> str | None:

@@ -2,6 +2,7 @@ package pe.ayni.bank.identity.infrastructure.out.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
@@ -21,13 +22,14 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeRegistroPort;
  * lee cualquiera con acceso a Loki.
  */
 @Component
+@Profile("!prod")
 public class NotificadorDeRegistroPorEventos implements NotificadorDeRegistroPort {
 
     private static final Logger log =
             LoggerFactory.getLogger(NotificadorDeRegistroPorEventos.class);
 
     @Override
-    public void enviarBienvenida(CorreoElectronico correo) {
+    public void enviarBienvenida(CorreoElectronico correo, java.util.UUID solicitudId) {
         log.info("Pendiente de publicar por outbox: plantilla=BIENVENIDA destinatario={}",
                 correo.enmascarado());
     }

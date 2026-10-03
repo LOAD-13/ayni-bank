@@ -37,8 +37,17 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     @Override
     public Optional<Cuenta> buscarPorNumero(NumeroDeCuenta numero) {
         return cuentas.findByNumero(numero.valor())
-                .filter(fila -> !fila.getId().equals(fondeoPen))
+                .filter(fila -> !esTecnica(fila))
                 .map(AdaptadorLibroMayor::aDominio);
+    }
+
+    /**
+     * Las cuentas tecnicas —fondeo (V3), compensacion interbancaria (V4)— tienen titulares
+     * reservados 00000000-0000-0000-0000-00000000000N. Identity genera UUID v4, cuyos 64 bits
+     * altos nunca son cero, asi que ningun cliente puede coincidir: nadie les transfiere.
+     */
+    private static boolean esTecnica(CuentaEntity fila) {
+        return fila.getUsuarioId().getMostSignificantBits() == 0L;
     }
 
     @Override

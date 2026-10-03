@@ -1,0 +1,12 @@
+# Los tableros de Ayni se aprovisionan desde ficheros versionados: nadie los
+# edita a mano en Grafana, y lo que se ve en produccion es lo que hay en git.
+apiVersion: 1
+
+providers:
+  - name: ayni
+    folder: Ayni Bank
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards

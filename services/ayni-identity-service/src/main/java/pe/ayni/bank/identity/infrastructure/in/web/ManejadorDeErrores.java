@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
+import pe.ayni.bank.identity.domain.model.CapturasIncompletasException;
 import pe.ayni.bank.identity.domain.model.CodigoDesafioInvalidoException;
 import pe.ayni.bank.identity.domain.model.ConsentimientoNoOtorgadoException;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
@@ -21,6 +22,7 @@ import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
 import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioExpiradoException;
+import pe.ayni.bank.identity.domain.model.DocumentoNoSubidoException;
 import pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
@@ -172,6 +174,20 @@ public class ManejadorDeErrores {
         return problema(HttpStatus.UNAUTHORIZED, "sesion-expirada",
                 "Tu sesion ya no es valida",
                 "Vuelve a iniciar sesion para continuar.", List.of(), peticion);
+    }
+
+    /** HU-02: la clave no es una foto subida de ese lado para esa solicitud. */
+    @ExceptionHandler(DocumentoNoSubidoException.class)
+    public ProblemDetail alNoEncontrarElDocumento(DocumentoNoSubidoException excepcion, WebRequest peticion) {
+        return problema(HttpStatus.BAD_REQUEST, "documento-no-subido",
+                "No encontramos la foto", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /** HU-02: se pidio leer o confirmar antes de tener lo que ese paso necesita. */
+    @ExceptionHandler(CapturasIncompletasException.class)
+    public ProblemDetail alFaltarUnPasoAnterior(CapturasIncompletasException excepcion, WebRequest peticion) {
+        return problema(HttpStatus.CONFLICT, "capturas-incompletas",
+                "Falta un paso anterior", excepcion.getMessage(), List.of(), peticion);
     }
 
     /** Objetos de valor del dominio que rechazan su entrada. */
