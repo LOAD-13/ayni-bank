@@ -53,6 +53,8 @@ class MotivoRechazoCaptura(str, Enum):
     DESENFOQUE = "DESENFOQUE"
     REFLEJO = "REFLEJO"
     ILUMINACION = "ILUMINACION"
+    # Se pidio el reverso y la foto es del anverso (tiene el rostro del titular).
+    LADO_INCORRECTO = "LADO_INCORRECTO"
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,7 @@ class ResultadoEvaluacionCaptura:
 
     es_dni: bool
     calidad: ResultadoValidacionCalidad | None
+    lado_incorrecto: bool = False
 
     @property
     def motivo_rechazo(self) -> MotivoRechazoCaptura | None:
@@ -79,6 +82,8 @@ class ResultadoEvaluacionCaptura:
             return MotivoRechazoCaptura.NO_ES_DNI
         if not self.es_dni:
             return self._motivo_sin_documento(self.calidad)
+        if self.lado_incorrecto:
+            return MotivoRechazoCaptura.LADO_INCORRECTO
         if not self.calidad.bien_encuadrada:
             return MotivoRechazoCaptura.ENCUADRE
         if not self.calidad.es_nitida:
