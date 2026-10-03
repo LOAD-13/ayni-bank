@@ -30,7 +30,7 @@ describe("CapturaDeSelfie", () => {
     render(<CapturaDeSelfie solicitudId="sol-123" onCompletado={vi.fn()} />);
 
     // Verifica que se muestra el título
-    expect(screen.getByText("Selfie de verificación")).toBeInTheDocument();
+    expect(screen.getByText("Prueba de vida")).toBeInTheDocument();
 
     // Verifica que se muestra el texto inicial (ya sea cargando modelos o cámara)
     expect(

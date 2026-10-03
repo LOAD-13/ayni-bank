@@ -23,17 +23,17 @@ export function PasoDeConfirmacionDeDatos({ solicitudId, pasoActual }: Props) {
   return (
     <div className="min-h-screen bg-azul-050">
       <header className="border-b border-gris-300 bg-blanco">
-        <div className="mx-auto flex max-w-[1180px] items-center px-6 py-3.5">
+        <div className="mx-auto flex max-w-[1440px] items-center px-6 py-5 lg:px-16">
           <Link href="/">
             <LogotipoAyni altura={16} tono="oscuro" />
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-[1180px] flex-col items-center gap-9 px-6 py-9">
+      <main className="mx-auto flex max-w-[1440px] flex-col items-center gap-9 px-6 py-9 lg:px-16">
         <IndicadorDeProgreso pasoActual={pasoActual} />
 
-        <div className="w-full max-w-[560px] rounded-[18px] border border-gris-300 bg-blanco p-6 shadow-sm sm:p-9">
+        <div className="w-full max-w-[920px] rounded-[20px] border border-gris-300 bg-blanco p-6 shadow-sm sm:p-10">
           {solicitudId ? (
             <ConfirmacionDeDatosDelDni
               solicitudId={solicitudId}

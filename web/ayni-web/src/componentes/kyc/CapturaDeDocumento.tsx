@@ -4,8 +4,12 @@ import {
   Camera,
   FileImage,
   FileUp,
+  Hand,
+  Layers,
   RotateCcw,
+  Scan,
   ShieldCheck,
+  Sun,
   TriangleAlert,
   Upload,
 } from "lucide-react";
@@ -278,166 +282,202 @@ export function CapturaDeDocumento({
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-[22px] font-bold text-azul-700">DNI · {cara}</h1>
-        <p className="mt-1 text-[14.5px] text-gris-700">
+        <h1 className="text-[26px] font-bold leading-tight text-azul-800 sm:text-[32px]">
+          Captura el {cara.toLowerCase()} de tu DNI
+        </h1>
+        <p className="mt-2 text-[15px] text-gris-700">
           {medio === "camara"
-            ? "Coloca tu DNI dentro del marco, en un lugar bien iluminado y sin reflejos."
-            : "Sube una foto o un escaneo claro, sin reflejos ni recortes."}
+            ? "Encuadra el documento dentro del marco, en un lugar bien iluminado y sin reflejos."
+            : "Sube una foto o un escaneo claro de tu DNI, sin reflejos ni recortes."}
         </p>
       </div>
 
-      <p className="flex items-start gap-2.5 rounded-[12px] border border-azul-200 bg-azul-050 p-4 text-[12.5px] text-azul-800">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_368px]">
+        <div className="flex flex-col gap-5">
+          {errorDeSubida && (
+            <p
+              role="alert"
+              className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
+            >
+              <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+              {errorDeSubida}
+            </p>
+          )}
+
+          {medio === "archivo" && fase === "eligiendo-archivo" && (
+            <SelectorDeArchivo
+              idDeInput={idDeInput}
+              inputRef={inputArchivoRef}
+              error={errorDeArchivo}
+              onArchivo={archivoElegido}
+            />
+          )}
+
+          {medio === "archivo" && (fase === "revisando" || fase === "subiendo") && foto && (
+            <TarjetaDeArchivoCargado
+              nombre={foto.nombre}
+              tamanoBytes={foto.tamanoBytes}
+              subiendo={fase === "subiendo"}
+            />
+          )}
+
+          {medio === "camara" && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-700 to-noche"
+              style={{ aspectRatio: "16 / 10" }}
+            >
+              {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
+              de pantalla pueda anunciar: el estado con significado (`fase`) se dice
+              aparte, en los mensajes de texto de este mismo `role="status"`. */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                aria-hidden="true"
+                className={`h-full w-full object-cover ${fase === "en-vivo" ? "" : "hidden"}`}
+              />
+
+              {fase === "en-vivo" && (
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 p-8">
+                  {/* El marco guía: mismas proporciones que un DNI físico (ISO/IEC 7810
+                  ID-1). Encuadrar el documento dentro de él es, literalmente,
+                  encuadrarlo bien. */}
+                  <div
+                    className="w-full max-w-[420px] rounded-[14px] border-[3px] border-exito"
+                    style={{ aspectRatio: PROPORCION_DNI }}
+                  />
+                  <p className="rounded-full bg-exito px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
+                    Encuadra tu DNI dentro del marco
+                  </p>
+                </div>
+              )}
+
+              {(fase === "revisando" || fase === "subiendo") && foto && (
+                // Vista previa de un Blob local: next/image exige una URL servible, no un blob:
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={foto.url}
+                  alt="Foto del DNI que vas a enviar"
+                  className="h-full w-full object-cover"
+                />
+              )}
+
+              {fase === "pidiendo-permiso" && (
+                <p className="absolute inset-0 flex items-center justify-center text-[13.5px] text-blanco">
+                  Pidiendo acceso a tu cámara…
+                </p>
+              )}
+
+              {fase === "sin-camara" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+                  <TriangleAlert aria-hidden="true" className="h-8 w-8 text-dorado-500" />
+                  <p className="text-[14px] font-semibold text-blanco">
+                    No pudimos acceder a tu cámara
+                  </p>
+                  <p className="text-[12.5px] text-gris-300">
+                    Revisa que le hayas dado permiso a tu navegador, o sube un archivo en su lugar.
+                  </p>
+                </div>
+              )}
+
+              {fase === "subiendo" && (
+                <p className="absolute inset-x-0 bottom-4 text-center text-[12.5px] font-semibold text-blanco">
+                  Revisando tu foto…
+                </p>
+              )}
+            </div>
+          )}
+
+          {medio === "camara" && fase === "en-vivo" && (
+            <Boton onClick={tomarFoto} anchoCompleto>
+              <Camera aria-hidden="true" className="h-4 w-4" />
+              Tomar foto
+            </Boton>
+          )}
+
+          {(fase === "revisando" || fase === "subiendo") && (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Boton
+                variante="contorno"
+                onClick={volverAElegir}
+                disabled={fase === "subiendo"}
+                className="sm:flex-1"
+              >
+                <RotateCcw aria-hidden="true" className="h-4 w-4" />
+                {medio === "camara" ? "Volver a tomar" : "Cambiar"}
+              </Boton>
+              <Boton onClick={usarEstaImagen} cargando={fase === "subiendo"} className="sm:flex-1">
+                Usar esta foto
+              </Boton>
+            </div>
+          )}
+
+          {/* El cambio de medio siempre está disponible, no solo cuando la cámara falla: hay
+          quien ya tiene un escaneo del documento y quien prefiere no usar la cámara aunque
+          funcione. Ver ADR-0023. */}
+          {fase !== "revisando" && fase !== "subiendo" && (
+            <button
+              type="button"
+              onClick={() => elegirMedio(medio === "camara" ? "archivo" : "camara")}
+              className="inline-flex items-center justify-center gap-2 self-center text-[13.5px] font-semibold text-azul-600 hover:underline"
+            >
+              {medio === "camara" ? (
+                <>
+                  <FileUp aria-hidden="true" className="h-4 w-4" />
+                  Subir un archivo en su lugar
+                </>
+              ) : (
+                <>
+                  <Camera aria-hidden="true" className="h-4 w-4" />
+                  Usar la cámara en su lugar
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        <ConsejosDeCaptura />
+      </div>
+    </div>
+  );
+}
+
+const CONSEJOS = [
+  { Icono: Sun, texto: "Busca luz pareja y evita reflejos sobre el plástico." },
+  { Icono: Scan, texto: "Que se vean las cuatro esquinas dentro del marco." },
+  { Icono: Layers, texto: "Retira la funda o la mica del documento." },
+  { Icono: Hand, texto: "Apóyalo en una superficie firme y no lo muevas." },
+];
+
+/** La columna lateral del diseño: cómo lograr la foto a la primera y qué pasa con ella. */
+function ConsejosDeCaptura() {
+  return (
+    <aside className="flex flex-col gap-5">
+      <h2 className="text-[18px] font-bold text-azul-800">Para que salga a la primera</h2>
+      <ul className="flex flex-col gap-4">
+        {CONSEJOS.map(({ Icono, texto }) => (
+          <li key={texto} className="flex items-start gap-3.5 text-[14.5px] text-gris-700">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-azul-050 text-azul-700"
+            >
+              <Icono className="h-4 w-4" />
+            </span>
+            <span className="pt-1.5">{texto}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="flex items-start gap-2.5 rounded-[14px] bg-azul-050 p-4 text-[13px] leading-relaxed text-azul-800">
         <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
         La imagen se transmite y se guarda cifrada. Se usa solo para verificar tu identidad y puedes
         pedir su eliminación en cualquier momento (Ley N.º 29733).
       </p>
-
-      {errorDeSubida && (
-        <p
-          role="alert"
-          className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
-        >
-          <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          {errorDeSubida}
-        </p>
-      )}
-
-      {medio === "archivo" && fase === "eligiendo-archivo" && (
-        <SelectorDeArchivo
-          idDeInput={idDeInput}
-          inputRef={inputArchivoRef}
-          error={errorDeArchivo}
-          onArchivo={archivoElegido}
-        />
-      )}
-
-      {medio === "archivo" && (fase === "revisando" || fase === "subiendo") && foto && (
-        <TarjetaDeArchivoCargado
-          nombre={foto.nombre}
-          tamanoBytes={foto.tamanoBytes}
-          subiendo={fase === "subiendo"}
-        />
-      )}
-
-      {medio === "camara" && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="relative overflow-hidden rounded-[16px] bg-gris-900"
-          style={{ aspectRatio: "4 / 3" }}
-        >
-          {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
-              de pantalla pueda anunciar: el estado con significado (`fase`) se dice
-              aparte, en los mensajes de texto de este mismo `role="status"`. */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            aria-hidden="true"
-            className={`h-full w-full object-cover ${fase === "en-vivo" ? "" : "hidden"}`}
-          />
-
-          {fase === "en-vivo" && (
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 p-8">
-              {/* El marco guía: mismas proporciones que un DNI físico (ISO/IEC 7810
-                  ID-1). Encuadrar el documento dentro de él es, literalmente,
-                  encuadrarlo bien. */}
-              <div
-                className="w-full max-w-[360px] rounded-[14px] border-4 border-dashed border-dorado-500"
-                style={{ aspectRatio: PROPORCION_DNI }}
-              />
-              <p className="rounded-full bg-noche/70 px-4 py-1.5 text-[12.5px] font-semibold text-blanco">
-                Encuadra tu DNI dentro del marco
-              </p>
-            </div>
-          )}
-
-          {(fase === "revisando" || fase === "subiendo") && foto && (
-            // Vista previa de un Blob local: next/image exige una URL servible, no un blob:
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={foto.url}
-              alt="Foto del DNI que vas a enviar"
-              className="h-full w-full object-cover"
-            />
-          )}
-
-          {fase === "pidiendo-permiso" && (
-            <p className="absolute inset-0 flex items-center justify-center text-[13.5px] text-blanco">
-              Pidiendo acceso a tu cámara…
-            </p>
-          )}
-
-          {fase === "sin-camara" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-              <TriangleAlert aria-hidden="true" className="h-8 w-8 text-dorado-500" />
-              <p className="text-[14px] font-semibold text-blanco">
-                No pudimos acceder a tu cámara
-              </p>
-              <p className="text-[12.5px] text-gris-300">
-                Revisa que le hayas dado permiso a tu navegador, o sube un archivo en su lugar.
-              </p>
-            </div>
-          )}
-
-          {fase === "subiendo" && (
-            <p className="absolute inset-x-0 bottom-4 text-center text-[12.5px] font-semibold text-blanco">
-              Revisando tu foto…
-            </p>
-          )}
-        </div>
-      )}
-
-      {medio === "camara" && fase === "en-vivo" && (
-        <Boton onClick={tomarFoto} anchoCompleto>
-          <Camera aria-hidden="true" className="h-4 w-4" />
-          Tomar foto
-        </Boton>
-      )}
-
-      {(fase === "revisando" || fase === "subiendo") && (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Boton
-            variante="contorno"
-            onClick={volverAElegir}
-            disabled={fase === "subiendo"}
-            className="sm:flex-1"
-          >
-            <RotateCcw aria-hidden="true" className="h-4 w-4" />
-            {medio === "camara" ? "Volver a tomar" : "Cambiar"}
-          </Boton>
-          <Boton onClick={usarEstaImagen} cargando={fase === "subiendo"} className="sm:flex-1">
-            Usar esta foto
-          </Boton>
-        </div>
-      )}
-
-      {/* El cambio de medio siempre está disponible, no solo cuando la cámara falla: hay
-          quien ya tiene un escaneo del documento y quien prefiere no usar la cámara aunque
-          funcione. Ver ADR-0023. */}
-      {fase !== "revisando" && fase !== "subiendo" && (
-        <button
-          type="button"
-          onClick={() => elegirMedio(medio === "camara" ? "archivo" : "camara")}
-          className="inline-flex items-center justify-center gap-2 self-center text-[13.5px] font-semibold text-azul-600 hover:underline"
-        >
-          {medio === "camara" ? (
-            <>
-              <FileUp aria-hidden="true" className="h-4 w-4" />
-              Subir un archivo en su lugar
-            </>
-          ) : (
-            <>
-              <Camera aria-hidden="true" className="h-4 w-4" />
-              Usar la cámara en su lugar
-            </>
-          )}
-        </button>
-      )}
-    </div>
+    </aside>
   );
 }
 
@@ -459,7 +499,7 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
           e.preventDefault();
           onArchivo(e.dataTransfer.files);
         }}
-        className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
+        className={`flex min-h-[340px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
           error ? "border-error bg-blanco" : "border-gris-300 bg-azul-050 hover:bg-azul-100"
         }`}
       >
@@ -494,7 +534,7 @@ interface TarjetaDeArchivoCargadoProps {
 
 function TarjetaDeArchivoCargado({ nombre, tamanoBytes, subiendo }: TarjetaDeArchivoCargadoProps) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
+    <div className="flex min-h-[340px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
       <div className="flex w-full max-w-[420px] items-center gap-3 rounded-[12px] border border-gris-300 bg-blanco p-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-azul-100">
           <FileImage aria-hidden="true" className="h-5 w-5 text-azul-600" />
