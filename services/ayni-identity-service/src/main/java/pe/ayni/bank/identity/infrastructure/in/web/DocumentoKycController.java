@@ -17,6 +17,7 @@ import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
 import pe.ayni.bank.identity.domain.port.in.ConfirmarDatosDelDniUseCase;
+import pe.ayni.bank.identity.domain.port.in.EntregarSelfieUseCase;
 import pe.ayni.bank.identity.domain.port.in.EvaluarCapturaDeDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.ExtraerDatosDelDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.GenerarUrlDeSubidaUseCase;
@@ -39,15 +40,18 @@ public class DocumentoKycController {
     private final EvaluarCapturaDeDniUseCase evaluarCaptura;
     private final ExtraerDatosDelDniUseCase extraerDatos;
     private final ConfirmarDatosDelDniUseCase confirmarDatos;
+    private final EntregarSelfieUseCase entregarSelfie;
 
     public DocumentoKycController(GenerarUrlDeSubidaUseCase generarUrlDeSubida,
                                   EvaluarCapturaDeDniUseCase evaluarCaptura,
                                   ExtraerDatosDelDniUseCase extraerDatos,
-                                  ConfirmarDatosDelDniUseCase confirmarDatos) {
+                                  ConfirmarDatosDelDniUseCase confirmarDatos,
+                                  EntregarSelfieUseCase entregarSelfie) {
         this.generarUrlDeSubida = generarUrlDeSubida;
         this.evaluarCaptura = evaluarCaptura;
         this.extraerDatos = extraerDatos;
         this.confirmarDatos = confirmarDatos;
+        this.entregarSelfie = entregarSelfie;
     }
 
     @PostMapping("/{solicitudId}/documentos/url-de-subida")
@@ -85,6 +89,16 @@ public class DocumentoKycController {
 
         return ResponseEntity.ok(new EstadoDelPasoDto(
                 confirmarDatos.confirmar(solicitudId, solicitud.aDominio()).name()));
+    }
+
+    /** HU-03: la selfie ya esta en el almacen; pasa a un operador para el cotejo facial. */
+    @PostMapping("/{solicitudId}/selfie")
+    public ResponseEntity<EstadoDelPasoDto> entregarSelfie(
+            @PathVariable UUID solicitudId,
+            @Valid @RequestBody SolicitudDeSelfieDto solicitud) {
+
+        return ResponseEntity.ok(new EstadoDelPasoDto(
+                entregarSelfie.entregar(solicitudId, solicitud.claveDeObjeto()).name()));
     }
 
     @ExceptionHandler(SolicitudNoExisteException.class)
