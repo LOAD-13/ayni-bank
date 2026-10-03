@@ -67,7 +67,9 @@ def tiene_rostro_del_titular(imagen_enderezada: Matriz) -> bool:
     escala = ANCHO_NORMALIZADO / ancho
     tarjeta = cv2.resize(imagen_enderezada, (ANCHO_NORMALIZADO, max(1, int(alto * escala))))
     gris = cv2.equalizeHist(cv2.cvtColor(tarjeta, cv2.COLOR_BGR2GRAY))
-    clasificador = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    # Igual que en cotejo_facial: los stubs de cv2 no declaran cv2.data.
+    cascadas: str = getattr(cv2.data, "haarcascades", "")  # type: ignore[attr-defined]
+    clasificador = cv2.CascadeClassifier(cascadas + "haarcascade_frontalface_default.xml")
     alto_minimo = int(gris.shape[0] * ALTO_MINIMO_DEL_ROSTRO)
     rostros = clasificador.detectMultiScale(gris, 1.1, 5, minSize=(alto_minimo, alto_minimo))
     limite = ANCHO_NORMALIZADO * FRACCION_ZONA_DE_LA_FOTO
