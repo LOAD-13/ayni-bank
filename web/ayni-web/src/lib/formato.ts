@@ -39,6 +39,19 @@ export function normalizarImporte(escrito: string): string | null {
   return `${String(Number(entero))}.${(decimales + "00").slice(0, 2)}`;
 }
 
+/**
+ * Interés aproximado de un mes con la TREA vigente: saldo × TREA / 12, en céntimos
+ * enteros y sin coma flotante. Es una estimación para el panel, no el devengo real.
+ */
+export function rendimientoMensualEstimado(saldo: string, trea: string): string {
+  const aCentimos = (t: string) => {
+    const [e = "0", d = ""] = t.replace("-", "").split(".");
+    return BigInt(e) * BigInt(100) + BigInt((d + "00").slice(0, 2));
+  };
+  const centimos = (aCentimos(saldo) * aCentimos(trea)) / BigInt(120000);
+  return `${centimos / BigInt(100)}.${String(centimos % BigInt(100)).padStart(2, "0")}`;
+}
+
 /** Clave de idempotencia nueva: una por intento de operación, no por clic. */
 export function nuevaClave(): string {
   return crypto.randomUUID();
