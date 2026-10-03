@@ -89,6 +89,8 @@ test.describe("Panel de la banca", () => {
     await expect(page.getByText(/unos S\/ 3\.18 al mes/)).toBeVisible();
     await expect(page.getByRole("cell", { name: "Depósito" })).toBeVisible();
 
+    await expect(page.getByTestId("version-de-la-aplicacion")).toContainText("Ayni Bank · versión");
+
     await page.getByRole("button", { name: "Ocultar saldos" }).click();
     await expect(page.getByTestId("saldo-total")).toHaveText("S/ ••••");
   });
