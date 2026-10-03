@@ -56,10 +56,10 @@ export function PasoDeCapturaDeDni({
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-[1440px] flex-col items-center gap-9 px-6 py-9 lg:px-16">
+      <main className="mx-auto flex max-w-[1440px] flex-col items-center gap-6 px-3 py-6 sm:gap-9 sm:px-6 sm:py-9 lg:px-16">
         <IndicadorDeProgreso pasoActual={pasoActual} />
 
-        <div className="w-full max-w-[1100px] rounded-[20px] border border-gris-300 bg-blanco p-6 shadow-sm sm:p-10">
+        <div className="w-full max-w-[1100px] rounded-[20px] border border-gris-300 bg-blanco p-4 shadow-sm sm:p-10">
           {solicitudId ? (
             <CapturaDeDocumento
               solicitudId={solicitudId}

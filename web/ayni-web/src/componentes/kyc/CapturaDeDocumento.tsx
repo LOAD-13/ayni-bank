@@ -47,6 +47,8 @@ const QUE_REPETIR: Record<MotivoDeRechazo, string> = {
   DESENFOQUE: "La foto salió borrosa. Mantén el celular quieto y espera a que enfoque.",
   REFLEJO: "Hay un reflejo sobre tu DNI. Inclínalo un poco o aléjate de la luz directa.",
   ILUMINACION: "La foto está muy oscura o muy clara. Busca un lugar con luz pareja.",
+  LADO_INCORRECTO:
+    "Esa es la cara de tu DNI con tu foto. Dale la vuelta y fotografía el reverso, el de la huella.",
 };
 
 export function mensajeDeRechazo(
@@ -282,9 +284,9 @@ export function CapturaDeDocumento({
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6 sm:gap-8">
       <div>
-        <h1 className="text-[26px] font-bold leading-tight text-azul-800 sm:text-[32px]">
+        <h1 className="text-[24px] font-bold leading-tight text-azul-800 sm:text-[32px]">
           Captura el {cara.toLowerCase()} de tu DNI
         </h1>
         <p className="mt-2 text-[15px] text-gris-700">
@@ -327,8 +329,7 @@ export function CapturaDeDocumento({
             <div
               role="status"
               aria-live="polite"
-              className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-700 to-noche"
-              style={{ aspectRatio: "16 / 10" }}
+              className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-700 to-noche sm:aspect-[16/10]"
             >
               {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
               de pantalla pueda anunciar: el estado con significado (`fase`) se dice
@@ -499,7 +500,7 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
           e.preventDefault();
           onArchivo(e.dataTransfer.files);
         }}
-        className={`flex min-h-[340px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
+        className={`flex min-h-[240px] sm:min-h-[340px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed p-8 text-center ${
           error ? "border-error bg-blanco" : "border-gris-300 bg-azul-050 hover:bg-azul-100"
         }`}
       >
@@ -534,7 +535,7 @@ interface TarjetaDeArchivoCargadoProps {
 
 function TarjetaDeArchivoCargado({ nombre, tamanoBytes, subiendo }: TarjetaDeArchivoCargadoProps) {
   return (
-    <div className="flex min-h-[340px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
+    <div className="flex min-h-[240px] sm:min-h-[340px] flex-col items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-gris-300 bg-azul-050 p-8">
       <div className="flex w-full max-w-[420px] items-center gap-3 rounded-[12px] border border-gris-300 bg-blanco p-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] bg-azul-100">
           <FileImage aria-hidden="true" className="h-5 w-5 text-azul-600" />

@@ -153,6 +153,12 @@ public class AdaptadorRepositorioDeSolicitudes implements RepositorioDeSolicitud
                 .map(SolicitudOnboardingEntity::getId);
     }
 
+    @Override
+    public Optional<String> estadoDeLaUltimaSolicitudDe(UUID usuarioId) {
+        return repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuarioId)
+                .map(SolicitudOnboardingEntity::getEstado);
+    }
+
     private SolicitudOnboardingEntity nueva(UUID usuarioId) {
         Instant ahora = reloj.instant();
         return new SolicitudOnboardingEntity(

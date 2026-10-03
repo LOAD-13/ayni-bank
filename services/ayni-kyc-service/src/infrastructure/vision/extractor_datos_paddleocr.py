@@ -16,7 +16,11 @@ from paddleocr import PaddleOCR
 
 from src.domain.model.resultado_verificacion import DatosIdentidadExtraidos, FuenteDatosIdentidad
 from src.domain.port.verificador_identidad import AlmacenObjetosPort
-from src.infrastructure.vision.heuristicas_anverso import extraer_fecha_emision, extraer_por_heuristicas
+from src.infrastructure.vision.heuristicas_anverso import (
+    extraer_fecha_emision,
+    extraer_por_heuristicas,
+    extraer_segundo_apellido,
+)
 from src.infrastructure.vision.mrz_td1 import encontrar_lineas_mrz, parsear_mrz
 from src.infrastructure.vision.procesamiento_documento import procesar_documento
 
@@ -37,11 +41,19 @@ class MotorOcrPaddleOCR:
         # con NotImplementedError en algunos entornos (confirmado en
         # desarrollo local, Windows/x86_64 sin GPU). Desactivarlo cuesta algo
         # de rendimiento pero es mas importante que el servicio no falle.
+        #
+        # Modelos "mobile" de PP-OCRv5 en vez de los "server" por defecto: en CPU leen un
+        # lado del DNI en ~6 s en lugar de ~17 s, con el mismo resultado sobre DNI reales
+        # (MRZ con digitos verificadores validos y rotulos del anverso). Con los "server"
+        # la lectura de los dos lados superaba el tiempo de espera de identity-service y
+        # la solicitud acababa "diferida".
         self._ocr = PaddleOCR(
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
             enable_mkldnn=False,
+            text_detection_model_name="PP-OCRv5_mobile_det",
+            text_recognition_model_name="PP-OCRv5_mobile_rec",
         )
 
     def reconocer_texto(self, imagen: Matriz) -> list[str]:
@@ -54,7 +66,7 @@ class MotorOcrPaddleOCR:
 
 
 class ExtractorDatosPaddleOCR:
-    """Implementa ExtractorDatosPort: MRZ del reverso, con fallback al anverso."""
+    """Implementa ExtractorDatosPort: MRZ de cualquiera de los dos lados, con fallback al anverso."""
 
     def __init__(self, almacen_objetos: AlmacenObjetosPort, motor_ocr: MotorOcrPort | None = None) -> None:
         self._almacen_objetos = almacen_objetos
@@ -63,24 +75,39 @@ class ExtractorDatosPaddleOCR:
     def extraer(
         self, clave_objeto_anverso: str, clave_objeto_reverso: str
     ) -> DatosIdentidadExtraidos | None:
-        """Lee el reverso y despues el anverso, cada uno una sola vez.
+        """Lee primero el anverso y solo lee el reverso si hace falta.
 
-        El anverso se lee siempre, tambien cuando el MRZ valida: la fecha de
-        emision solo esta impresa en el anverso.
+        El DNI azul (no electronico) lleva el MRZ en el anverso, bajo la foto; el DNI
+        electronico lo lleva en el reverso. El anverso se lee siempre (la fecha de emision
+        solo esta impresa ahi) y, si ya trae un MRZ valido, el reverso no pasa por el OCR:
+        cada lectura cuesta segundos de CPU y el solicitante esta esperando.
         """
-        datos_desde_mrz = self._extraer_desde_mrz(clave_objeto_reverso)
         texto_anverso = self._texto_crudo_del_documento(clave_objeto_anverso)
+        datos_desde_mrz = self._datos_desde_mrz(texto_anverso)
+        if datos_desde_mrz is None:
+            datos_desde_mrz = self._datos_desde_mrz(self._texto_crudo_del_documento(clave_objeto_reverso))
 
         if datos_desde_mrz is not None:
             fecha_emision = extraer_fecha_emision(texto_anverso) if texto_anverso else None
-            return replace(datos_desde_mrz, fecha_emision=fecha_emision)
+            apellidos = self._apellidos_completos(datos_desde_mrz.apellidos, texto_anverso)
+            return replace(datos_desde_mrz, apellidos=apellidos, fecha_emision=fecha_emision)
 
         if texto_anverso is None:
             return None
         return extraer_por_heuristicas(texto_anverso)
 
-    def _extraer_desde_mrz(self, clave_objeto_reverso: str) -> DatosIdentidadExtraidos | None:
-        lineas_texto = self._texto_crudo_del_documento(clave_objeto_reverso)
+    @staticmethod
+    def _apellidos_completos(apellidos_mrz: str, texto_anverso: list[str] | None) -> str:
+        """El MRZ del DNI peruano puede traer solo el primer apellido: se completa con el anverso."""
+        if not texto_anverso or " " in apellidos_mrz.strip():
+            return apellidos_mrz
+        segundo = extraer_segundo_apellido(texto_anverso)
+        if segundo is None or segundo == apellidos_mrz.strip():
+            return apellidos_mrz
+        return f"{apellidos_mrz.strip()} {segundo}"
+
+    @staticmethod
+    def _datos_desde_mrz(lineas_texto: list[str] | None) -> DatosIdentidadExtraidos | None:
         if lineas_texto is None:
             return None
 
