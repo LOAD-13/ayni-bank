@@ -35,7 +35,7 @@
 	# exige la hidratacion de Next.js sin nonces; frame-ancestors 'none' impide
 	# incrustar la banca en otra pagina. No se aplica a Grafana, que trae la suya.
 	@web not path /grafana*
-	header @web Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://*.s3.amazonaws.com https://*.s3.us-east-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+	header @web Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://s3.us-east-1.amazonaws.com https://*.s3.amazonaws.com https://*.s3.us-east-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
 
 	# Chequeo de salud publico: lo consultan el pipeline tras desplegar y
 	# cualquiera que quiera saber si el sistema esta arriba. Responde el
