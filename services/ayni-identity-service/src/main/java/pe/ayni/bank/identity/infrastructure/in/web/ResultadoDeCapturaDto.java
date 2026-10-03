@@ -6,7 +6,7 @@ import pe.ayni.bank.identity.domain.model.ResultadoDeCaptura;
 
 /**
  * @param estado ACEPTADO, RECHAZADO, EN_REVISION_MANUAL o VERIFICACION_DIFERIDA
- * @param motivo solo si se rechazo: NO_ES_DNI, ENCUADRE, DESENFOQUE, REFLEJO o ILUMINACION
+ * @param motivo solo si se rechazo: NO_ES_DNI, ENCUADRE, DESENFOQUE, REFLEJO, ILUMINACION o LADO_INCORRECTO
  * @param intentosRestantes solo si se rechazo: fotos que quedan de ese lado
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)

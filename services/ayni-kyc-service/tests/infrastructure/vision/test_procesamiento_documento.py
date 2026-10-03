@@ -60,3 +60,15 @@ def test_no_debe_tratar_como_documento_una_imagen_sin_contorno_ni_proporcion_de_
     franja = np.full((200, 800, 3), 180, dtype=np.uint8)
 
     assert procesar_documento(_codificar(franja)) is None
+
+
+def test_debe_tratar_como_recortado_un_dni_cuyo_borde_queda_pegado_al_marco() -> None:
+    # Un escaneo con un filo de fondo: el contorno de la tarjeta toca el marco y antes
+    # se rechazaba por encuadre aunque el DNI estaba entero.
+    lienzo = np.full((262, 410, 3), 245, dtype=np.uint8)
+    lienzo[3:258, 4:406] = cv2.resize(_tarjeta(), (402, 255))
+
+    es_dni, encuadre = _evaluar(lienzo)
+
+    assert es_dni is True
+    assert encuadre is True

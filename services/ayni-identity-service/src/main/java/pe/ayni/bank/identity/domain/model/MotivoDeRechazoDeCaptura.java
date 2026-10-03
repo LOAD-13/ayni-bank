@@ -11,5 +11,7 @@ public enum MotivoDeRechazoDeCaptura {
     ENCUADRE,
     DESENFOQUE,
     REFLEJO,
-    ILUMINACION
+    ILUMINACION,
+    /** Se pidio el reverso y llego el anverso. */
+    LADO_INCORRECTO
 }
