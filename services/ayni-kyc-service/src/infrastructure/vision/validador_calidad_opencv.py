@@ -20,6 +20,7 @@ Matriz = NDArray[Any]
 UMBRAL_NITIDEZ = 100.0
 UMBRAL_BRILLO_REFLEJO = 240
 FRACCION_MAXIMA_REFLEJO = 0.05
+MARGEN_REFLEJO = 0.06
 MARGEN_BORDE_MINIMO = 0.02
 FRACCION_AREA_MINIMA = 0.15
 FRACCION_AREA_MAXIMA = 0.95
@@ -75,18 +76,29 @@ class ValidadorCalidadOpenCV:
         return bool(varianza_laplaciano >= UMBRAL_NITIDEZ)
 
     def _sin_reflejos(self, imagen_enderezada: Matriz) -> bool:
-        gris = cv2.cvtColor(imagen_enderezada, cv2.COLOR_BGR2GRAY)
-        _, saturados = cv2.threshold(gris, UMBRAL_BRILLO_REFLEJO, 255, cv2.THRESH_BINARY)
+        """Un reflejo es una mancha brillante continua, no pixeles blancos sueltos.
 
-        total_pixeles = saturados.size
-        if total_pixeles == 0:
+        Se ignora una franja junto al borde (las esquinas redondeadas de un DNI
+        escaneado dejan fondo blanco) y se mide la mayor zona saturada: el texto
+        claro, los hologramas y el fondo del DNI no forman una mancha grande.
+        """
+        gris = cv2.cvtColor(imagen_enderezada, cv2.COLOR_BGR2GRAY)
+        alto, ancho = gris.shape[:2]
+        margen_y, margen_x = int(alto * MARGEN_REFLEJO), int(ancho * MARGEN_REFLEJO)
+        interior = gris[margen_y : alto - margen_y, margen_x : ancho - margen_x]
+        if interior.size == 0:
             return False
 
-        pixeles_saturados = cv2.countNonZero(saturados)
-        fraccion_saturada = pixeles_saturados / total_pixeles
-        return bool(fraccion_saturada <= FRACCION_MAXIMA_REFLEJO)
+        _, saturados = cv2.threshold(interior, UMBRAL_BRILLO_REFLEJO, 255, cv2.THRESH_BINARY)
+        cantidad, _, estadisticas, _ = cv2.connectedComponentsWithStats(saturados)
+        if cantidad <= 1:
+            return True
+        mancha_mayor = int(estadisticas[1:, cv2.CC_STAT_AREA].max())
+        return bool(mancha_mayor / interior.size <= FRACCION_MAXIMA_REFLEJO)
 
     def _bien_encuadrada(self, procesado: DocumentoProcesado) -> bool:
+        if procesado.recortada_al_borde:
+            return True
         alto_frame, ancho_frame = procesado.imagen_original.shape[:2]
         if alto_frame == 0 or ancho_frame == 0:
             return False
