@@ -11,8 +11,10 @@ export const metadata: Metadata = {
 /**
  * HU-03 · paso 4 de 5 del onboarding: consentimiento biométrico y selfie (AYNI-14).
  *
- * Al terminar lleva al ingreso con el aviso de verificación completada: la banca ya sabe,
- * con la sesión del titular, si la cuenta quedó abierta o si la solicitud está en revisión.
+ * Al terminar va a `/pendiente`: enlazar la cuenta abierta requiere el `usuarioId`, que
+ * hoy no viaja hasta aquí (solo el `solicitudId`) y traerlo es AYNI-13/HU-07, no esta
+ * historia. Mismo criterio que en `dni-reverso/page.tsx`: una pantalla que dice la verdad
+ * en vez de una ruta que no existe.
  */
 export default async function PruebaDeVida({
   searchParams,
@@ -22,10 +24,6 @@ export default async function PruebaDeVida({
   const { solicitudId } = await searchParams;
 
   return (
-    <PasoDeCapturaDeSelfie
-      solicitudId={solicitudId}
-      pasoActual={4}
-      siguienteHref="/ingresar?verificacion=completada"
-    />
+    <PasoDeCapturaDeSelfie solicitudId={solicitudId} pasoActual={4} siguienteHref="/pendiente" />
   );
 }
