@@ -723,7 +723,7 @@ components:
           enum: [ACEPTADO, RECHAZADO, EN_REVISION_MANUAL, VERIFICACION_DIFERIDA]
         motivo:
           type: string
-          enum: [NO_ES_DNI, ENCUADRE, DESENFOQUE, REFLEJO, ILUMINACION]
+          enum: [NO_ES_DNI, ENCUADRE, DESENFOQUE, REFLEJO, ILUMINACION, LADO_INCORRECTO]
           description: Solo si `estado` es RECHAZADO.
         intentosRestantes:
           type: integer

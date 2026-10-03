@@ -51,11 +51,22 @@ class DatosDelDniTest {
     }
 
     @Test
+    @DisplayName("coincide si se declaro solo parte del nombre que figura en el DNI")
+    void coincideConParteDelNombre() {
+        assertThat(ana().coincideCon(declarados("Ana", "Quispe Mamani", TipoDocumento.DNI, "44556677")))
+                .isTrue();
+        assertThat(ana().coincideCon(declarados("Lucia", "Quispe", TipoDocumento.DNI, "44556677")))
+                .isTrue();
+    }
+
+    @Test
     @DisplayName("no coincide si cambia el numero, el nombre, la fecha o el tipo de documento declarado")
     void noCoincideSiCambiaAlgo() {
         assertThat(ana().coincideCon(declarados("Ana Lucia", "Quispe Mamani", TipoDocumento.DNI, "44556678")))
                 .isFalse();
-        assertThat(ana().coincideCon(declarados("Ana", "Quispe Mamani", TipoDocumento.DNI, "44556677")))
+        assertThat(ana().coincideCon(declarados("Ana Maria", "Quispe Mamani", TipoDocumento.DNI, "44556677")))
+                .isFalse();
+        assertThat(ana().coincideCon(declarados("Ana Lucia", "Quispe Flores", TipoDocumento.DNI, "44556677")))
                 .isFalse();
         assertThat(ana().coincideCon(declarados("Ana Lucia", "Quispe Mamani", TipoDocumento.CE, "44556677")))
                 .isFalse();
