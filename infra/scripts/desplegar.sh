@@ -107,10 +107,22 @@ mv observabilidad.nuevo observabilidad
 chmod -R a+rX observabilidad
 
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRO" >/dev/null
+# Antes de descargar, fuera las imagenes que no usa ningun contenedor: las de la version
+# en marcha se conservan (son las del rollback). Sin esto el disco de 30 GB se lleno con
+# versiones antiguas y el agente de SSM murio a mitad del despliegue de la 1.1.0.
+docker image prune -af >/dev/null || true
 registrar "Descargando imagenes ${ETIQUETA}"
 docker compose --env-file .env -f docker-compose.prod.yml pull --quiet
 registrar "Arrancando la version ${VERSION} (${ETIQUETA})"
 docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
+# Caddy, Prometheus y Grafana leen ficheros montados desde /opt/ayni. El script los
+# sustituye con mv, que crea un fichero nuevo: el contenedor en marcha sigue viendo el
+# anterior y `up -d` no lo recrea si el compose no cambio. Sin este reinicio, un cambio
+# en el Caddyfile no llega a produccion (asi lo detectaron las pruebas de humo en 1.1.0).
+reiniciar_configurados() {
+  docker compose --env-file .env -f docker-compose.prod.yml restart caddy ayni-prometheus ayni-grafana
+}
+reiniciar_configurados
 
 # ── 5. Verificar salud o revertir ────────────────────────────────────────
 # Sano = todos los contenedores del compose en marcha, ninguno arrancando ni
@@ -150,6 +162,7 @@ if [[ -n "$ANTERIOR" && -f .env.anterior ]]; then
     rm -rf observabilidad && mv observabilidad.anterior observabilidad
   fi
   docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
+  reiniciar_configurados
   registrar "Revertido: sigue en produccion ${ANTERIOR}"
 fi
 exit 1
