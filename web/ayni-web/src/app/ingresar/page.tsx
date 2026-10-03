@@ -15,7 +15,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function PaginaDeIngreso() {
+export default async function PaginaDeIngreso({
+  searchParams,
+}: {
+  searchParams: Promise<{ verificacion?: string }>;
+}) {
+  const { verificacion } = await searchParams;
+
   return (
     <main className="grid min-h-screen grid-cols-1 bg-azul-050 lg:grid-cols-[minmax(420px,44%)_1fr]">
       <PanelDeMarca />
@@ -26,6 +32,16 @@ export default function PaginaDeIngreso() {
         <Link href="/" className="mb-8 lg:hidden">
           <LogotipoAyni altura={17} tono="oscuro" />
         </Link>
+
+        {verificacion === "completada" && (
+          <p
+            role="status"
+            className="mb-4 w-full max-w-[468px] rounded-[14px] border border-exito/30 bg-exito/10 p-4 text-[14px] text-gris-900"
+          >
+            <strong className="font-semibold">Verificación completada.</strong> Entra a tu banca: si
+            tu identidad quedó confirmada, tu cuenta ya está abierta.
+          </p>
+        )}
 
         <div className="w-full max-w-[468px] rounded-[20px] border border-azul-200 bg-blanco p-7 sm:p-9">
           <FormularioDeIngreso />
