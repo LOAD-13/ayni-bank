@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
+import { VersionDeLaAplicacion } from "@/componentes/VersionDeLaAplicacion";
 import { cerrarSesion, consultarTitular } from "@/lib/api";
 import { olvidarSesion } from "@/lib/sesion";
 
@@ -116,7 +117,14 @@ export function MarcoDeBanca({ children }: { children: ReactNode }) {
           </button>
         </nav>
 
-        <main className="px-5 py-8 sm:px-8">{children}</main>
+        <main className="px-5 py-8 sm:px-8">
+          {children}
+          {/* La versión desplegada, visible también dentro de la banca: es lo que cambia en
+              la demostración del despliegue continuo. */}
+          <footer className="mt-10 border-t border-azul-100 pt-2">
+            <VersionDeLaAplicacion />
+          </footer>
+        </main>
       </div>
     </div>
   );

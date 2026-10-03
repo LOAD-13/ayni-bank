@@ -4,7 +4,13 @@ import type { Movimiento } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
 
 /** Últimos movimientos de la cuenta, del más reciente al más antiguo. */
-export function TablaDeMovimientos({ movimientos }: { movimientos: Movimiento[] }) {
+export function TablaDeMovimientos({
+  movimientos,
+  oculto = false,
+}: {
+  movimientos: Movimiento[];
+  oculto?: boolean;
+}) {
   if (movimientos.length === 0) {
     return (
       <p className="px-6 py-10 text-center text-body text-gris-700">
@@ -21,6 +27,9 @@ export function TablaDeMovimientos({ movimientos }: { movimientos: Movimiento[] 
           <tr>
             <th scope="col" className="px-6 py-3 font-semibold">
               Concepto
+            </th>
+            <th scope="col" className="px-6 py-3 font-semibold">
+              Categoría
             </th>
             <th scope="col" className="px-6 py-3 font-semibold">
               Fecha
@@ -50,13 +59,18 @@ export function TablaDeMovimientos({ movimientos }: { movimientos: Movimiento[] 
                     <span className="text-body font-medium text-gris-900">{m.concepto}</span>
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <span className="rounded-full bg-gris-100 px-3 py-1 text-caption text-gris-800">
+                    {/dep[oó]sito/i.test(m.concepto) ? "Depósito" : "Transferencia"}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-small text-gris-700">
                   {formatearFecha(m.registradoEn)}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <span className={`cifra block ${abono ? "text-exito" : "text-gris-900"}`}>
                     {abono ? "+ " : "− "}
-                    {formatearImporte(m.importe, m.moneda)}
+                    {oculto ? "S/ ••••" : formatearImporte(m.importe, m.moneda)}
                   </span>
                   <span className="text-caption text-gris-700">{abono ? "Abono" : "Cargo"}</span>
                 </td>
