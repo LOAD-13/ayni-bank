@@ -77,6 +77,30 @@ def extraer_fecha_emision(lineas_texto: list[str]) -> date | None:
     return _buscar_fecha_tras_etiqueta(_normalizar(lineas_texto), _ETIQUETAS_FECHA_EMISION)
 
 
+_PATRON_SOLO_LETRAS = re.compile(r"^[A-ZÑ]+(?: [A-ZÑ]+)*$")
+_PALABRAS_DE_ROTULO = ("APELLIDO", "PELIDO", "NOMBRE", "FECHA", "EMISION", "SEXO", "ESTADO", "DNI", "NACIMIENTO",
+                       "CADUCIDAD", "INSCRIPCION", "UBIGEO", "REPUBLICA", "DOCUMENTO", "DUPLICADO", "REGIST")
+
+
+def extraer_segundo_apellido(lineas_texto: list[str]) -> str | None:
+    """El segundo apellido impreso en el anverso, para completar el MRZ que a veces no lo trae.
+
+    El OCR deforma el rotulo ("Segundo A pelido"), asi que se reconoce por la palabra
+    SEGUNDO y se toma la primera linea siguiente hecha solo de letras que no sea otro rotulo
+    (entre ambas suele colarse "Fecha Emision", que esta a la misma altura).
+    """
+    lineas = _normalizar(lineas_texto)
+    for indice, linea in enumerate(lineas):
+        if "SEGUNDO" not in linea:
+            continue
+        for candidata in lineas[indice + 1 : indice + 4]:
+            limpia = candidata.strip(" :-.")
+            if _PATRON_SOLO_LETRAS.match(limpia) and not any(p in limpia for p in _PALABRAS_DE_ROTULO):
+                return limpia
+        return None
+    return None
+
+
 def _normalizar(lineas_texto: list[str]) -> list[str]:
     # Sin tildes para que "EMISIÓN" y "EMISION" se reconozcan igual: el OCR no
     # siempre las lee.
