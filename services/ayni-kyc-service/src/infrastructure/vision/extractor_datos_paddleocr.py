@@ -54,7 +54,7 @@ class MotorOcrPaddleOCR:
 
 
 class ExtractorDatosPaddleOCR:
-    """Implementa ExtractorDatosPort: MRZ del reverso, con fallback al anverso."""
+    """Implementa ExtractorDatosPort: MRZ de cualquiera de los dos lados, con fallback al anverso."""
 
     def __init__(self, almacen_objetos: AlmacenObjetosPort, motor_ocr: MotorOcrPort | None = None) -> None:
         self._almacen_objetos = almacen_objetos
@@ -63,14 +63,17 @@ class ExtractorDatosPaddleOCR:
     def extraer(
         self, clave_objeto_anverso: str, clave_objeto_reverso: str
     ) -> DatosIdentidadExtraidos | None:
-        """Lee el reverso y despues el anverso, cada uno una sola vez.
+        """Lee cada lado una sola vez y busca el MRZ en los dos.
 
-        El anverso se lee siempre, tambien cuando el MRZ valida: la fecha de
-        emision solo esta impresa en el anverso.
+        El DNI electronico lleva el MRZ en el reverso; el DNI azul (no electronico) lo lleva
+        en el anverso, bajo la foto. Por eso se busca primero en el reverso y luego en el
+        anverso, sin volver a pasar el OCR. El anverso se lee siempre: la fecha de emision
+        solo esta impresa ahi.
         """
-        datos_desde_mrz = self._extraer_desde_mrz(clave_objeto_reverso)
+        texto_reverso = self._texto_crudo_del_documento(clave_objeto_reverso)
         texto_anverso = self._texto_crudo_del_documento(clave_objeto_anverso)
 
+        datos_desde_mrz = self._datos_desde_mrz(texto_reverso) or self._datos_desde_mrz(texto_anverso)
         if datos_desde_mrz is not None:
             fecha_emision = extraer_fecha_emision(texto_anverso) if texto_anverso else None
             return replace(datos_desde_mrz, fecha_emision=fecha_emision)
@@ -79,8 +82,8 @@ class ExtractorDatosPaddleOCR:
             return None
         return extraer_por_heuristicas(texto_anverso)
 
-    def _extraer_desde_mrz(self, clave_objeto_reverso: str) -> DatosIdentidadExtraidos | None:
-        lineas_texto = self._texto_crudo_del_documento(clave_objeto_reverso)
+    @staticmethod
+    def _datos_desde_mrz(lineas_texto: list[str] | None) -> DatosIdentidadExtraidos | None:
         if lineas_texto is None:
             return None
 
