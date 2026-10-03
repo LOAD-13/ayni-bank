@@ -5,7 +5,7 @@ import { Camera, RotateCcw, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Boton } from "@/componentes/Boton";
-import { ErrorDeApi, solicitarUrlDeSubida, subirDocumento } from "@/lib/api";
+import { entregarSelfie, ErrorDeApi, solicitarUrlDeSubida, subirDocumento } from "@/lib/api";
 
 type Fase =
   "cargando-modelos" | "pidiendo-permiso" | "en-vivo" | "sin-camara" | "revisando" | "subiendo";
@@ -213,6 +213,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
         type: foto.blob.type || "image/jpeg",
       });
       await subirDocumento(destino, archivo);
+      await entregarSelfie(solicitudId, destino.claveDeObjeto);
       onCompletado();
     } catch (error) {
       setErrorDeSubida(

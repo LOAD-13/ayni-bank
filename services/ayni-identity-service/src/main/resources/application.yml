@@ -53,6 +53,10 @@ spring:
 # lo sobreescribe AYNI_CIFRADO_CLAVE, que llega como secreto y nunca al repo.
 # Generar una nueva:  openssl rand -base64 32
 ayni:
+  # Clave del operador que aprueba solicitudes en revision (OperadorController). Vacia:
+  # el endpoint responde como si no existiera. En produccion llega de SSM.
+  operador:
+    clave: ${AYNI_OPERADOR_CLAVE:}
   cifrado:
     clave: ${AYNI_CIFRADO_CLAVE:YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
 

@@ -32,4 +32,11 @@ public interface GestionarFalloDeVerificacionKycUseCase {
 
     /** Deriva la solicitud a revision manual porque el documento no cuadra con lo declarado. */
     void derivarPorDiscrepancia(UUID solicitudId);
+
+    /**
+     * Deriva la solicitud a un operador para que compare la selfie con la foto del DNI.
+     * Mientras el cotejo facial automatico no este integrado (HU-03), es el ultimo paso
+     * antes de abrir la cuenta.
+     */
+    void derivarParaCotejoFacial(UUID solicitudId);
 }

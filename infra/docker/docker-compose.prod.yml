@@ -96,6 +96,9 @@ services:
       # La lectura del DNI por OCR corre en la CPU de la instancia: 30 s no alcanzaban y
       # la solicitud quedaba "diferida" aunque las fotos fueran buenas.
       AYNI_KYC_TIMEOUT_EXTRACCION: "90s"
+      # Clave del operador que aprueba solicitudes en revision (SSM /ayni/prod/operador-clave).
+      # Sin ella, el endpoint del operador no responde.
+      AYNI_OPERADOR_CLAVE: ${AYNI_OPERADOR_CLAVE:-}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE}
       AYNI_COOKIES_SEGURAS: "true"
