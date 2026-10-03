@@ -41,11 +41,19 @@ class MotorOcrPaddleOCR:
         # con NotImplementedError en algunos entornos (confirmado en
         # desarrollo local, Windows/x86_64 sin GPU). Desactivarlo cuesta algo
         # de rendimiento pero es mas importante que el servicio no falle.
+        #
+        # Modelos "mobile" de PP-OCRv5 en vez de los "server" por defecto: en CPU leen un
+        # lado del DNI en ~6 s en lugar de ~17 s, con el mismo resultado sobre DNI reales
+        # (MRZ con digitos verificadores validos y rotulos del anverso). Con los "server"
+        # la lectura de los dos lados superaba el tiempo de espera de identity-service y
+        # la solicitud acababa "diferida".
         self._ocr = PaddleOCR(
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_textline_orientation=False,
             enable_mkldnn=False,
+            text_detection_model_name="PP-OCRv5_mobile_det",
+            text_recognition_model_name="PP-OCRv5_mobile_rec",
         )
 
     def reconocer_texto(self, imagen: Matriz) -> list[str]:
@@ -67,17 +75,18 @@ class ExtractorDatosPaddleOCR:
     def extraer(
         self, clave_objeto_anverso: str, clave_objeto_reverso: str
     ) -> DatosIdentidadExtraidos | None:
-        """Lee cada lado una sola vez y busca el MRZ en los dos.
+        """Lee primero el anverso y solo lee el reverso si hace falta.
 
-        El DNI electronico lleva el MRZ en el reverso; el DNI azul (no electronico) lo lleva
-        en el anverso, bajo la foto. Por eso se busca primero en el reverso y luego en el
-        anverso, sin volver a pasar el OCR. El anverso se lee siempre: la fecha de emision
-        solo esta impresa ahi.
+        El DNI azul (no electronico) lleva el MRZ en el anverso, bajo la foto; el DNI
+        electronico lo lleva en el reverso. El anverso se lee siempre (la fecha de emision
+        solo esta impresa ahi) y, si ya trae un MRZ valido, el reverso no pasa por el OCR:
+        cada lectura cuesta segundos de CPU y el solicitante esta esperando.
         """
-        texto_reverso = self._texto_crudo_del_documento(clave_objeto_reverso)
         texto_anverso = self._texto_crudo_del_documento(clave_objeto_anverso)
+        datos_desde_mrz = self._datos_desde_mrz(texto_anverso)
+        if datos_desde_mrz is None:
+            datos_desde_mrz = self._datos_desde_mrz(self._texto_crudo_del_documento(clave_objeto_reverso))
 
-        datos_desde_mrz = self._datos_desde_mrz(texto_reverso) or self._datos_desde_mrz(texto_anverso)
         if datos_desde_mrz is not None:
             fecha_emision = extraer_fecha_emision(texto_anverso) if texto_anverso else None
             apellidos = self._apellidos_completos(datos_desde_mrz.apellidos, texto_anverso)
