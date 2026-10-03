@@ -179,6 +179,25 @@ class AdaptadoresDePersistenciaTest {
                 AHORA, AHORA, AHORA.plusSeconds(3600));
 
         @Test
+        @DisplayName("la solicitud vigente es la ultima iniciada y sin caducar")
+        void solicitudVigente() {
+            var iniciada = new SolicitudOnboardingEntity(UUID.randomUUID(), usuario, "INICIADA", (short) 1,
+                    AHORA, AHORA, AHORA.plusSeconds(3600));
+            var caducada = new SolicitudOnboardingEntity(UUID.randomUUID(), usuario, "INICIADA", (short) 1,
+                    AHORA, AHORA, AHORA.minusSeconds(60));
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            when(repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuario)).thenReturn(Optional.of(iniciada));
+            assertThat(adaptador.solicitudVigenteDe(usuario)).contains(iniciada.getId());
+
+            when(repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuario)).thenReturn(Optional.of(caducada));
+            assertThat(adaptador.solicitudVigenteDe(usuario)).isEmpty();
+
+            when(repositorio.findFirstByUsuarioIdOrderByCreadaEnDesc(usuario)).thenReturn(Optional.of(solicitud));
+            assertThat(adaptador.solicitudVigenteDe(usuario)).isEmpty();
+        }
+
+        @Test
         @DisplayName("registrar un fallo suma un intento y lo devuelve, sin tocar el estado")
         void registrarUnFalloSumaUnIntento() {
             when(repositorio.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));

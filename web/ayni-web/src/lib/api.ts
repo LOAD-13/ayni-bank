@@ -20,6 +20,8 @@ export interface Problema {
   detail?: string;
   instance?: string;
   errores?: ErrorDeCampo[];
+  /** Motivo de negocio, p. ej. SIN_CUENTA o SALDO_INSUFICIENTE. */
+  codigo?: string;
 }
 
 export class ErrorDeApi extends Error {
@@ -172,6 +174,8 @@ export interface Titular {
   /** Enmascarado en origen. La pantalla solo tiene que recordar a dónde se envió el aviso. */
   correo: string;
   estado: string;
+  /** Solicitud de apertura que aún se puede continuar, si la hay. */
+  solicitudPendiente?: string | null;
 }
 
 export async function consultarTitular(usuarioId: string): Promise<Titular> {

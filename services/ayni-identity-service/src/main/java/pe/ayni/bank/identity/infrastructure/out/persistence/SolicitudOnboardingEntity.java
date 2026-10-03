@@ -155,6 +155,10 @@ public class SolicitudOnboardingEntity {
         return usuarioId;
     }
 
+    Instant getExpiraEn() {
+        return expiraEn;
+    }
+
     String getEstado() {
         return estado;
     }
