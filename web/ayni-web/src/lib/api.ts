@@ -365,6 +365,19 @@ export async function confirmarDatosDelDni(
 }
 
 /**
+ * HU-03: avisa a identity de que la selfie ya está en el almacén. La solicitud pasa a un
+ * operador, que la compara con la foto del DNI y aprueba la apertura de la cuenta.
+ */
+export async function entregarSelfie(
+  solicitudId: string,
+  claveDeObjeto: string,
+): Promise<{ estado: "EN_REVISION_MANUAL" }> {
+  return pedir<{ estado: "EN_REVISION_MANUAL" }>(`/api/v1/solicitudes/${solicitudId}/selfie`, {
+    claveDeObjeto,
+  });
+}
+
+/**
  * Una petición POST con su manejo de errores, común a todo.
  *
  * `credentials: "include"` es imprescindible y fácil de olvidar: sin él el navegador no

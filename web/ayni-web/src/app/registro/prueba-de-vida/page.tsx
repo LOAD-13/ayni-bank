@@ -11,10 +11,8 @@ export const metadata: Metadata = {
 /**
  * HU-03 · paso 4 de 5 del onboarding: consentimiento biométrico y selfie (AYNI-14).
  *
- * Al terminar va a `/pendiente`: enlazar la cuenta abierta requiere el `usuarioId`, que
- * hoy no viaja hasta aquí (solo el `solicitudId`) y traerlo es AYNI-13/HU-07, no esta
- * historia. Mismo criterio que en `dni-reverso/page.tsx`: una pantalla que dice la verdad
- * en vez de una ruta que no existe.
+ * Al terminar, la selfie queda en manos de un operador que la compara con la foto del DNI
+ * y aprueba la apertura: la pantalla de revisión lo explica y el correo avisa del resultado.
  */
 export default async function PruebaDeVida({
   searchParams,
@@ -24,6 +22,10 @@ export default async function PruebaDeVida({
   const { solicitudId } = await searchParams;
 
   return (
-    <PasoDeCapturaDeSelfie solicitudId={solicitudId} pasoActual={4} siguienteHref="/pendiente" />
+    <PasoDeCapturaDeSelfie
+      solicitudId={solicitudId}
+      pasoActual={4}
+      siguienteHref="/registro/en-revision?motivo=cotejo"
+    />
   );
 }

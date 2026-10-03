@@ -80,6 +80,14 @@ public class GestionarFalloDeVerificacionKycService implements GestionarFalloDeV
                 solicitudId);
     }
 
+    @Override
+    @Transactional
+    public void derivarParaCotejoFacial(UUID solicitudId) {
+        derivarARevisionManual(solicitudId,
+                "Solicitud derivada a un operador para el cotejo facial de la selfie. solicitudId={}",
+                solicitudId);
+    }
+
     /**
      * Marca la solicitud y avisa al titular, una sola vez. Sin titular (senuelo, o el usuario
      * ya no existe) no hay a quien avisar; eso no es un fallo de esta operacion, es el mismo

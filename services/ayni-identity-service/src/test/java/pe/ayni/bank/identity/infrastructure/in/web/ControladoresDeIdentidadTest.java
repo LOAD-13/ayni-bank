@@ -192,7 +192,17 @@ class ControladoresDeIdentidadTest {
                 (solicitudId, confirmados) -> {
                     confirmadosRecibidos = confirmados;
                     return EstadoDelPasoKyc.ACEPTADO;
-                });
+                },
+                (solicitudId, clave) -> EstadoDelPasoKyc.EN_REVISION_MANUAL);
+
+        @Test
+        @DisplayName("HU-03: la selfie entregada pasa a revision de un operador")
+        void laSelfieEntregadaPasaARevision() {
+            var respuesta = controlador.entregarSelfie(UUID.randomUUID(), new SolicitudDeSelfieDto("kyc/x/SELFIE-1.jpg"));
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(respuesta.getBody().estado()).isEqualTo("EN_REVISION_MANUAL");
+        }
 
         @Test
         @DisplayName("traslada la solicitud al caso de uso y devuelve el formulario firmado con su clave")

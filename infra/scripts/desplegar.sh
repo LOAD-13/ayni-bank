@@ -74,6 +74,7 @@ AYNI_JWT_CLAVE=$(param jwt-clave)
 AYNI_CIFRADO_CLAVE=$(param cifrado-clave)
 GRAFANA_CONTRASENA=$(param grafana-contrasena)
 AYNI_BUCKET_KYC=$(param bucket-kyc)
+AYNI_OPERADOR_CLAVE=$(param operador-clave 2>/dev/null || true)
 S3_ACCESS_KEY=$(jq -r .access_key <<<"$ALMACEN")
 S3_SECRET_KEY=$(jq -r .secret_key <<<"$ALMACEN")
 EOF

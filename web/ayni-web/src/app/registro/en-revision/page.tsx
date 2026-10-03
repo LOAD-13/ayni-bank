@@ -25,6 +25,7 @@ export default async function EnRevision({
 }) {
   const { motivo } = await searchParams;
   const diferida = motivo === "diferida";
+  const cotejo = motivo === "cotejo";
 
   return (
     <div className="min-h-screen bg-azul-050">
@@ -51,14 +52,18 @@ export default async function EnRevision({
               <SearchCheck className="h-9 w-9" />
             </span>
             <h1 className="text-[26px] font-bold leading-tight text-azul-800 sm:text-[32px]">
-              {diferida
-                ? "Tu verificación continuará en breve"
-                : "Tu verificación pasó a revisión de una persona"}
+              {cotejo
+                ? "Recibimos tu selfie"
+                : diferida
+                  ? "Tu verificación continuará en breve"
+                  : "Tu verificación pasó a revisión de una persona"}
             </h1>
             <p className="max-w-[640px] text-[15px] leading-relaxed text-gris-700">
-              {diferida
-                ? "Recibimos tus fotos, pero no pudimos terminar de revisarlas en este momento. No tienes que hacer nada más: seguiremos con tu verificación y te avisaremos por correo."
-                : "La comprobación automática no fue concluyente esta vez. Suele pasar por reflejos, poca luz o porque el documento tiene unos años. No es un rechazo y no hiciste nada mal: un analista de Ayni revisará tu solicitud."}
+              {cotejo
+                ? "Tu DNI ya está verificado. Un analista de Ayni compara ahora tu selfie con la foto de tu DNI y, si todo cuadra, abre tu cuenta. Te avisamos por correo."
+                : diferida
+                  ? "Recibimos tus fotos, pero no pudimos terminar de revisarlas en este momento. No tienes que hacer nada más: seguiremos con tu verificación y te avisaremos por correo."
+                  : "La comprobación automática no fue concluyente esta vez. Suele pasar por reflejos, poca luz o porque el documento tiene unos años. No es un rechazo y no hiciste nada mal: un analista de Ayni revisará tu solicitud."}
             </p>
           </div>
 
