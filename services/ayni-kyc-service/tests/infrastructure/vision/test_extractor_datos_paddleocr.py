@@ -81,8 +81,8 @@ def test_debe_usar_los_datos_del_mrz_cuando_el_reverso_se_lee_bien() -> None:
     linea1, linea2, linea3 = _construir_mrz_valido()
     motor = MotorOcrFake(
         respuestas=[
-            ["REPUBLICA DEL PERU", linea1, linea2, linea3, "RENIEC"],  # reverso: MRZ valido
             ["Fecha de Emision", "20 08 2021"],  # anverso: solo aporta la fecha de emision
+            ["REPUBLICA DEL PERU", linea1, linea2, linea3, "RENIEC"],  # reverso: MRZ valido
         ]
     )
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
@@ -106,7 +106,7 @@ def test_debe_devolver_el_mrz_sin_fecha_de_emision_cuando_el_anverso_no_la_muest
     imagen = _imagen_documento_generica()
     almacen = AlmacenObjetosFake({"anverso": imagen, "reverso": imagen})
     linea1, linea2, linea3 = _construir_mrz_valido()
-    motor = MotorOcrFake(respuestas=[[linea1, linea2, linea3], ["REPUBLICA DEL PERU"]])
+    motor = MotorOcrFake(respuestas=[["REPUBLICA DEL PERU"], [linea1, linea2, linea3]])
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
 
     resultado = extractor.extraer("anverso", "reverso")
@@ -122,11 +122,11 @@ def test_debe_caer_a_heuristicas_del_anverso_cuando_el_reverso_no_tiene_mrz() ->
     almacen = AlmacenObjetosFake({"anverso": imagen, "reverso": imagen})
     motor = MotorOcrFake(
         respuestas=[
-            ["REPUBLICA DEL PERU", "RENIEC"],  # reverso: sin MRZ
             [
                 "APELLIDOS", "GARCIA LOPEZ", "NOMBRES", "MARIA JOSE",
                 "SEXO", "F", "FECHA DE NACIMIENTO", "22/03/1995", "87654321",
             ],  # anverso: heuristicas
+            ["REPUBLICA DEL PERU", "RENIEC"],  # reverso: sin MRZ
         ]
     )
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
@@ -149,11 +149,11 @@ def test_debe_caer_a_heuristicas_cuando_el_mrz_tiene_un_checksum_invalido() -> N
     linea1_con_error = linea1.replace("87654321", "87654361")
     motor = MotorOcrFake(
         respuestas=[
-            [linea1_con_error, linea2, linea3],  # reverso: MRZ con checksum invalido
             [
                 "APELLIDOS", "GARCIA LOPEZ", "NOMBRES", "MARIA JOSE",
                 "SEXO", "F", "FECHA DE NACIMIENTO", "22/03/1995", "11111111",
             ],
+            [linea1_con_error, linea2, linea3],  # reverso: MRZ con checksum invalido
         ]
     )
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
@@ -186,8 +186,8 @@ def test_debe_leer_el_mrz_del_anverso_en_el_dni_azul() -> None:
     linea1, linea2, linea3 = _construir_mrz_valido()
     motor = MotorOcrFake(
         respuestas=[
-            ["CONSTANCIA DE SUFRAGIO", "Departamento", "LIMA", "Donacion de Organos NO"],  # reverso
             ["Fecha Emision", "21 08 2023", linea1, linea2, linea3],  # anverso con MRZ
+            ["CONSTANCIA DE SUFRAGIO", "Departamento", "LIMA", "Donacion de Organos NO"],  # reverso
         ]
     )
     extractor = ExtractorDatosPaddleOCR(almacen, motor_ocr=motor)
@@ -202,6 +202,8 @@ def test_debe_leer_el_mrz_del_anverso_en_el_dni_azul() -> None:
     assert resultado.confiable is True
     assert resultado.fecha_emision is not None
     assert resultado.fecha_emision.isoformat() == "2023-08-21"
+    # Con el MRZ ya en el anverso, el reverso no se lee: una lectura de OCR menos.
+    assert motor._indice == 1
 
 
 def test_debe_completar_con_el_anverso_el_segundo_apellido_que_el_mrz_no_trae() -> None:
@@ -211,8 +213,8 @@ def test_debe_completar_con_el_anverso_el_segundo_apellido_que_el_mrz_no_trae() 
     linea3 = "LOA<<JOAQUIN<ALFONSO" + "<" * 10
     motor = MotorOcrFake(
         respuestas=[
-            ["CONSTANCIA DE SUFRAGIO"],
             ["Segundo A pelido", "Fecha Emision", "DENEGRI", linea1, linea2, linea3],
+            ["CONSTANCIA DE SUFRAGIO"],
         ]
     )
 
