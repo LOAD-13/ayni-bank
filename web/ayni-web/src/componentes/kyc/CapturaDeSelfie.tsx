@@ -231,8 +231,8 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
           Prueba de vida
         </h1>
         <p className="mt-2 text-[15px] text-gris-700">
-          Tomamos una foto en vivo para confirmar que eres tú y estás presente. Busca buena luz,
-          sin lentes ni gorra, y mira directamente a la cámara.
+          Tomamos una foto en vivo para confirmar que eres tú y estás presente. Busca buena luz, sin
+          lentes ni gorra, y mira directamente a la cámara.
         </p>
       </div>
 
@@ -311,9 +311,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       )}
 
       {(fase === "revisando" || fase === "subiendo") && foto && (
-        <div
-          className="relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-[20px] bg-noche"
-        >
+        <div className="relative mx-auto aspect-[3/4] w-full max-w-[420px] overflow-hidden rounded-[20px] bg-noche">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={foto.url} alt="Tu selfie capturada" className="h-full w-full object-cover" />
           {fase === "subiendo" && (

@@ -65,7 +65,9 @@ export default async function EnRevision({
           <div className="flex items-start gap-4 rounded-[16px] border border-azul-200 bg-azul-050 p-5">
             <Clock aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-azul-600" />
             <div>
-              <p className="text-[15px] font-semibold text-azul-800">Tiempo estimado de respuesta</p>
+              <p className="text-[15px] font-semibold text-azul-800">
+                Tiempo estimado de respuesta
+              </p>
               <p className="text-[14px] text-gris-700">
                 Te avisamos por correo en cuanto haya resultado. No necesitas volver a empezar.
               </p>
@@ -103,8 +105,8 @@ export default async function EnRevision({
             </Link>
             <p className="flex items-center gap-2 text-[13px] text-gris-500">
               <ShieldCheck aria-hidden="true" className="h-4 w-4" />
-              Puedes cerrar esta página: tu progreso queda guardado y el enlace del correo te trae de
-              vuelta.
+              Puedes cerrar esta página: tu progreso queda guardado y el enlace del correo te trae
+              de vuelta.
             </p>
           </div>
         </div>
