@@ -30,6 +30,18 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
         this.repositorio = repositorio;
         this.reloj = reloj;
         this.metricas = metricas;
+        // Todas las series en 0 al arrancar: increase() de Prometheus no ve el primer evento
+        // de una serie que nace ya valiendo 1, y el tablero de accesos quedaba en 0.
+        for (TipoDeEventoDeAcceso tipo : TipoDeEventoDeAcceso.values()) {
+            contador(tipo);
+        }
+    }
+
+    private Counter contador(TipoDeEventoDeAcceso tipo) {
+        return Counter.builder("ayni.acceso.eventos")
+                .description("Eventos de acceso: ingresos, fallos, bloqueos y renovaciones")
+                .tag("tipo", tipo.name())
+                .register(metricas);
     }
 
     @Override
@@ -38,10 +50,6 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
         repositorio.save(new EventoAuditoriaEntity(
                 tipo.name(), usuarioId, cliente.ip(), cliente.agenteDeUsuario(),
                 reloj.instant()));
-        Counter.builder("ayni.acceso.eventos")
-                .description("Eventos de acceso: ingresos, fallos, bloqueos y renovaciones")
-                .tag("tipo", tipo.name())
-                .register(metricas)
-                .increment();
+        contador(tipo).increment();
     }
 }

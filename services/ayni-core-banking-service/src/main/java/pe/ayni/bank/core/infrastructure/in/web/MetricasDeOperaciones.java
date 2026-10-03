@@ -28,6 +28,34 @@ public class MetricasDeOperaciones {
 
     public MetricasDeOperaciones(MeterRegistry registro) {
         this.registro = registro;
+        registrarEnCero();
+    }
+
+    /**
+     * Crea todas las series en 0 al arrancar. Un contador que nace con la primera operacion
+     * aparece ya valiendo 1, y {@code increase()} de Prometheus no ve aumento en una serie sin
+     * muestra anterior: el primer deposito o la primera transferencia tras cada despliegue no
+     * se contaban y el tablero de KPIs quedaba en 0 o sin datos.
+     */
+    private void registrarEnCero() {
+        for (TipoDeMovimiento tipo : TipoDeMovimiento.values()) {
+            for (String resultado : new String[] {"ACEPTADA", "RECHAZADA"}) {
+                Counter.builder("ayni.operaciones")
+                        .description("Operaciones monetarias por tipo y resultado")
+                        .tags("tipo", tipo.name(), "resultado", resultado)
+                        .register(registro);
+            }
+            Counter.builder("ayni.operaciones.importe.soles")
+                    .description("Importe movido, en soles")
+                    .tag("tipo", tipo.name())
+                    .register(registro);
+        }
+        for (MotivoDeRechazo motivo : MotivoDeRechazo.values()) {
+            Counter.builder("ayni.operaciones.rechazos")
+                    .description("Operaciones rechazadas por motivo")
+                    .tag("motivo", motivo.name())
+                    .register(registro);
+        }
     }
 
     public void aceptada(Comprobante comprobante) {
