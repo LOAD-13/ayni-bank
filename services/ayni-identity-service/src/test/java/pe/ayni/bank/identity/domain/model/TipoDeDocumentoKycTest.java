@@ -12,14 +12,12 @@ class TipoDeDocumentoKycTest {
 
     @ParameterizedTest
     @CsvSource({
-        "pdf, application/pdf",
-        "PDF, application/pdf",
         "png, image/png",
         "PNG, image/png",
         "webp, image/webp",
         "WEBP, image/webp",
     })
-    @DisplayName("reconoce pdf, png y webp sin importar mayusculas o minusculas")
+    @DisplayName("reconoce png y webp sin importar mayusculas o minusculas")
     void reconoceLasExtensionesConTipoPropio(String extension, String tipoEsperado) {
         assertThat(TipoDeDocumentoKyc.ANVERSO.tipoDeContenidoEsperado(extension))
                 .isEqualTo(tipoEsperado);
@@ -32,5 +30,12 @@ class TipoDeDocumentoKycTest {
         assertThat(tipo.tipoDeContenidoEsperado("jpg")).isEqualTo("image/jpeg");
         assertThat(tipo.tipoDeContenidoEsperado("jpeg")).isEqualTo("image/jpeg");
         assertThat(tipo.tipoDeContenidoEsperado("bmp")).isEqualTo("image/jpeg");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"ANVERSO, anverso-", "REVERSO, reverso-", "SELFIE, selfie-"})
+    @DisplayName("el prefijo del objeto es el tipo en minusculas, que es lo que comprueba kyc-service")
+    void prefijoDeObjeto(TipoDeDocumentoKyc tipo, String prefijo) {
+        assertThat(tipo.prefijoDeObjeto()).isEqualTo(prefijo);
     }
 }

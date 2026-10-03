@@ -6,10 +6,10 @@ import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 public interface NotificadorDeVerificacionKycPort {
 
     /**
-     * La solicitud se derivo a revision manual: por agotar el limite de intentos
-     * ({@link pe.ayni.bank.identity.domain.model.ResultadoDelIntentoKyc#DERIVADA_A_REVISION_MANUAL})
-     * o porque kyc-service no respondio. El motivo no cambia el aviso: en los dos casos el
-     * solicitante necesita enterarse de que un operador revisara su caso.
+     * La solicitud se derivo a revision manual: por agotar el limite de intentos de un lado
+     * del DNI, porque lo leido no coincide con lo declarado, o porque kyc-service no
+     * respondio. El motivo no cambia el aviso: en todos los casos el solicitante necesita
+     * enterarse de que un operador revisara su caso.
      */
     void avisarEnRevisionManual(CorreoElectronico correo);
 }

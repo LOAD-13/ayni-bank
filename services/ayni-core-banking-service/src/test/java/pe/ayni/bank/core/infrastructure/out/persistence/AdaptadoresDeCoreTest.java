@@ -24,8 +24,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
+import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 
 /**
  * Los adaptadores de core-banking, con los repositorios simulados.
@@ -187,6 +189,44 @@ class AdaptadoresDeCoreTest {
             adaptador().recordar(UUID.randomUUID(), UUID.randomUUID());
 
             verify(repositorio).save(any(OperacionIdempotenteEntity.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Pista de auditoria")
+    class Pista {
+
+        @Mock
+        private EventoAuditoriaJpaRepository repositorio;
+
+        private AdaptadorPistaDeAuditoria adaptador() {
+            return new AdaptadorPistaDeAuditoria(repositorio, Clock.fixed(AHORA, ZoneOffset.UTC));
+        }
+
+        @Test
+        @DisplayName("una operacion queda con su movimiento y sin motivo")
+        void operacion() {
+            UUID movimiento = UUID.randomUUID();
+            adaptador().registrar(TipoDeEventoDeOperacion.TRANSFERENCIA_REALIZADA, titular, movimiento);
+
+            var fila = ArgumentCaptor.forClass(EventoAuditoriaEntity.class);
+            verify(repositorio).save(fila.capture());
+            assertThat(fila.getValue().getTipo()).isEqualTo("TRANSFERENCIA_REALIZADA");
+            assertThat(fila.getValue().getMovimientoId()).isEqualTo(movimiento);
+            assertThat(fila.getValue().getMotivo()).isNull();
+        }
+
+        @Test
+        @DisplayName("un rechazo queda con su motivo y sin movimiento")
+        void rechazo() {
+            adaptador().registrarRechazo(titular, MotivoDeRechazo.SALDO_INSUFICIENTE);
+
+            var fila = ArgumentCaptor.forClass(EventoAuditoriaEntity.class);
+            verify(repositorio).save(fila.capture());
+            assertThat(fila.getValue().getTipo()).isEqualTo("OPERACION_RECHAZADA");
+            assertThat(fila.getValue().getMovimientoId()).isNull();
+            assertThat(fila.getValue().getMotivo()).isEqualTo("SALDO_INSUFICIENTE");
+            assertThat(fila.getValue().toString()).contains("OPERACION_RECHAZADA");
         }
     }
 }

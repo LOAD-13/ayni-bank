@@ -2,6 +2,7 @@ package pe.ayni.bank.identity.infrastructure.out.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
@@ -18,6 +19,7 @@ import pe.ayni.bank.identity.domain.port.out.NotificadorDeSeguridadPort;
  * su direccion escrita en un log que lee todo el equipo.
  */
 @Component
+@Profile("!prod")
 public class NotificadorDeSeguridadPorEventos implements NotificadorDeSeguridadPort {
 
     private static final Logger log =

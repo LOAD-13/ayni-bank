@@ -22,7 +22,7 @@ export default async function DniReverso({
       pasoActual={3}
       tipoDocumento="REVERSO"
       cara="Reverso"
-      siguienteHref={`/registro/prueba-de-vida?solicitudId=${solicitudId ?? ""}`}
+      siguienteHref={`/registro/confirmar-datos?solicitudId=${solicitudId ?? ""}`}
     />
   );
 }

@@ -17,8 +17,25 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+		# Aislamiento de origen: ninguna otra pagina puede abrir la banca en una
+		# ventana con acceso a ella ni incrustar sus recursos.
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
 		-Server
+		# Next.js anuncia su cache interna: no aporta nada al cliente y
+		# describe la plataforma a quien la explora (hallazgo de Nikto).
+		-X-Nextjs-Cache
+		-X-Nextjs-Prerender
+		-X-Nextjs-Stale-Time
 	}
+
+	# Politica de contenido de la web (hallazgo de ZAP y Nikto). Solo scripts,
+	# estilos y fuentes propios; la unica conexion a otro origen es la subida
+	# del DNI y la selfie a S3 con URL prefirmada. 'unsafe-inline' en scripts lo
+	# exige la hidratacion de Next.js sin nonces; frame-ancestors 'none' impide
+	# incrustar la banca en otra pagina. No se aplica a Grafana, que trae la suya.
+	@web not path /grafana*
+	header @web Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://*.s3.amazonaws.com https://*.s3.us-east-1.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
 
 	# Chequeo de salud publico: lo consultan el pipeline tras desplegar y
 	# cualquiera que quiera saber si el sistema esta arriba. Responde el
@@ -32,6 +49,12 @@
 	# peticiones entre origenes y la cookie de renovacion es de primer nivel.
 	handle /api/* {
 		reverse_proxy ayni-gateway:8080
+	}
+
+	# Grafana con sus tableros (AYNI-159). Tiene su propio inicio de sesion;
+	# Prometheus no se publica.
+	handle /grafana* {
+		reverse_proxy ayni-grafana:3000
 	}
 
 	handle {

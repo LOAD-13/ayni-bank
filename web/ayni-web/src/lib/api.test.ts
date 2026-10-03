@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  confirmarDatosDelDni,
   consultarCuenta,
   consultarTitular,
   ErrorDeApi,
+  evaluarCaptura,
+  extraerDatosDelDni,
   generarDesafioCodigo,
   presentarCredenciales,
   reenviarCodigoRegistro,
@@ -188,25 +191,81 @@ describe("api client", () => {
     );
   });
 
-  it("solicitarUrlDeSubida y subirDocumento funcionan", async () => {
+  it("solicitarUrlDeSubida devuelve el formulario y subirDocumento lo envía por POST", async () => {
+    const destino = {
+      url: "http://minio/ayni-kyc-documentos",
+      campos: { key: "kyc/s/anverso-x.png", "Content-Type": "image/png", policy: "p" },
+      claveDeObjeto: "kyc/s/anverso-x.png",
+      expiraEn: "2026-09-12T10:05:00Z",
+    };
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ url: "http://minio/upload", expiraEn: "5m" }),
+      json: async () => destino,
     });
 
     const resUrl = await solicitarUrlDeSubida("sol-1", "ANVERSO", "png");
-    expect(resUrl.url).toBe("http://minio/upload");
+    expect(resUrl.claveDeObjeto).toBe("kyc/s/anverso-x.png");
 
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-    });
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: true });
 
     const testFile = new File(["test"], "test.png", { type: "image/png" });
-    await subirDocumento("http://minio/upload", testFile);
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "http://minio/upload",
-      expect.objectContaining({ method: "PUT" }),
-    );
+    await subirDocumento(resUrl, testFile);
+
+    const [url, opciones] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[1];
+    expect(url).toBe("http://minio/ayni-kyc-documentos");
+    expect(opciones.method).toBe("POST");
+    const formulario = opciones.body as FormData;
+    // Los campos de la política primero y el archivo al final: S3 ignora lo que va detrás.
+    expect([...formulario.keys()]).toEqual(["key", "Content-Type", "policy", "file"]);
+    expect(formulario.get("policy")).toBe("p");
+  });
+
+  it.each([400, 403])(
+    "subirDocumento explica un %i de la política como archivo que no cumple",
+    async (estado) => {
+      // 400 = EntityTooLarge (más de 5 MB), 403 = tipo distinto del firmado: medido contra MinIO.
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        status: estado,
+      });
+
+      await expect(
+        subirDocumento(
+          { url: "http://minio/b", campos: {}, claveDeObjeto: "k", expiraEn: "" },
+          new File(["x"], "x.jpg", { type: "image/jpeg" }),
+        ),
+      ).rejects.toMatchObject({ problema: { detail: expect.stringMatching(/5 MB/) } });
+    },
+  );
+
+  it("evaluarCaptura, extraerDatosDelDni y confirmarDatosDelDni llaman a sus rutas por POST", async () => {
+    const fetchSimulado = globalThis.fetch as ReturnType<typeof vi.fn>;
+    fetchSimulado
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ estado: "ACEPTADO" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ estado: "VERIFICACION_DIFERIDA" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ estado: "ACEPTADO" }) });
+
+    await evaluarCaptura("sol-1", "REVERSO", "kyc/sol-1/reverso-x.jpg");
+    await extraerDatosDelDni("sol-1");
+    await confirmarDatosDelDni("sol-1", {
+      nombres: "Ana",
+      apellidos: "Quispe",
+      fechaNacimiento: "1990-05-15",
+      sexo: "F",
+      fechaEmision: "2021-08-20",
+    });
+
+    const llamadas = fetchSimulado.mock.calls;
+    expect(llamadas[0][0]).toMatch(/\/api\/v1\/solicitudes\/sol-1\/documentos$/);
+    expect(JSON.parse(llamadas[0][1].body)).toEqual({
+      tipoDocumento: "REVERSO",
+      claveDeObjeto: "kyc/sol-1/reverso-x.jpg",
+    });
+    // La lectura lanza el OCR: es un POST aunque no lleve datos, no una consulta.
+    expect(llamadas[1][0]).toMatch(/\/documentos\/extraccion$/);
+    expect(llamadas[1][1].method).toBe("POST");
+    expect(llamadas[2][0]).toMatch(/\/identidad\/confirmacion$/);
+    expect(JSON.parse(llamadas[2][1].body)).not.toHaveProperty("numero");
   });
 
   it("lanza ErrorDeApi cuando la respuesta HTTP no es ok", async () => {

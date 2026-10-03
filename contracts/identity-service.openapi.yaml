@@ -7,8 +7,8 @@ openapi: 3.0.3
 # hablan con identity, y porque un cambio aqui debe pasar por revision de Pull
 # Request igual que un cambio de codigo.
 #
-# Crece historia a historia. Hoy cubre HU-01 (registro), HU-02 (solo la
-# subida de documentos a MinIO, AYNI-13 subtarea 7) y HU-04 (ingreso con
+# Crece historia a historia. Hoy cubre HU-01 (registro), HU-02 (subida,
+# evaluacion, lectura y confirmacion del DNI, ADR-0028) y HU-04 (ingreso con
 # segundo factor).
 
 info:
@@ -92,22 +92,19 @@ paths:
     post:
       tags: [onboarding]
       operationId: generarUrlDeSubidaDeDocumento
-      summary: Firma una URL para subir un documento KYC directamente a MinIO
+      summary: Firma un formulario para subir un documento KYC directamente a MinIO
       description: |
-        El navegador sube el archivo con un PUT directo a la URL devuelta; la
-        imagen nunca atraviesa este servicio (diseno-base.md §3.4-3.5, §4.1).
+        El navegador sube el archivo con un POST multipart directo a `url`,
+        enviando primero todos los `campos` tal cual y el archivo al final (campo
+        `file`); la imagen nunca atraviesa este servicio (diseno-base.md §3.4-3.5,
+        §4.1).
 
-        La URL es valida durante 5 minutos. No persiste nada todavia: ni el
-        estado de la solicitud ni el registro del documento (eso lo cubren
-        subtareas posteriores de AYNI-13, cuando exista la tabla
-        `documento_kyc`). Este endpoint es solo el mecanismo de subida.
+        Es una politica POST, no una URL PUT: fija la clave, el tipo de contenido
+        y un tamano maximo de 5 MB, y MinIO rechaza la subida que no los cumpla.
+        Vale durante 5 minutos. Despues, el navegador devuelve `claveDeObjeto`
+        a `POST /solicitudes/{solicitudId}/documentos` para que se evalue.
       parameters:
-        - name: solicitudId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+        - $ref: "#/components/parameters/SolicitudId"
       requestBody:
         required: true
         content:
@@ -116,7 +113,7 @@ paths:
               $ref: "#/components/schemas/SolicitudUrlDeSubida"
       responses:
         "200":
-          description: URL de subida firmada
+          description: Formulario de subida firmado
           content:
             application/json:
               schema:
@@ -129,6 +126,134 @@ paths:
                 $ref: "#/components/schemas/ProblemaValidacion"
         "404":
           description: La solicitud no existe, o es un senuelo sin titular
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /solicitudes/{solicitudId}/documentos:
+    post:
+      tags: [onboarding]
+      operationId: evaluarCapturaDeDni
+      summary: Evalua la foto de un lado del DNI recien subida
+      description: |
+        HU-02, escenarios 1 a 5. Todos los resultados de negocio responden 200
+        con un `estado`; no son errores, son pasos del flujo:
+
+        - `ACEPTADO`: la foto es un DNI con calidad suficiente. Queda registrada
+          con su SHA-256, tipo MIME y tamano.
+        - `RECHAZADO`: con el `motivo` concreto y los `intentosRestantes` de ese
+          lado. La foto se borra del almacen.
+        - `EN_REVISION_MANUAL`: se agotaron los 3 intentos de ese lado.
+        - `VERIFICACION_DIFERIDA`: kyc-service no respondio; la solicitud queda
+          en revision y el solicitante no ve un error tecnico.
+      parameters:
+        - $ref: "#/components/parameters/SolicitudId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudDeEvaluacion"
+      responses:
+        "200":
+          description: Resultado de la evaluacion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoDeCaptura"
+        "400":
+          description: |
+            Cuerpo invalido, o la clave no es una foto subida de ese lado para
+            esta solicitud (no existe, es de otra solicitud o supera 5 MB).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "404":
+          description: La solicitud no existe, o es un senuelo sin titular
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /solicitudes/{solicitudId}/documentos/extraccion:
+    post:
+      tags: [onboarding]
+      operationId: extraerDatosDelDni
+      summary: Lee por OCR los datos del DNI de las dos fotos aceptadas
+      description: |
+        Antes de leer comprueba que las fotos no cambiaron desde que se
+        evaluaron (SHA-256); si cambiaron, `EN_REVISION_MANUAL`. Si el OCR no
+        encuentra los datos, `RECHAZADO` con los intentos que quedan del reverso.
+
+        El numero va enmascarado: el titular lo reescribe entero solo si esta mal.
+      parameters:
+        - $ref: "#/components/parameters/SolicitudId"
+      responses:
+        "200":
+          description: Datos leidos, o el estado del paso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultadoDeExtraccion"
+        "404":
+          description: La solicitud no existe, o es un senuelo sin titular
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "409":
+          description: Falta la foto aceptada de alguno de los dos lados
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /solicitudes/{solicitudId}/identidad/confirmacion:
+    post:
+      tags: [onboarding]
+      operationId: confirmarDatosDelDni
+      summary: El titular confirma o corrige los datos leidos del DNI
+      description: |
+        Lo confirmado se contrasta con lo declarado en el registro (ADR-0009).
+        Si coincide, `ACEPTADO` y la solicitud pasa a `DOCUMENTO_CARGADO`. Si no,
+        o si se cambia el numero o la fecha de nacimiento de una lectura del MRZ
+        con digitos verificadores validos, `EN_REVISION_MANUAL`.
+      parameters:
+        - $ref: "#/components/parameters/SolicitudId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SolicitudDeConfirmacion"
+      responses:
+        "200":
+          description: Estado del paso
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [estado]
+                properties:
+                  estado:
+                    type: string
+                    enum: [ACEPTADO, EN_REVISION_MANUAL]
+        "400":
+          description: Los datos no son validos
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "404":
+          description: La solicitud no existe, o es un senuelo sin titular
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+        "409":
+          description: Todavia no hay una lectura del DNI que confirmar
           content:
             application/problem+json:
               schema:
@@ -420,6 +545,15 @@ paths:
                 $ref: "#/components/schemas/Problema"
 
 components:
+  parameters:
+    SolicitudId:
+      name: solicitudId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
   schemas:
     SolicitudRegistro:
       type: object
@@ -525,7 +659,8 @@ components:
           example: ANVERSO
         extension:
           type: string
-          enum: [jpg, jpeg, png]
+          enum: [jpg, jpeg, png, webp]
+          description: Sin PDF; kyc-service analiza la imagen con OpenCV, que no lo lee.
           example: jpg
       example:
         tipoDocumento: ANVERSO
@@ -533,21 +668,138 @@ components:
 
     UrlDeSubida:
       type: object
-      required: [url, expiraEn]
+      required: [url, campos, claveDeObjeto, expiraEn]
       properties:
         url:
           type: string
           format: uri
+          description: Destino del formulario POST (el bucket de documentos KYC).
+        campos:
+          type: object
+          additionalProperties:
+            type: string
           description: |
-            URL pre-firmada de subida (metodo PUT). El navegador sube el
-            archivo directamente aqui, con su propio Content-Type.
+            Campos del formulario, a enviar tal cual antes del archivo: `key`,
+            `Content-Type`, `policy` y los de la firma `x-amz-*`.
+        claveDeObjeto:
+          type: string
+          description: Clave con la que quedara guardado; se devuelve al pedir la evaluacion.
         expiraEn:
           type: string
           format: date-time
-          description: Momento en que la URL deja de ser valida (5 minutos despues de emitida).
+          description: Momento en que el formulario deja de ser valido (5 minutos despues de emitido).
       example:
-        url: https://minio.ayni.pe/ayni-kyc-documentos/kyc/6b1f9c2a.../anverso-...jpg?X-Amz-...
+        url: https://minio.ayni.pe/ayni-kyc-documentos
+        campos:
+          key: kyc/6b1f9c2a-.../anverso-....jpg
+          Content-Type: image/jpeg
+          policy: eyJleHBpcmF0aW9uIjoi...
+          x-amz-algorithm: AWS4-HMAC-SHA256
+          x-amz-credential: ayni_minio/20260906/us-east-1/s3/aws4_request
+          X-Amz-Date: 20260906T100000Z
+          x-amz-signature: 526ce79e...
+        claveDeObjeto: kyc/6b1f9c2a-.../anverso-....jpg
         expiraEn: "2026-09-06T10:05:00Z"
+
+    SolicitudDeEvaluacion:
+      type: object
+      required: [tipoDocumento, claveDeObjeto]
+      additionalProperties: false
+      properties:
+        tipoDocumento:
+          type: string
+          enum: [ANVERSO, REVERSO]
+        claveDeObjeto:
+          type: string
+          maxLength: 255
+          description: La `claveDeObjeto` que devolvio url-de-subida.
+
+    ResultadoDeCaptura:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [ACEPTADO, RECHAZADO, EN_REVISION_MANUAL, VERIFICACION_DIFERIDA]
+        motivo:
+          type: string
+          enum: [NO_ES_DNI, ENCUADRE, DESENFOQUE, REFLEJO, ILUMINACION]
+          description: Solo si `estado` es RECHAZADO.
+        intentosRestantes:
+          type: integer
+          minimum: 0
+          maximum: 2
+          description: Solo si `estado` es RECHAZADO. Fotos que quedan de ese lado.
+      example:
+        estado: RECHAZADO
+        motivo: DESENFOQUE
+        intentosRestantes: 2
+
+    ResultadoDeExtraccion:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [ACEPTADO, RECHAZADO, EN_REVISION_MANUAL, VERIFICACION_DIFERIDA]
+        datos:
+          $ref: "#/components/schemas/DatosLeidosDelDni"
+        intentosRestantes:
+          type: integer
+          minimum: 0
+          description: Solo si `estado` es RECHAZADO (el OCR no pudo leer el reverso).
+
+    DatosLeidosDelDni:
+      type: object
+      required: [numeroEnmascarado, nombres, apellidos, fechaNacimiento, sexo, confiable]
+      properties:
+        numeroEnmascarado:
+          type: string
+          example: "****6677"
+        nombres:
+          type: string
+          example: ANA LUCIA
+        apellidos:
+          type: string
+          example: QUISPE MAMANI
+        fechaNacimiento:
+          type: string
+          format: date
+        sexo:
+          type: string
+          enum: [M, F]
+        fechaEmision:
+          type: string
+          format: date
+          description: Ausente si el OCR no la encontro; el titular la completa al confirmar.
+        confiable:
+          type: boolean
+          description: Verdadero si vienen del MRZ con sus digitos verificadores validos.
+
+    SolicitudDeConfirmacion:
+      type: object
+      required: [nombres, apellidos, fechaNacimiento, sexo, fechaEmision]
+      additionalProperties: false
+      properties:
+        numero:
+          type: string
+          pattern: '^\d{8}$'
+          description: Opcional. Vacio o ausente conserva el numero leido.
+        nombres:
+          type: string
+          maxLength: 80
+        apellidos:
+          type: string
+          maxLength: 120
+        fechaNacimiento:
+          type: string
+          format: date
+        sexo:
+          type: string
+          enum: [M, F]
+        fechaEmision:
+          type: string
+          format: date
 
     Credenciales:
       type: object

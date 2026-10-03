@@ -23,7 +23,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
+  // En CI, ademas de las anotaciones del PR, un informe HTML navegable que se publica
+  // como artefacto: es la evidencia de las pruebas de interfaz.
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never", outputFolder: "informe-playwright" }]]
+    : [["list"], ["html", { open: "never", outputFolder: "informe-playwright" }]],
 
   use: {
     baseURL: `http://127.0.0.1:${PUERTO}`,

@@ -1,0 +1,25 @@
+# Override para levantar el entorno mientras infra/docker/docker-compose.yml siga
+# apuntando a minio/minio y minio/mc, que ya no existen en Docker Hub
+# ("pull access denied ... repository does not exist").
+#
+# Uso, desde la raiz del repo:
+#   docker compose --env-file .env -f infra/docker/docker-compose.yml \
+#     -f tests/e2e-hu02/compose.minio-bitnami.yml up -d --build --wait \
+#     ayni-web ayni-gateway ayni-identity-service ayni-core-banking-service \
+#     ayni-notification-service ayni-kyc-service
+services:
+  minio:
+    image: bitnamilegacy/minio:latest
+    command: ["/opt/bitnami/scripts/minio/run.sh"]
+    environment:
+      MINIO_CONSOLE_PORT_NUMBER: "9001"
+    volumes: !override
+      - minio-data:/bitnami/minio/data
+    healthcheck:
+      # La imagen de Bitnami no trae el alias `local` que usa `mc ready local`.
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+  minio-init:
+    image: bitnamilegacy/minio-client:latest
+    environment:
+      # Corre como uid 1001 y mc necesita escribir su configuracion.
+      HOME: /tmp

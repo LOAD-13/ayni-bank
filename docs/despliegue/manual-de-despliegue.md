@@ -64,6 +64,7 @@ aws ssm put-parameter --type SecureString --name $P/jwt-clave            --value
 aws ssm put-parameter --type SecureString --name $P/cifrado-clave        --value "$(openssl rand -base64 32)"
 aws ssm put-parameter --type SecureString --name $P/db-app-contrasena    --value "$(openssl rand -base64 24 | tr -d '/+=')"
 aws ssm put-parameter --type SecureString --name $P/rabbitmq-contrasena  --value "$(openssl rand -base64 24 | tr -d '/+=')"
+aws ssm put-parameter --type SecureString --name $P/grafana-contrasena   --value "$(openssl rand -base64 18 | tr -d '/+=')"
 aws ssm put-parameter --type String       --name $P/db-host              --value "<EndpointBaseDeDatos>"
 aws ssm put-parameter --type String       --name $P/db-secreto-admin     --value "<SecretoBaseDeDatos>"
 aws ssm put-parameter --type String       --name $P/bucket-kyc           --value "<BucketKyc>"
@@ -111,6 +112,7 @@ Para comprobar a simple vista que llegó: la pantalla de ingreso muestra **«ver
 | Ver los contenedores | `cd /opt/ayni && docker compose -f docker-compose.prod.yml ps` |
 | Ver los registros | `docker logs ayni-core-banking-service --since 10m` |
 | Salud | `curl https://<url>/api/health` |
+| Tableros (Grafana) | `https://<url>/grafana` · usuario `admin`, contraseña en `/ayni/prod/grafana-contrasena` |
 | Métricas de la base | Consola RDS → `ayni-bank-prod` → *Monitoring* y *Logs & events* (CloudWatch) |
 | Restaurar la base a un instante | Consola RDS → *Restore to point in time* (crea una instancia nueva) |
 | Encender fuera de horario | `aws ec2 start-instances --instance-ids <InstanciaId>` |
@@ -123,6 +125,22 @@ Para comprobar a simple vista que llegó: la pantalla de ingreso muestra **«ver
 2. La web responde 200.
 3. La pantalla de ingreso muestra la versión recién desplegada.
 4. HTTP redirige a HTTPS.
-5. Están las cabeceras HSTS y `X-Frame-Options: DENY`, y no se expone `X-Powered-By`.
+5. Están las cabeceras HSTS, `X-Frame-Options: DENY` y `Content-Security-Policy`, y no se expone `X-Powered-By`.
 6. Un inicio de sesión con datos inválidos devuelve **400**, no 200 ni 500.
 7. Una ruta protegida sin token devuelve **401**.
+
+## 10. Observabilidad
+
+Prometheus, Grafana y node-exporter corren en la misma instancia (AYNI-159). Solo Grafana se
+publica, en `/grafana` y con contraseña; Prometheus y los endpoints `/actuator/prometheus` viven en
+la red interna de Docker. La configuración se versiona en `infra/observability/` y la descarga
+`desplegar.sh` del mismo commit que se despliega.
+
+| Tablero | Qué responde |
+|---|---|
+| **Ayni Bank · Salud técnica** | ¿Está arriba? Servicios activos, disponibilidad 24 h (SLO 99,5 %), peticiones/s, errores 5xx (SLO < 1 %), latencia p95 (SLO < 500 ms), heap y CPU de cada JVM, conexiones a RDS, CPU/memoria/disco/red de la EC2 y latencia del OCR. |
+| **Ayni Bank · KPIs de negocio** | ¿Se usa? Transferencias y depósitos, importe movido, ticket promedio, tasa de éxito, rechazos por motivo, ingresos exitosos y fallidos, bloqueos y reutilización de tokens. |
+
+Las métricas de negocio las emiten los servicios con Micrometer (`ayni_operaciones_total`,
+`ayni_operaciones_importe_soles_total`, `ayni_operaciones_rechazos_total`,
+`ayni_acceso_eventos_total`) y no llevan etiquetas que identifiquen al cliente.

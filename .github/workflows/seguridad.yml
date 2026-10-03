@@ -37,12 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Escaneo ZAP baseline
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.14.0
         with:
           target: ${{ inputs.objetivo }}
           # Informa de todo lo que encuentra; no falla el job por hallazgos,
           # porque el objetivo es recoger evidencia, no bloquear nada.
           fail_action: false
+          # Sin permiso para abrir issues: el informe va como artefacto.
+          allow_issue_writing: false
           cmd_options: "-a"
           artifact_name: zap-baseline
 
@@ -76,11 +78,11 @@ jobs:
     steps:
       - name: Escaneo Nikto
         run: |
-          mkdir -p informes
-          # Nikto oficial en contenedor; -maxtime acota la ejecucion.
-          docker run --rm -v "$PWD/informes:/out" sullo/nikto:latest \
-            -h "${{ inputs.objetivo }}" -maxtime 300s \
-            -o /out/nikto.txt -Format txt || true
+          mkdir -p informes && chmod 777 informes
+          # Nikto desde su repositorio oficial (la imagen publicada ya no existe).
+          sudo apt-get update && sudo apt-get install -y libxml-writer-perl libnet-ssleay-perl libjson-perl
+          git clone --depth 1 https://github.com/sullo/nikto.git /tmp/nikto
+          perl /tmp/nikto/program/nikto.pl -h "${{ inputs.objetivo }}" -maxtime 300s             -o informes/nikto.txt -Format txt || true
           echo "── Resumen ──"; cat informes/nikto.txt || true
 
       - uses: actions/upload-artifact@v4
@@ -96,7 +98,8 @@ jobs:
       - name: Analizar la configuracion TLS
         run: |
           HOST=$(echo "${{ inputs.objetivo }}" | sed -E 's#^https?://##; s#/.*$##')
-          mkdir -p informes
+          # El contenedor escribe con otro usuario: sin esto el informe no se crea.
+          mkdir -p informes && chmod 777 informes
           docker run --rm -v "$PWD/informes:/out" drwetter/testssl.sh:latest \
             --quiet --color 0 --logfile /out/testssl.txt "$HOST:443" || true
           echo "── Resumen ──"; tail -40 informes/testssl.txt || true
