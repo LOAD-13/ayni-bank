@@ -68,6 +68,17 @@ services:
     logging: *logs
     networks: [ayni]
 
+  # Contadores del limite de tasa del gateway (AYNI-160). Sin persistencia a
+  # proposito: un contador de intentos por minuto no tiene nada que recuperar
+  # tras un reinicio, y asi no escribe en disco ni guarda datos de nadie.
+  ayni-redis:
+    image: redis:7.4-alpine
+    container_name: ayni-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    logging: *logs
+    networks: [ayni]
+
   ayni-gateway:
     <<: *java-common
     image: ${REGISTRO}/ayni/ayni-gateway:${ETIQUETA}
@@ -76,7 +87,9 @@ services:
       <<: *java-env
       AYNI_ORIGENES_PERMITIDOS: https://${AYNI_DOMINIO}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
+      SPRING_DATA_REDIS_HOST: ayni-redis
     depends_on:
+      ayni-redis: { condition: service_started }
       ayni-identity-service: { condition: service_healthy }
       ayni-core-banking-service: { condition: service_healthy }
     healthcheck:

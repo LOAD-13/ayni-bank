@@ -113,6 +113,16 @@ services:
   # El contexto de construccion es la raiz del repositorio, no el directorio del
   # servicio: el Dockerfile copia el pom.xml padre y los pom de los cuatro modulos
   # Java, porque Maven aborta si el padre declara un modulo que no encuentra.
+  # Contadores del limite de tasa del gateway (AYNI-160). Sin persistencia a
+  # proposito: un contador de intentos por minuto no tiene nada que recuperar
+  # tras un reinicio, y asi no escribe en disco ni guarda datos de nadie.
+  ayni-redis:
+    image: redis:7.4-alpine
+    container_name: ayni-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    networks: [ayni]
+
   ayni-gateway:
     <<: *java-common
     build:
@@ -128,11 +138,13 @@ services:
       # empieza a recibir errores de CORS que no dicen que la causa es el puerto.
       AYNI_ORIGENES_PERMITIDOS: >-
         http://localhost:${AYNI_WEB_PORT:-3000},http://127.0.0.1:${AYNI_WEB_PORT:-3000}
+      SPRING_DATA_REDIS_HOST: ayni-redis
     # service_healthy, no service_started: el health check de estos servicios
     # incluye el estado de la base de datos, asi que esperar a que esten sanos
     # verifica que Flyway aplico sus migraciones. Con service_started el gateway
     # arrancaria sobre servicios que todavia no pueden atender.
     depends_on:
+      ayni-redis: { condition: service_started }
       ayni-identity-service: { condition: service_healthy }
       ayni-core-banking-service: { condition: service_healthy }
     healthcheck:

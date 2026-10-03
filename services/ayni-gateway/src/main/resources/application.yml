@@ -11,6 +11,96 @@ spring:
           # JWT, el CORS y la limitacion de tasa no se puedan esquivar llamando
           # directamente al servicio de detras.
           routes:
+            # ── Limite de tasa · AYNI-160 ─────────────────────────────────────────
+            # Propuesta del taller de seguridad de la semana 8. Van antes que las rutas
+            # generales porque el gateway usa la primera que casa. Cada limite es una
+            # cubeta de fichas en Redis: se repone una ficha por segundo y la peticion
+            # cuesta N, asi que caben 60/N por minuto con una rafaga inicial de 5.
+            # Al superarlo responde 429 con Retry-After.
+            # Ingreso: 5/min por IP. Blanco de fuerza bruta y credential stuffing.
+            - id: limite-ingreso
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/sesion
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 12
+
+            # Codigos de segundo factor: 10/min. Seis digitos son solo un millon de combinaciones.
+            - id: limite-segundo-factor
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/sesion/segundo-factor,/api/v1/segundo-factor/desafio/*/verificar,/api/v1/usuarios/*/codigo/verificar
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 30
+                    redis-rate-limiter.requestedTokens: 6
+
+            # Renovacion de sesion: 20/min por IP. Uso legitimo alto pero acotado.
+            - id: limite-renovacion
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/sesion/renovacion
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 15
+                    redis-rate-limiter.requestedTokens: 3
+
+            # Registro: 3/min por IP. Frena el alta masiva de cuentas falsas.
+            - id: limite-registro
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/registro
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 100
+                    redis-rate-limiter.requestedTokens: 20
+
+            # URL de subida del DNI y la selfie: 10/hora. Cada subida consume almacenamiento y OCR.
+            - id: limite-subida-kyc
+              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/solicitudes/*/documentos/url-de-subida
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3600
+                    redis-rate-limiter.requestedTokens: 360
+
+            # Operaciones con dinero: 10/min por titular. Se suma a la idempotencia.
+            - id: limite-transferencias
+              uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              predicates:
+                - Method=POST
+                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@porUsuario}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 30
+                    redis-rate-limiter.requestedTokens: 6
+
             - id: identity
               uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
               predicates:
@@ -23,7 +113,9 @@ spring:
                 # mano mientras no exista el OCR. El endpoint al que llega lleva
                 # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
                 # resuelve a nada: el bean ni se crea. Se retira con HU-02.
-                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
+                # `/api/v1/segundo-factor/**` faltaba: el desafio de segundo factor por
+                # correo respondia 404 a traves del gateway (AYNI-160).
+                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**,/api/v1/segundo-factor/**
 
             - id: core-banking
               uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
@@ -46,6 +138,11 @@ spring:
                 allowedHeaders: ["*"]
                 allowCredentials: true
                 maxAge: 3600
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
 ayni:
   jwt:
@@ -79,7 +176,12 @@ management:
     health:
       probes:
         enabled: true
+  # La salud del gateway no depende de Redis: si el contador cae, el limitador deja
+  # pasar y el sistema sigue atendiendo. Que /api/health dijera DOWN por eso seria
+  # disparar una reversion del despliegue por algo que no impide operar.
   health:
+    redis:
+      enabled: false
     livenessState:
       enabled: true
     readinessState:

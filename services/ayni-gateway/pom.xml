@@ -41,6 +41,13 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
         </dependency>
+        <!-- Contadores del limite de tasa (AYNI-160). En Redis y no en memoria: con dos
+             instancias del gateway y el contador en memoria, el atacante tendria el
+             doble de intentos. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
