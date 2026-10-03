@@ -20,7 +20,7 @@ export function TarjetaDeComprobante({ comprobante }: { comprobante: Comprobante
   return (
     <section
       aria-labelledby="titulo-comprobante"
-      className="max-w-xl rounded-[20px] border border-azul-200 bg-blanco p-7"
+      className="mx-auto w-full max-w-2xl rounded-[20px] border border-azul-200 bg-blanco p-8 shadow-sm"
     >
       <div className="flex items-center gap-3">
         <CircleCheck aria-hidden="true" className="h-8 w-8 text-exito" />
