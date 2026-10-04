@@ -400,10 +400,11 @@ Resources:
 
   # ─── Horario de la instancia ──────────────────────────────────────────────
   # La cuenta esta en el plan gratuito: todo se descuenta de los creditos y el
-  # computo es lo que mas consume. La instancia se enciende sola a las 9:00 y se
-  # apaga a las 23:00 (hora de Lima): el sistema esta disponible en horario de
-  # clases y demos sin pagar las horas de madrugada. La base de datos sigue activa
-  # para no perder sus copias.
+  # computo es lo que mas consume. La instancia se apaga sola cada noche a las
+  # 23:00 (hora de Lima). Para la sustentacion del APF2 se enciende sola a las
+  # 16:00 hasta el lunes 5 de octubre de 2026; despues ya no se enciende sola y
+  # la enciende el equipo cuando la necesita. La base de datos sigue activa para
+  # no perder sus copias.
   RolProgramador:
     Type: AWS::IAM::Role
     Properties:
@@ -426,9 +427,11 @@ Resources:
   Encender:
     Type: AWS::Scheduler::Schedule
     Properties:
-      Name: ayni-encender-0900
-      ScheduleExpression: cron(0 9 * * ? *)
+      Name: ayni-encender-1600
+      ScheduleExpression: cron(0 16 * * ? *)
       ScheduleExpressionTimezone: America/Lima
+      # Hasta el final del lunes 5-oct-2026 en Lima (00:00 del martes = 05:00 UTC).
+      EndDate: "2026-10-06T05:00:00Z"
       FlexibleTimeWindow: { Mode: "OFF" }
       Target:
         Arn: arn:aws:scheduler:::aws-sdk:ec2:startInstances
