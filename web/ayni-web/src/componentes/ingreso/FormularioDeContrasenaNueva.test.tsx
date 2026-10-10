@@ -15,7 +15,7 @@ vi.mock("@/lib/api", async (original) => ({
 const validar = vi.mocked(validarEnlaceDeRecuperacion);
 const restablecer = vi.mocked(restablecerContrasena);
 
-const TOKEN = "Qm9uaXRhLWNsYXZlLWRlLTMyLWJ5dGVzLWFsZWF0b3Jp";
+const TOKEN = "token-de-prueba-de-recuperacion-0000";
 const BUENA = "Nueva!Clave2026#";
 
 function abrirEnlace(fragmento: string) {

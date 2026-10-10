@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { tokenDelFragmento } from "./recuperacion";
 
-const TOKEN = "Qm9uaXRhLWNsYXZlLWRlLTMyLWJ5dGVzLWFsZWF0b3Jp";
+const TOKEN = "token-de-prueba-de-recuperacion-0000";
 
 describe("tokenDelFragmento", () => {
   it("lee el token del fragmento, con o sin almohadilla", () => {
