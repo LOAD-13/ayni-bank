@@ -23,6 +23,7 @@ import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
 import pe.ayni.bank.identity.domain.model.CuentaInhabilitadaException;
 import pe.ayni.bank.identity.domain.model.DesafioExpiradoException;
 import pe.ayni.bank.identity.domain.model.DocumentoNoSubidoException;
+import pe.ayni.bank.identity.domain.model.EnlaceDeRecuperacionInvalidoException;
 import pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
@@ -188,6 +189,17 @@ public class ManejadorDeErrores {
     public ProblemDetail alFaltarUnPasoAnterior(CapturasIncompletasException excepcion, WebRequest peticion) {
         return problema(HttpStatus.CONFLICT, "capturas-incompletas",
                 "Falta un paso anterior", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /**
+     * HU-21: el enlace de recuperacion no sirve. 410 porque el recurso existio o pudo
+     * existir y ya no esta disponible; el mismo mensaje para caducado, usado o inventado.
+     */
+    @ExceptionHandler(EnlaceDeRecuperacionInvalidoException.class)
+    public ProblemDetail alNoServirElEnlace(EnlaceDeRecuperacionInvalidoException excepcion,
+                                           WebRequest peticion) {
+        return problema(HttpStatus.GONE, "enlace-de-recuperacion-invalido",
+                "El enlace ya no es valido", excepcion.getMessage(), List.of(), peticion);
     }
 
     /** Objetos de valor del dominio que rechazan su entrada. */

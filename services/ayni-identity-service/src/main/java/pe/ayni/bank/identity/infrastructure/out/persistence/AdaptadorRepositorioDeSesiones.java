@@ -69,4 +69,10 @@ public class AdaptadorRepositorioDeSesiones implements RepositorioDeSesionesPort
     public void invalidarFamilia(UUID familiaId) {
         tokens.invalidarFamilia(familiaId, reloj.instant());
     }
+
+    @Override
+    @Transactional
+    public void invalidarSesionesDe(UUID usuarioId) {
+        tokens.invalidarDelUsuario(usuarioId, reloj.instant());
+    }
 }

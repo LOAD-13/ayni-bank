@@ -73,6 +73,8 @@ public final class DoblesEnMemoria {
 
         @Override
         public Usuario guardar(Usuario usuario) {
+            // Guardar uno que ya existe lo sustituye, como hace la base (HU-21 cambia la contrasena).
+            guardados.removeIf(u -> u.id().equals(usuario.id()));
             guardados.add(usuario);
             return usuario;
         }

@@ -8,7 +8,7 @@ import { VersionDeLaAplicacion } from "@/componentes/VersionDeLaAplicacion";
 import { FormularioDeIngreso } from "./FormularioDeIngreso";
 
 export const metadata: Metadata = {
-  title: "Entra a tu banca · Ayni Bank",
+  title: "Entra a tu banca",
   description: "Inicia sesión en Ayni Bank con tu correo y tu segundo factor.",
   // Una pantalla de ingreso no tiene por qué estar en ningún buscador, y estarlo solo
   // sirve para que aparezca en listados de superficies de ataque.

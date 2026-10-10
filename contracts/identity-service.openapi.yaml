@@ -34,6 +34,8 @@ tags:
     description: Alta de nuevos clientes
   - name: Sesion
     description: Ingreso, segundo factor y renovacion de la sesion
+  - name: Recuperacion
+    description: Recuperacion de la contrasena por correo (HU-21)
 
 paths:
   /registro:
@@ -394,6 +396,115 @@ paths:
             Los tres devuelven lo mismo: el cliente hace lo mismo en los tres
             casos, y detallar la reutilizacion solo informaria a quien la
             provoco. Al titular si se le avisa, por correo.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /recuperacion:
+    post:
+      summary: Pide un enlace para recuperar la contrasena (HU-21)
+      description: |
+        Responde **siempre 202 con el mismo cuerpo**, exista o no la cuenta, y
+        nunca antes de una duracion minima (400 ms en produccion): el
+        cronometro no puede delatar lo que el cuerpo oculta. Ver ADR-0008 y
+        ADR-0030. Como maximo se envian tres enlaces por cuenta y hora; los
+        de mas se ignoran en silencio.
+      operationId: solicitarRecuperacion
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo]
+              properties:
+                correo:
+                  type: string
+                  maxLength: 254
+                  example: ana.quispe@example.pe
+      responses:
+        "202":
+          description: Identica para todos los correos bien formados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Si el correo corresponde a una cuenta de Ayni, te enviamos un enlace para cambiar tu contrasena.
+        "400":
+          description: El correo falta o no tiene formato de correo
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+
+  /recuperacion/validacion:
+    post:
+      summary: Comprueba si un enlace de recuperacion sigue sirviendo
+      description: |
+        El token viaja en el cuerpo y no en la URL. En la web llega en el
+        fragmento del enlace (`#t=`), que el navegador no envia al servidor.
+      operationId: validarEnlaceDeRecuperacion
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnlaceDeRecuperacion"
+      responses:
+        "204":
+          description: El enlace sirve
+        "410":
+          description: |
+            El enlace no existe, caduco (30 minutos), ya se uso o lo anulo uno
+            posterior. Los cuatro casos responden igual.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /recuperacion/confirmacion:
+    post:
+      summary: Fija la contrasena nueva con un enlace de recuperacion
+      description: |
+        Gasta el enlace, invalida todas las sesiones del titular, limpia el
+        contador de intentos fallidos, lo anota en la pista de auditoria y
+        avisa al titular por correo. El segundo factor sigue siendo
+        obligatorio para ingresar: recuperar la contrasena no es recuperar la
+        cuenta. Un token de acceso ya emitido vive como mucho 15 minutos mas
+        (ADR-0030).
+      operationId: restablecerContrasena
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/EnlaceDeRecuperacion"
+                - type: object
+                  required: [contrasenaNueva]
+                  properties:
+                    contrasenaNueva:
+                      type: string
+                      format: password
+                      description: Misma politica que el registro.
+      responses:
+        "204":
+          description: Contrasena cambiada
+        "400":
+          description: La contrasena nueva incumple la politica; el enlace sigue sirviendo
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "410":
+          description: El enlace no sirve
           content:
             application/problem+json:
               schema:
@@ -800,6 +911,15 @@ components:
         fechaEmision:
           type: string
           format: date
+
+    EnlaceDeRecuperacion:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          maxLength: 128
+          description: Token del enlace; 256 bits aleatorios en Base64 URL.
 
     Credenciales:
       type: object
