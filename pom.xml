@@ -36,6 +36,11 @@
              4.1.136.Final arrastra ademas CVE-2026-75595 (CRITICA, netty-handler),
              corregida en 4.1.137.Final. -->
         <netty.version>4.1.137.Final</netty.version>
+        <!-- Spring Boot 3.5.16 gestiona Tomcat 10.1.55, con tres CRITICAS (CVE-2026-65182,
+             CVE-2026-65905 y CVE-2026-68525) que se corrigen en 10.1.58. Durante un mes
+             estuvieron excluidas en .trivyignore.yaml porque la correccion no estaba
+             publicada; ya lo esta. Al subir Spring Boot, comprobar si esta linea sobra. -->
+        <tomcat.version>10.1.60</tomcat.version>
         <!-- El driver 42.7.11 que gestiona Spring Boot 3.5.16 arrastra
              CVE-2026-54291 (ALTA), corregida en 42.7.12. Al subir Spring Boot,
              comprobar si esta linea ya sobra. -->

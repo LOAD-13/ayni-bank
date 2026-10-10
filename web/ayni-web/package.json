@@ -28,7 +28,9 @@
     "mayor que no toca hacer hoy. Al elevar Next, comprobar si esta linea sobra."
   ],
   "overrides": {
-    "postcss": "^8.5.26"
+    "postcss": "^8.5.26",
+    "sharp": "^0.35.5",
+    "source-map-js": "^1.2.2"
   },
   "dependencies": {
     "@vladmandic/face-api": "^1.7.15",
