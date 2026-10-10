@@ -4,7 +4,7 @@ import { FormularioDeContrasenaNueva } from "@/componentes/ingreso/FormularioDeC
 import { MarcoDeIngreso } from "@/componentes/ingreso/MarcoDeIngreso";
 
 export const metadata: Metadata = {
-  title: "Crea tu contraseña nueva · Ayni Bank",
+  title: "Crea tu contraseña nueva",
   description: "Fija una contraseña nueva con el enlace que te enviamos.",
   robots: { index: false, follow: false },
   // El token va en el fragmento y no viaja en el Referer, pero se corta igual por si

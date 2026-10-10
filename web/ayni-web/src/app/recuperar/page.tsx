@@ -4,7 +4,7 @@ import { FormularioDeRecuperacion } from "@/componentes/ingreso/FormularioDeRecu
 import { MarcoDeIngreso } from "@/componentes/ingreso/MarcoDeIngreso";
 
 export const metadata: Metadata = {
-  title: "Recupera tu contraseña · Ayni Bank",
+  title: "Recupera tu contraseña",
   description: "Pide un enlace para crear una contraseña nueva en Ayni Bank.",
   robots: { index: false, follow: false },
 };
