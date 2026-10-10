@@ -79,6 +79,14 @@ public final class Usuario {
                 EstadoUsuario.EN_REVISION, consentimiento, registradoEn);
     }
 
+    /**
+     * HU-21: la contrasena nueva tras una recuperacion. No cambia el estado: recuperar la
+     * contrasena no desbloquea ni activa a nadie, solo sustituye la credencial.
+     */
+    public Usuario cambiarContrasena(ContrasenaCifrada nueva) {
+        return new Usuario(id, correo, celular, nueva, estado, consentimiento, registradoEn);
+    }
+
     public Usuario bloquear() {
         return new Usuario(id, correo, celular, contrasena,
                 EstadoUsuario.BLOQUEADO, consentimiento, registradoEn);

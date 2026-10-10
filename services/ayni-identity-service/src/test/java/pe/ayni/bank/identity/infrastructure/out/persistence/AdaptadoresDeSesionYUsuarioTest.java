@@ -104,6 +104,13 @@ class AdaptadoresDeSesionYUsuarioTest {
             adaptador().invalidarFamilia(familia);
             verify(tokens).invalidarFamilia(familia, AHORA);
         }
+
+        @Test
+        @DisplayName("HU-21: cerrar las sesiones de un usuario invalida todas sus familias de un golpe")
+        void invalidarSesionesDelUsuario() {
+            adaptador().invalidarSesionesDe(usuarioId);
+            verify(tokens).invalidarDelUsuario(usuarioId, AHORA);
+        }
     }
 
     @Nested

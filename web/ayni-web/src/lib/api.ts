@@ -148,6 +148,22 @@ export async function verificarSegundoFactor(desafioId: string, codigo: string):
   return pedir<Sesion>("/api/v1/sesion/segundo-factor", { desafioId, codigo });
 }
 
+// ─── Recuperación de la contraseña · HU-21 ───────────────────────────────
+
+/** Pide el enlace. La respuesta es la misma exista o no la cuenta (ADR-0008). */
+export async function solicitarRecuperacion(correo: string): Promise<{ mensaje: string }> {
+  return pedir<{ mensaje: string }>("/api/v1/recuperacion", { correo });
+}
+
+/** Resuelve si el enlace sirve; rechaza con un 410 si no. */
+export async function validarEnlaceDeRecuperacion(token: string): Promise<void> {
+  return pedir<void>("/api/v1/recuperacion/validacion", { token });
+}
+
+export async function restablecerContrasena(token: string, contrasenaNueva: string): Promise<void> {
+  return pedir<void>("/api/v1/recuperacion/confirmacion", { token, contrasenaNueva });
+}
+
 /** La cuenta de ahorro tal como la muestra la pantalla final del onboarding. */
 export interface CuentaAbierta {
   cuentaId: string;
