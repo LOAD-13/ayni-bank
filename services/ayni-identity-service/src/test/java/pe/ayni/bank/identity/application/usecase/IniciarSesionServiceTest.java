@@ -619,6 +619,12 @@ class IniciarSesionServiceTest {
             familiasInvalidadas.add(familiaId);
         }
 
+        @Override
+        public void invalidarSesionesDe(UUID usuarioId) {
+            tokens.stream().filter(t -> t.usuarioId().equals(usuarioId))
+                    .forEach(t -> familiasInvalidadas.add(t.familiaId()));
+        }
+
         /** Caduca todos los desafíos abiertos, para la prueba de la ventana de dos minutos. */
         void envejecerDesafios() {
             desafios.replaceAll((id, desafio) -> new DesafioDeSegundoFactor(
