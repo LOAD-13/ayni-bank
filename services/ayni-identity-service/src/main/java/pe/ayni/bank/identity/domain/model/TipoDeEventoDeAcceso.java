@@ -17,5 +17,9 @@ public enum TipoDeEventoDeAcceso {
      */
     RECUPERACION_SOLICITADA,
     /** HU-21: se fijo una contrasena nueva con un enlace de recuperacion. */
-    CONTRASENA_RESTABLECIDA
+    CONTRASENA_RESTABLECIDA,
+    /** HU-07: el titular confirmo una operacion con su segundo factor. */
+    OPERACION_CONFIRMADA,
+    /** HU-07: codigo incorrecto al confirmar una operacion. */
+    CONFIRMACION_FALLIDA
 }

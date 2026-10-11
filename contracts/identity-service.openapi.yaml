@@ -36,6 +36,8 @@ tags:
     description: Ingreso, segundo factor y renovacion de la sesion
   - name: Recuperacion
     description: Recuperacion de la contrasena por correo (HU-21)
+  - name: Confirmacion
+    description: Confirmacion de operaciones con el segundo factor (HU-07)
 
 paths:
   /registro:
@@ -509,6 +511,76 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problema"
+
+  /confirmaciones:
+    post:
+      summary: Abre la confirmacion de una transferencia con el segundo factor (HU-07)
+      description: |
+        Ruta protegida: la identidad sale de `X-Ayni-Usuario`. identity guarda solo
+        la huella de la operacion (forma canonica en ADR-0031). Si el titular eligio
+        el correo, le envia un codigo de 6 digitos.
+      operationId: iniciarConfirmacion
+      tags: [Confirmacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [destino, importe, moneda, claveIdempotencia]
+              properties:
+                destino: { type: string, maxLength: 32, example: "001-1100000-0-031" }
+                importe: { type: string, pattern: '^\d{1,7}(\.\d{1,2})?$', example: "150.00" }
+                moneda: { type: string, pattern: '^[A-Z]{3}$', example: PEN }
+                claveIdempotencia: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Confirmacion abierta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  confirmacionId: { type: string, format: uuid }
+                  metodo: { $ref: "#/components/schemas/TipoDeSegundoFactor" }
+                  expiraEn: { type: string, format: date-time }
+        "401": { description: Sin sesion }
+        "409": { description: El titular no tiene segundo factor activo }
+        "423": { description: Operaciones pausadas por intentos fallidos }
+
+  /confirmaciones/{confirmacionId}/verificacion:
+    post:
+      summary: Verifica el codigo y emite el token de confirmacion para core-banking
+      description: |
+        Tres intentos por confirmacion; los fallos cuentan para la misma pausa que el
+        ingreso. El token dura 5 minutos y solo sirve para la operacion confirmada: se
+        envia a `POST /api/v1/transferencias` en la cabecera `X-Ayni-Confirmacion`.
+      operationId: verificarConfirmacion
+      tags: [Confirmacion]
+      parameters:
+        - { name: confirmacionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo: { type: string, example: "123456" }
+      responses:
+        "200":
+          description: Codigo correcto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expiraEn: { type: string, format: date-time }
+        "410": { description: La confirmacion no existe, caduco, se uso o agoto sus intentos }
+        "422": { description: Codigo incorrecto; incluye intentosRestantes }
+        "423": { description: Operaciones pausadas por intentos fallidos }
 
   /usuarios/{usuarioId}/segundo-factor/metodo:
     post:
