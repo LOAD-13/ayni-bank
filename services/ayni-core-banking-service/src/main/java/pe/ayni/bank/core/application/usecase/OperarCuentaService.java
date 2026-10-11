@@ -113,6 +113,14 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     private record Resultado(Comprobante comprobante, boolean repetida) {
     }
 
+    /**
+     * La clave de idempotencia se mira dos veces. La primera, antes de bloquear, ahorra el
+     * bloqueo a los reintentos normales. La segunda, ya con las cuentas bloqueadas, cubre
+     * el caso de dos peticiones con la misma clave a la vez: la segunda espera el bloqueo,
+     * y cuando lo obtiene la primera ya confirmo y su clave ya es visible. Sin esta segunda
+     * mirada, la segunda peticion repetia el movimiento y solo la clave primaria de
+     * {@code operacion_idempotente} lo impedia, con un error 500 en vez del comprobante.
+     */
     private Resultado hacerTransferencia(UUID usuarioId, String numeroDestino, Dinero importe,
                                          String concepto, UUID clave, String confirmacion) {
         Cuenta origen = cuentaDe(usuarioId, importe.moneda());
@@ -133,6 +141,10 @@ public class OperarCuentaService implements OperarCuentaUseCase {
                         MotivoDeRechazo.CUENTA_DESTINO_INEXISTENTE));
 
         libro.bloquear(ordenadas(origen.id(), destino.id()));
+        Optional<Comprobante> adelantada = repetida(clave, origen);
+        if (adelantada.isPresent()) {
+            return new Resultado(adelantada.get(), true);
+        }
         Dinero saldo = libro.saldoDe(origen.id(), origen.moneda());
 
         Movimiento movimiento = Movimiento.transferencia(UUID.randomUUID(), origen, saldo,
@@ -153,6 +165,10 @@ public class OperarCuentaService implements OperarCuentaUseCase {
 
         Cuenta fondeo = libro.cuentaDeFondeo(importe.moneda());
         libro.bloquear(ordenadas(fondeo.id(), destino.id()));
+        Optional<Comprobante> adelantada = repetida(clave, destino);
+        if (adelantada.isPresent()) {
+            return new Resultado(adelantada.get(), true);
+        }
 
         Movimiento movimiento = Movimiento.depositoSimulado(UUID.randomUUID(), fondeo, destino,
                 importe, reloj.instant());
