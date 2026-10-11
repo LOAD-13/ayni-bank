@@ -28,7 +28,7 @@ spring:
             - id: core-banking
               uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
 
             # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
@@ -57,7 +57,7 @@ ayni:
     # muestra o mueve el dinero del titular. `cuentas/titular/**` queda fuera porque
     # la pantalla final del onboarding la consulta antes de que exista sesion.
     rutas-protegidas: >-
-      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**
+      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/movimientos/**
 
 server:
   port: 8080
