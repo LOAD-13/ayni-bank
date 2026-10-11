@@ -19,6 +19,7 @@ import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
+import pe.ayni.bank.core.domain.model.OperacionAConfirmar;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
@@ -29,6 +30,7 @@ import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.PublicadorDeEventosPort;
 import pe.ayni.bank.core.domain.port.out.RegistroDeIdempotenciaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
+import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
 
 /**
  * Orquesta las operaciones monetarias del titular · HU-07 y deposito simulado.
@@ -56,12 +58,15 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     private final PublicadorDeEventosPort eventos;
     private final RegistroDeIdempotenciaPort idempotencia;
     private final PistaDeAuditoriaPort auditoria;
+    private final VerificadorDeConfirmacionPort confirmaciones;
     private final Clock reloj;
 
     public OperarCuentaService(RepositorioDeCuentasPort cuentas, LibroMayorPort libro,
                                PublicadorDeEventosPort eventos,
                                RegistroDeIdempotenciaPort idempotencia,
-                               PistaDeAuditoriaPort auditoria, Clock reloj) {
+                               PistaDeAuditoriaPort auditoria,
+                               VerificadorDeConfirmacionPort confirmaciones, Clock reloj) {
+        this.confirmaciones = confirmaciones;
         this.cuentas = cuentas;
         this.libro = libro;
         this.eventos = eventos;
@@ -73,10 +78,10 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     @Override
     @Transactional
     public Comprobante transferir(UUID usuarioId, String numeroDestino, Dinero importe,
-                                  String concepto, UUID clave) {
+                                  String concepto, UUID clave, String confirmacion) {
         try {
             Resultado resultado = hacerTransferencia(usuarioId, numeroDestino, importe,
-                    concepto, clave);
+                    concepto, clave, confirmacion);
             auditar(resultado, TipoDeEventoDeOperacion.TRANSFERENCIA_REALIZADA, usuarioId);
             return resultado.comprobante();
         } catch (OperacionRechazadaException e) {
@@ -109,13 +114,18 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     }
 
     private Resultado hacerTransferencia(UUID usuarioId, String numeroDestino, Dinero importe,
-                                         String concepto, UUID clave) {
+                                         String concepto, UUID clave, String confirmacion) {
         Cuenta origen = cuentaDe(usuarioId, importe.moneda());
 
         Optional<Comprobante> repetida = repetida(clave, origen);
         if (repetida.isPresent()) {
             return new Resultado(repetida.get(), true);
         }
+
+        // Despues de mirar la clave y antes de tocar ningun saldo: un reintento de una
+        // transferencia ya hecha no necesita confirmarse otra vez, pero una nueva si.
+        confirmaciones.verificar(confirmacion, usuarioId,
+                new OperacionAConfirmar(numeroDestino == null ? "" : numeroDestino, importe, clave));
 
         Cuenta destino = numeroValido(numeroDestino)
                 .flatMap(libro::buscarPorNumero)

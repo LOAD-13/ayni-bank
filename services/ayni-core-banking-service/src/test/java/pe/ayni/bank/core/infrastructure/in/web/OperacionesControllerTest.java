@@ -30,6 +30,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempotenciaReutilizadaException;
 import pe.ayni.bank.core.domain.model.Asiento;
 import pe.ayni.bank.core.domain.model.Comprobante;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
@@ -116,14 +117,28 @@ class OperacionesControllerTest {
     }
 
     @Test
+    @DisplayName("POST /transferencias sin confirmacion valida: 403 CONFIRMACION_REQUERIDA")
+    void sinConfirmacion() throws Exception {
+        UUID clave = UUID.randomUUID();
+        when(operar.transferir(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new ConfirmacionInvalidaException());
+
+        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cuentaDestino\":\"00111000000031\",\"importe\":\"150.00\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("CONFIRMACION_REQUERIDA"));
+    }
+
+    @Test
     @DisplayName("POST /transferencias: 201 con el comprobante y su ubicacion")
     void transferir() throws Exception {
         Comprobante c = comprobante();
         UUID clave = UUID.randomUUID();
-        when(operar.transferir(eq(titular), eq("00111000000031"), any(), eq("Cena"), eq(clave)))
+        when(operar.transferir(eq(titular), eq("00111000000031"), any(), eq("Cena"), eq(clave), eq("tok")))
                 .thenReturn(c);
 
-        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave)
+        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave).header("X-Ayni-Confirmacion", "tok")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cuentaDestino\":\"00111000000031\",\"importe\":\"150.00\",\"concepto\":\"Cena\"}"))
                 .andExpect(status().isCreated())
@@ -175,7 +190,7 @@ class OperacionesControllerTest {
     @Test
     @DisplayName("una regla de negocio rota es 422 con el codigo del motivo")
     void rechazoDeNegocio() throws Exception {
-        when(operar.transferir(any(), any(), any(), any(), any()))
+        when(operar.transferir(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new OperacionRechazadaException(MotivoDeRechazo.SALDO_INSUFICIENTE));
 
         mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, UUID.randomUUID())
