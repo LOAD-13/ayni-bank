@@ -9,13 +9,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import pe.ayni.bank.identity.domain.model.CapturasIncompletasException;
+import pe.ayni.bank.identity.domain.model.CodigoDeConfirmacionIncorrectoException;
 import pe.ayni.bank.identity.domain.model.CodigoDesafioInvalidoException;
+import pe.ayni.bank.identity.domain.model.ConfirmacionNoDisponibleException;
 import pe.ayni.bank.identity.domain.model.ConsentimientoNoOtorgadoException;
 import pe.ayni.bank.identity.domain.model.ContrasenaInvalidaException;
 import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
@@ -28,6 +31,7 @@ import pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
+import pe.ayni.bank.identity.domain.model.SinSegundoFactorException;
 
 /**
  * Traduce las excepciones a {@code application/problem+json}, segun RFC 7807.
@@ -200,6 +204,42 @@ public class ManejadorDeErrores {
                                            WebRequest peticion) {
         return problema(HttpStatus.GONE, "enlace-de-recuperacion-invalido",
                 "El enlace ya no es valido", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /** HU-07: la confirmacion no existe, caduco, se uso o agoto sus intentos. */
+    @ExceptionHandler(ConfirmacionNoDisponibleException.class)
+    public ProblemDetail alNoEstarDisponibleLaConfirmacion(ConfirmacionNoDisponibleException excepcion,
+                                                          WebRequest peticion) {
+        return problema(HttpStatus.GONE, "confirmacion-no-disponible",
+                "Vuelve a confirmar la operacion", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /** HU-07: codigo incorrecto. 422 y no 401: la sesion es valida, lo que falla es el codigo. */
+    @ExceptionHandler(CodigoDeConfirmacionIncorrectoException.class)
+    public ProblemDetail alFallarElCodigoDeConfirmacion(CodigoDeConfirmacionIncorrectoException excepcion,
+                                                       WebRequest peticion) {
+        ProblemDetail detalle = problema(HttpStatus.UNPROCESSABLE_ENTITY, "codigo-de-confirmacion-incorrecto",
+                "El codigo no es correcto", excepcion.getMessage(), List.of(), peticion);
+        detalle.setProperty("intentosRestantes", excepcion.intentosRestantes());
+        return detalle;
+    }
+
+    /** HU-07: el titular no tiene un segundo factor activo. */
+    @ExceptionHandler(SinSegundoFactorException.class)
+    public ProblemDetail alNoTenerSegundoFactor(SinSegundoFactorException excepcion, WebRequest peticion) {
+        return problema(HttpStatus.CONFLICT, "sin-segundo-factor",
+                "Activa tu segundo factor", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /** Sin la cabecera de usuario la peticion no paso por el gateway: 401. */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ProblemDetail alFaltarCabecera(MissingRequestHeaderException excepcion, WebRequest peticion) {
+        boolean esIdentidad = "X-Ayni-Usuario".equals(excepcion.getHeaderName());
+        return problema(esIdentidad ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST,
+                esIdentidad ? "sesion-requerida" : "validacion",
+                esIdentidad ? "Sesion requerida" : "Peticion incompleta",
+                esIdentidad ? "Inicia sesion para continuar." : "Falta la cabecera " + excepcion.getHeaderName() + ".",
+                List.of(), peticion);
     }
 
     /** Objetos de valor del dominio que rechazan su entrada. */
