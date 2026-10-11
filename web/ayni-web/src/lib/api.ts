@@ -492,6 +492,29 @@ export interface Comprobante {
   saldoDisponible: string;
 }
 
+/**
+ * HU-07: el comprobante de un movimiento en PDF. Va con el token de acceso en la cabecera,
+ * así que no puede ser un enlace simple: se descarga como blob.
+ */
+export async function descargarComprobante(token: string, movimientoId: string): Promise<Blob> {
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${BASE}/api/v1/movimientos/${movimientoId}/comprobante.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+  } catch {
+    throw new ErrorDeApi({ title: "No pudimos conectar con Ayni", status: 0 }, 0);
+  }
+  if (!respuesta.ok) {
+    throw new ErrorDeApi(
+      { title: "No pudimos descargar el comprobante", status: respuesta.status },
+      respuesta.status,
+    );
+  }
+  return respuesta.blob();
+}
+
 export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
   return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
 }

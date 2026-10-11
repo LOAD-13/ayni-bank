@@ -1,6 +1,7 @@
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 
+import { DescargarComprobante } from "@/componentes/banca/DescargarComprobante";
 import type { Comprobante } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
 
@@ -49,6 +50,7 @@ export function TarjetaDeComprobante({ comprobante }: { comprobante: Comprobante
         >
           Volver al resumen
         </Link>
+        <DescargarComprobante movimientoId={comprobante.movimientoId} />
       </div>
     </section>
   );

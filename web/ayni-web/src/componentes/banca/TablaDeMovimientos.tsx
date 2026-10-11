@@ -1,5 +1,6 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
+import { DescargarComprobante } from "@/componentes/banca/DescargarComprobante";
 import type { Movimiento } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
 
@@ -73,6 +74,7 @@ export function TablaDeMovimientos({
                     {oculto ? "S/ ••••" : formatearImporte(m.importe, m.moneda)}
                   </span>
                   <span className="text-caption text-gris-700">{abono ? "Abono" : "Cargo"}</span>
+                  <DescargarComprobante movimientoId={m.movimientoId} variante="enlace" />
                 </td>
               </tr>
             );
