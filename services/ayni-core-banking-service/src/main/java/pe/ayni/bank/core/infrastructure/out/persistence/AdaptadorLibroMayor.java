@@ -26,12 +26,15 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     private final CuentaJpaRepository cuentas;
     private final AsientoJpaRepository asientos;
     private final UUID fondeoPen;
+    private final UUID interesesPen;
 
     AdaptadorLibroMayor(CuentaJpaRepository cuentas, AsientoJpaRepository asientos,
-                        @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen) {
+                        @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen,
+                        @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen) {
         this.cuentas = cuentas;
         this.asientos = asientos;
         this.fondeoPen = fondeoPen;
+        this.interesesPen = interesesPen;
     }
 
     @Override
@@ -62,6 +65,15 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
         }
         return buscarPorId(fondeoPen).orElseThrow(() -> new IllegalStateException(
                 "Falta la cuenta tecnica de fondeo: la siembra la migracion V3."));
+    }
+
+    @Override
+    public Cuenta cuentaDeIntereses(Moneda moneda) {
+        if (moneda != Moneda.PEN) {
+            throw new IllegalStateException("No hay cuenta de intereses para " + moneda);
+        }
+        return buscarPorId(interesesPen).orElseThrow(() -> new IllegalStateException(
+                "Falta la cuenta tecnica de intereses: la siembra la migracion V5."));
     }
 
     @Override
@@ -104,7 +116,7 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
                 fila.getConcepto(), fila.getRegistradoEn());
     }
 
-    private static Cuenta aDominio(CuentaEntity fila) {
+    static Cuenta aDominio(CuentaEntity fila) {
         return Cuenta.reconstituir(
                 fila.getId(), fila.getUsuarioId(), fila.getProductoId(),
                 new NumeroDeCuenta(fila.getNumero()), new Cci(fila.getCci()),

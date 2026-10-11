@@ -69,6 +69,12 @@ ayni:
     # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
     # migracion V3 con este mismo identificador.
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
+    # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
+    intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+  devengo:
+    # Cada hora, a los 5 minutos, en hora de Lima. Solo trabaja si hay dias sin cerrar:
+    # si el servicio estuvo caido a medianoche, el siguiente disparo recupera lo pendiente.
+    cron: ${AYNI_DEVENGO_CRON:0 5 * * * *}
   productos:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.

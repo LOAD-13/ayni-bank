@@ -27,6 +27,9 @@ public interface LibroMayorPort {
     /** La cuenta tecnica del banco que hace de contrapartida de los depositos simulados. */
     Cuenta cuentaDeFondeo(Moneda moneda);
 
+    /** La cuenta tecnica que paga los intereses capitalizados (HU-06). Sembrada por V5. */
+    Cuenta cuentaDeIntereses(Moneda moneda);
+
     /**
      * Bloquea las cuentas hasta el final de la transaccion ({@code SELECT ... FOR UPDATE}).
      *
