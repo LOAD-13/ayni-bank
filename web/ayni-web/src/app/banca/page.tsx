@@ -10,29 +10,36 @@ import {
   ReceiptText,
   RefreshCw,
   ShieldCheck,
-  TrendingUp,
   Wallet,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { PanelDeRendimiento } from "@/componentes/banca/PanelDeRendimiento";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { TablaDeMovimientos } from "@/componentes/banca/TablaDeMovimientos";
 import {
   consultarMiCuenta,
   consultarMovimientos,
+  consultarRendimiento,
   consultarTitular,
   ErrorDeApi,
   type CuentaAbierta,
   type Movimiento,
+  type RendimientoDeCuenta,
   type Titular,
 } from "@/lib/api";
-import { formatearImporte, rendimientoMensualEstimado } from "@/lib/formato";
+import { formatearImporte } from "@/lib/formato";
 
 type Estado =
   | { tipo: "cargando" }
-  | { tipo: "lista"; cuenta: CuentaAbierta; movimientos: Movimiento[] }
+  | {
+      tipo: "lista";
+      cuenta: CuentaAbierta;
+      movimientos: Movimiento[];
+      rendimiento: RendimientoDeCuenta | null;
+    }
   | { tipo: "sin-cuenta" }
   | { tipo: "error"; mensaje: string };
 
@@ -56,11 +63,13 @@ export default function PanelDeBanca() {
     setEstado({ tipo: "cargando" });
     try {
       const vigente = await token();
-      const [cuenta, movimientos] = await Promise.all([
+      // El rendimiento no bloquea el panel: si su consulta falla, se muestra la estimacion.
+      const [cuenta, movimientos, rendimiento] = await Promise.all([
         consultarMiCuenta(vigente),
         consultarMovimientos(vigente, 10),
+        consultarRendimiento(vigente).catch(() => null),
       ]);
-      setEstado({ tipo: "lista", cuenta, movimientos });
+      setEstado({ tipo: "lista", cuenta, movimientos, rendimiento });
       setActualizado(new Date());
     } catch (fallo) {
       if (fallo instanceof ErrorDeApi && fallo.problema.codigo === "SIN_CUENTA") {
@@ -134,7 +143,11 @@ export default function PanelDeBanca() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <Rendimiento cuenta={estado.tipo === "lista" ? estado.cuenta : null} oculto={oculto} />
+            <PanelDeRendimiento
+              cuenta={estado.tipo === "lista" ? estado.cuenta : null}
+              rendimiento={estado.tipo === "lista" ? estado.rendimiento : null}
+              oculto={oculto}
+            />
             <DatosDeLaCuenta cuenta={estado.tipo === "lista" ? estado.cuenta : null} />
           </div>
 
@@ -325,47 +338,6 @@ function TarjetaDeDebito({ titular }: { titular: string | null }) {
         Tu tarjeta de débito virtual llega en la siguiente entrega. Por seguridad solo mostraremos
         sus últimos 4 dígitos.
       </p>
-    </section>
-  );
-}
-
-function Rendimiento({ cuenta, oculto }: { cuenta: CuentaAbierta | null; oculto: boolean }) {
-  const mensual = cuenta?.trea ? rendimientoMensualEstimado(cuenta.saldo, cuenta.trea) : null;
-  return (
-    <section
-      aria-labelledby="titulo-rendimiento"
-      className="rounded-[20px] border border-exito/30 bg-[#EAF4EF] p-7"
-    >
-      <p id="titulo-rendimiento" className="flex items-center gap-3 text-body font-bold text-exito">
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-exito text-blanco"
-        >
-          <TrendingUp className="h-5 w-5" />
-        </span>
-        Rendimiento estimado del mes
-      </p>
-      <p className="mt-4 text-h2 font-bold text-azul-900">
-        {mensual === null
-          ? "Tu dinero empieza a rendir con tu primer depósito"
-          : oculto
-            ? "Tu dinero gana S/ •••• al mes"
-            : `Tu dinero gana unos ${formatearImporte(mensual, "PEN")} al mes`}
-      </p>
-      <p className="mt-2 text-small text-gris-800">
-        {cuenta?.trea
-          ? `Calculado con tu saldo actual y la TREA vigente de ${cuenta.trea} %. El interés se devenga cada día y se abona a fin de mes.`
-          : "El interés se devenga cada día sobre tu saldo y se abona a fin de mes."}
-      </p>
-      <div aria-hidden="true" className="mt-5 flex h-16 items-end gap-1">
-        {Array.from({ length: 24 }, (_, i) => (
-          <span
-            key={i}
-            className={`flex-1 rounded-sm ${i >= 20 ? "bg-exito" : "bg-exito/35"}`}
-            style={{ height: `${30 + (i * 70) / 23}%` }}
-          />
-        ))}
-      </div>
     </section>
   );
 }

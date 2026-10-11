@@ -524,6 +524,33 @@ export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
   return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
 }
 
+/** Un dia de interes: con que saldo y a que tasa se calculo (HU-06, escenario 3). */
+export interface DevengoDiario {
+  fecha: string;
+  saldoBase: string;
+  /** TEA aplicada ese dia, en tanto por ciento. */
+  tea: string;
+  /** Con 8 decimales, como se guarda. */
+  importe: string;
+}
+
+/** HU-06: lo que rinde la cuenta. Todo llega como texto por la misma razon que el saldo. */
+export interface RendimientoDeCuenta {
+  tea: string;
+  trea: string;
+  treaIgualATea: boolean;
+  tasaVigenteDesde: string;
+  moneda: string;
+  devengadoDelMes: string;
+  devengadoDelMesRedondeado: string;
+  abonadoTotal: string;
+  devengos: DevengoDiario[];
+}
+
+export async function consultarRendimiento(token: string): Promise<RendimientoDeCuenta> {
+  return pedir<RendimientoDeCuenta>("/api/v1/cuentas/mia/rendimiento", undefined, { token });
+}
+
 export async function consultarMovimientos(token: string, limite = 10): Promise<Movimiento[]> {
   return pedir<Movimiento[]>(`/api/v1/cuentas/mia/movimientos?limite=${limite}`, undefined, {
     token,

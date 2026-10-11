@@ -26,10 +26,12 @@ public class ConfiguracionDeMensajeria {
     public static final String COLA_TITULARES = "notification.titular-activado";
     public static final String COLA_TRANSFERENCIAS = "notification.transferencia-realizada";
     public static final String COLA_DEPOSITOS = "notification.deposito-registrado";
+    public static final String COLA_INTERESES = "notification.interes-capitalizado";
 
     static final String CLAVE_TITULAR_ACTIVADO = "identity.titular.activado";
     static final String CLAVE_TRANSFERENCIA = "core.transferencia.realizada";
     static final String CLAVE_DEPOSITO = "core.deposito.simulado.registrado";
+    static final String CLAVE_INTERES = "core.interes.capitalizado";
 
     @Bean
     public TopicExchange exchangeDeEventos() {
@@ -52,6 +54,11 @@ public class ConfiguracionDeMensajeria {
     }
 
     @Bean
+    public Queue colaDeIntereses() {
+        return QueueBuilder.durable(COLA_INTERESES).build();
+    }
+
+    @Bean
     public Binding enlaceDeTitulares() {
         return BindingBuilder.bind(colaDeTitulares()).to(exchangeDeEventos()).with(CLAVE_TITULAR_ACTIVADO);
     }
@@ -64,6 +71,11 @@ public class ConfiguracionDeMensajeria {
     @Bean
     public Binding enlaceDeDepositos() {
         return BindingBuilder.bind(colaDeDepositos()).to(exchangeDeEventos()).with(CLAVE_DEPOSITO);
+    }
+
+    @Bean
+    public Binding enlaceDeIntereses() {
+        return BindingBuilder.bind(colaDeIntereses()).to(exchangeDeEventos()).with(CLAVE_INTERES);
     }
 
     @Bean

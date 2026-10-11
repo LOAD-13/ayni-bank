@@ -4,6 +4,7 @@ import {
   cerrarSesion,
   consultarMiCuenta,
   consultarMovimientos,
+  consultarRendimiento,
   depositarSimulado,
   descargarComprobante,
   renovarSesion,
@@ -136,6 +137,16 @@ describe("llamadas de la banca", () => {
 
     expect(cabecerasDe(0).Authorization).toBe("Bearer tk");
     expect(vi.mocked(fetch).mock.calls[1][0]).toContain("/api/v1/cuentas/mia/movimientos?limite=5");
+  });
+
+  it("el rendimiento se consulta con el token", async () => {
+    vi.mocked(fetch).mockResolvedValue(respuesta(200, { trea: "4.50", devengos: [] }));
+
+    const r = await consultarRendimiento("tk");
+
+    expect(r.trea).toBe("4.50");
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("/api/v1/cuentas/mia/rendimiento");
+    expect(cabecerasDe(0).Authorization).toBe("Bearer tk");
   });
 
   it("transferir y depositar viajan con la clave de idempotencia", async () => {

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -25,6 +26,8 @@ import pe.ayni.bank.notification.domain.model.TipoDeAviso;
 public final class TraductorDeMovimientos {
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
+    private static final DateTimeFormatter MES = DateTimeFormatter.ofPattern("MMMM 'de' yyyy",
+            Locale.of("es", "PE"));
     private static final DateTimeFormatter FECHA =
             DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm", Locale.of("es", "PE"));
 
@@ -53,6 +56,17 @@ public final class TraductorDeMovimientos {
         }
         return List.of(new AvisoDeMovimiento(eventoId, e.usuarioId(), TipoDeAviso.DEPOSITO_RECIBIDO,
                 datos(e.movimientoId(), e.importe(), e.moneda(), e.cuenta(), e.saldo(), e.registradoEn(), null)));
+    }
+
+    /** HU-06: el interes del mes abonado en la cuenta del titular. */
+    public static List<AvisoDeMovimiento> deInteres(UUID eventoId, InteresCapitalizado e) {
+        if (e.usuarioId() == null) {
+            return List.of();
+        }
+        Map<String, String> datos = datos(e.movimientoId(), e.importe(), e.moneda(), e.cuenta(), e.saldo(),
+                e.registradoEn(), null);
+        datos.put("periodo", MES.format(YearMonth.parse(e.periodo())));
+        return List.of(new AvisoDeMovimiento(eventoId, e.usuarioId(), TipoDeAviso.INTERES_CAPITALIZADO, datos));
     }
 
     /**
@@ -97,6 +111,11 @@ public final class TraductorDeMovimientos {
                                          String importe, String moneda, UUID usuarioOrigenId,
                                          UUID usuarioDestinoId, String cuentaOrigen, String cuentaDestino,
                                          String saldoOrigen, String saldoDestino, String registradoEn) {
+    }
+
+    /** Lo que publica core-banking al capitalizar (HU-06). {@code periodo} es {@code AAAA-MM}. */
+    public record InteresCapitalizado(UUID movimientoId, UUID cuentaId, UUID usuarioId, String cuenta, String importe,
+                                      String moneda, String saldo, String periodo, String registradoEn) {
     }
 
     public record DepositoSimuladoRegistrado(UUID movimientoId, UUID cuentaId, String importe, String moneda,
