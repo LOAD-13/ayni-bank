@@ -22,6 +22,7 @@ import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempote
 import pe.ayni.bank.core.domain.model.Asiento;
 import pe.ayni.bank.core.domain.model.Cci;
 import pe.ayni.bank.core.domain.model.Comprobante;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.EstadoCuenta;
@@ -49,6 +50,9 @@ class OperarCuentaServiceTest {
     private final Map<UUID, UUID> claves = new HashMap<>();
     private final List<String> pista = new ArrayList<>();
 
+    private static final String CONFIRMADA = "token-de-confirmacion";
+    private final List<String> confirmacionesVistas = new ArrayList<>();
+
     private final OperarCuentaService servicio = new OperarCuentaService(cuentas, libro,
             (tipo, id, evento, carga) -> eventos.add(evento),
             new RegistroDeIdempotenciaPort() {
@@ -73,6 +77,12 @@ class OperarCuentaServiceTest {
                     pista.add("RECHAZO:" + motivo.name());
                 }
             },
+            (confirmacion, usuario, operacion) -> {
+                confirmacionesVistas.add(confirmacion);
+                if (!CONFIRMADA.equals(confirmacion)) {
+                    throw new ConfirmacionInvalidaException();
+                }
+            },
             Clock.fixed(AHORA, ZoneOffset.UTC));
 
     private final UUID ana = UUID.randomUUID();
@@ -90,9 +100,9 @@ class OperarCuentaServiceTest {
         UUID clave = UUID.randomUUID();
         servicio.depositarSimulado(ana, soles("100.00"), clave);
         servicio.depositarSimulado(ana, soles("100.00"), clave);
-        servicio.transferir(ana, deBeto.numero().valor(), soles("30.00"), "Almuerzo", UUID.randomUUID());
+        servicio.transferir(ana, deBeto.numero().valor(), soles("30.00"), "Almuerzo", UUID.randomUUID(), CONFIRMADA);
         assertThatThrownBy(() -> servicio.transferir(ana, deBeto.numero().valor(), soles("999.00"),
-                "Demasiado", UUID.randomUUID())).isInstanceOf(OperacionRechazadaException.class);
+                "Demasiado", UUID.randomUUID(), CONFIRMADA)).isInstanceOf(OperacionRechazadaException.class);
 
         assertThat(pista).containsExactly("DEPOSITO_SIMULADO", "OPERACION_REPETIDA",
                 "TRANSFERENCIA_REALIZADA", "RECHAZO:SALDO_INSUFICIENTE");
@@ -108,7 +118,7 @@ class OperarCuentaServiceTest {
         assertThat(deposito.saldoDisponible()).isEqualTo(soles("1000.00"));
 
         Comprobante transferencia = servicio.transferir(ana, deBeto.numero().formateado(),
-                soles("250.75"), "Cena", UUID.randomUUID());
+                soles("250.75"), "Cena", UUID.randomUUID(), CONFIRMADA);
 
         assertThat(transferencia.tipo()).isEqualTo(TipoDeMovimiento.TRANSFERENCIA);
         assertThat(transferencia.cuentaOrigen()).isEqualTo(deAna.numero().enmascarado());
@@ -128,14 +138,48 @@ class OperarCuentaServiceTest {
         servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
         UUID clave = UUID.randomUUID();
 
-        Comprobante primera = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave);
-        Comprobante segunda = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave);
+        Comprobante primera = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave, CONFIRMADA);
+        Comprobante segunda = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave, CONFIRMADA);
 
         assertThat(segunda.movimientoId()).isEqualTo(primera.movimientoId());
         assertThat(segunda.tipo()).isEqualTo(TipoDeMovimiento.TRANSFERENCIA);
         assertThat(segunda.cuentaDestino()).isEqualTo(deBeto.numero().enmascarado());
         assertThat(libro.saldoDe(deBeto.id(), Moneda.PEN)).isEqualTo(soles("100.00"));
         assertThat(eventos).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("HU-07: sin confirmacion con segundo factor no se mueve dinero")
+    void sinConfirmacion() {
+        servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
+
+        assertThatThrownBy(() -> servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null,
+                UUID.randomUUID(), "falsa")).isInstanceOf(ConfirmacionInvalidaException.class);
+        assertThatThrownBy(() -> servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null,
+                UUID.randomUUID(), null)).isInstanceOf(ConfirmacionInvalidaException.class);
+
+        assertThat(libro.saldoDe(deBeto.id(), Moneda.PEN)).isEqualTo(soles("0"));
+        assertThat(eventos).containsExactly("DepositoSimuladoRegistrado");
+    }
+
+    @Test
+    @DisplayName("HU-07: un reintento con la misma clave no vuelve a pedir la confirmacion")
+    void reintentoSinReconfirmar() {
+        servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
+        UUID clave = UUID.randomUUID();
+        Comprobante primera = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave, CONFIRMADA);
+
+        Comprobante reintento = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), null, clave, "caducada");
+
+        assertThat(reintento.movimientoId()).isEqualTo(primera.movimientoId());
+        assertThat(confirmacionesVistas).containsExactly(CONFIRMADA);
+    }
+
+    @Test
+    @DisplayName("el deposito simulado no pide segundo factor")
+    void depositoSinConfirmacion() {
+        servicio.depositarSimulado(ana, soles("10"), UUID.randomUUID());
+        assertThat(confirmacionesVistas).isEmpty();
     }
 
     @Test
@@ -154,7 +198,7 @@ class OperarCuentaServiceTest {
     void comprobanteDelBeneficiario() {
         servicio.depositarSimulado(ana, soles("100"), UUID.randomUUID());
         UUID clave = UUID.randomUUID();
-        servicio.transferir(ana, deBeto.numero().valor(), soles("40"), null, clave);
+        servicio.transferir(ana, deBeto.numero().valor(), soles("40"), null, clave, CONFIRMADA);
 
         // Beto usa la misma clave: la operacion le toca (es el beneficiario), asi que la ve.
         Comprobante visto = servicio.depositarSimulado(beto, soles("1"), clave);
@@ -177,7 +221,7 @@ class OperarCuentaServiceTest {
     @DisplayName("sin saldo suficiente no se mueve nada")
     void sinSaldo() {
         assertThatThrownBy(() -> servicio.transferir(ana, deBeto.numero().valor(), soles("1"),
-                null, UUID.randomUUID()))
+                null, UUID.randomUUID(), CONFIRMADA))
                 .isInstanceOf(OperacionRechazadaException.class)
                 .extracting(e -> ((OperacionRechazadaException) e).motivo())
                 .isEqualTo(MotivoDeRechazo.SALDO_INSUFICIENTE);
@@ -189,7 +233,7 @@ class OperarCuentaServiceTest {
     @DisplayName("un destino que no existe, mal escrito o nulo se rechaza igual")
     void destinoInvalido() {
         for (String numero : new String[] {"00111999999999", "no-es-un-numero", null}) {
-            assertThatThrownBy(() -> servicio.transferir(ana, numero, soles("1"), null, UUID.randomUUID()))
+            assertThatThrownBy(() -> servicio.transferir(ana, numero, soles("1"), null, UUID.randomUUID(), CONFIRMADA))
                     .isInstanceOf(OperacionRechazadaException.class)
                     .extracting(e -> ((OperacionRechazadaException) e).motivo())
                     .isEqualTo(MotivoDeRechazo.CUENTA_DESTINO_INEXISTENTE);

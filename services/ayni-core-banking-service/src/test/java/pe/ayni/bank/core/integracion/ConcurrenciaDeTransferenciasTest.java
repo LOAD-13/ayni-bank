@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
@@ -32,11 +34,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.model.Comprobante;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
+import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
 import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeTiempo;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPistaDeAuditoria;
@@ -63,7 +67,8 @@ import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCu
 @Import({OperarCuentaService.class, AbrirCuentaDeAhorroService.class, AdaptadorLibroMayor.class,
         AdaptadorRepositorioDeCuentas.class, AdaptadorRegistroDeIdempotencia.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class,
-        ConfiguracionDeTiempo.class, ObjectMapper.class})
+        ConfiguracionDeTiempo.class, ObjectMapper.class,
+        ConcurrenciaDeTransferenciasTest.ConfirmacionDePrueba.class})
 class ConcurrenciaDeTransferenciasTest {
 
     @Container
@@ -71,6 +76,21 @@ class ConcurrenciaDeTransferenciasTest {
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
     private static final int HILOS = 8;
+
+    /** La confirmacion con segundo factor se prueba aparte (VerificadorDeConfirmacionJwtTest). */
+    private static final String CONFIRMADA = "confirmada";
+
+    @TestConfiguration
+    static class ConfirmacionDePrueba {
+        @Bean
+        VerificadorDeConfirmacionPort verificador() {
+            return (confirmacion, usuario, operacion) -> {
+                if (!CONFIRMADA.equals(confirmacion)) {
+                    throw new ConfirmacionInvalidaException();
+                }
+            };
+        }
+    }
 
     @Autowired
     private OperarCuentaService operar;
@@ -140,7 +160,7 @@ class ConcurrenciaDeTransferenciasTest {
         List<Callable<Comprobante>> tareas = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
             tareas.add(() -> operar.transferir(titular, destino.numero().valor(),
-                    Dinero.de("80.00", Moneda.PEN), "Prueba", UUID.randomUUID()));
+                    Dinero.de("80.00", Moneda.PEN), "Prueba", UUID.randomUUID(), CONFIRMADA));
         }
         List<Future<Comprobante>> resultados = enParalelo(tareas);
 
@@ -164,7 +184,7 @@ class ConcurrenciaDeTransferenciasTest {
         List<Callable<Comprobante>> tareas = new ArrayList<>();
         for (int i = 0; i < HILOS; i++) {
             tareas.add(() -> operar.transferir(titular, destino.numero().valor(),
-                    Dinero.de("30.00", Moneda.PEN), "Rafaga", UUID.randomUUID()));
+                    Dinero.de("30.00", Moneda.PEN), "Rafaga", UUID.randomUUID(), CONFIRMADA));
         }
         long exitos = enParalelo(tareas).stream().filter(f -> causaDe(f) == null).count();
 
@@ -185,7 +205,7 @@ class ConcurrenciaDeTransferenciasTest {
         List<Callable<Comprobante>> tareas = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             tareas.add(() -> operar.transferir(titular, destino.numero().valor(),
-                    Dinero.de("200.00", Moneda.PEN), "Reintento", clave));
+                    Dinero.de("200.00", Moneda.PEN), "Reintento", clave, CONFIRMADA));
         }
         List<Future<Comprobante>> resultados = enParalelo(tareas);
 
@@ -212,9 +232,9 @@ class ConcurrenciaDeTransferenciasTest {
         List<Callable<Comprobante>> tareas = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             tareas.add(() -> operar.transferir(titularA, b.numero().valor(),
-                    Dinero.de("10.00", Moneda.PEN), "A a B", UUID.randomUUID()));
+                    Dinero.de("10.00", Moneda.PEN), "A a B", UUID.randomUUID(), CONFIRMADA));
             tareas.add(() -> operar.transferir(titularB, a.numero().valor(),
-                    Dinero.de("10.00", Moneda.PEN), "B a A", UUID.randomUUID()));
+                    Dinero.de("10.00", Moneda.PEN), "B a A", UUID.randomUUID(), CONFIRMADA));
         }
         List<Future<Comprobante>> resultados = enParalelo(tareas);
 

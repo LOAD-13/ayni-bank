@@ -67,6 +67,12 @@ ayni:
   jwt:
     clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
 
+  # Clave HS256 del token de confirmacion de operaciones (HU-07, ADR-0031). Distinta de la
+  # del token de acceso a proposito. La comparte solo core-banking, que lo verifica. En
+  # produccion llega de SSM (AYNI_CONFIRMACION_CLAVE).
+  confirmacion:
+    clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
+
   cookies:
     # En local la aplicación se sirve por HTTP, y una cookie `Secure` sencillamente
     # no llegaría: el navegador la descarta sin avisar y el ingreso parecería
