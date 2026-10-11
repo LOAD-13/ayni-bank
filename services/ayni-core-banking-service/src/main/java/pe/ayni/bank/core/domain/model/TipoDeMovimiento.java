@@ -6,5 +6,7 @@ public enum TipoDeMovimiento {
     /** Entre dos cuentas Ayni · HU-07. */
     TRANSFERENCIA,
     /** Entrada de dinero simulada, contra la cuenta tecnica de fondeo. */
-    DEPOSITO_SIMULADO
+    DEPOSITO_SIMULADO,
+    /** Capitalizacion mensual de intereses, contra la cuenta tecnica de intereses · HU-06. */
+    INTERES
 }

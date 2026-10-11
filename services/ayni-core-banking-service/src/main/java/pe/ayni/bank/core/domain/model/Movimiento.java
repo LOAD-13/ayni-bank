@@ -100,6 +100,28 @@ public record Movimiento(UUID id, TipoDeMovimiento tipo, Asiento cargo, Asiento 
                         "Deposito simulado", momento));
     }
 
+    /**
+     * Capitalizacion de los intereses del mes (HU-06).
+     *
+     * <p>La contrapartida es la cuenta tecnica de intereses, cuyo saldo negativo es todo lo que
+     * el banco ha pagado. No aplica el minimo de un sol: un mes con poco saldo puede rendir
+     * un centimo, y ese centimo es del cliente.
+     */
+    public static Movimiento capitalizacionDeIntereses(UUID id, Cuenta intereses, Cuenta destino, Dinero importe,
+                                                       String periodo, Instant momento) {
+        if (importe.moneda() != destino.moneda() || intereses.moneda() != destino.moneda()) {
+            throw new OperacionRechazadaException(MotivoDeRechazo.MONEDA_DISTINTA);
+        }
+        if (!importe.esPositivo()) {
+            throw new IllegalArgumentException("Una capitalizacion abona un importe positivo.");
+        }
+        return new Movimiento(id, TipoDeMovimiento.INTERES,
+                new Asiento(UUID.randomUUID(), intereses.id(), id, TipoDeAsiento.CARGO, importe,
+                        "Intereses " + periodo + " · " + destino.numero().enmascarado(), momento),
+                new Asiento(UUID.randomUUID(), destino.id(), id, TipoDeAsiento.ABONO, importe,
+                        "Intereses ganados · " + periodo, momento));
+    }
+
     public Dinero importe() {
         return abono.importe();
     }

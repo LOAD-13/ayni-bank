@@ -34,6 +34,7 @@ class AdaptadorLibroMayorTest {
 
     private static final Instant AHORA = Instant.parse("2026-10-02T15:00:00Z");
     private static final UUID FONDEO = UUID.fromString("f0de0000-0000-4000-8000-000000000001");
+    private static final UUID INTERESES = UUID.fromString("1e7e0000-0000-4000-8000-000000000001");
 
     @Mock
     private CuentaJpaRepository cuentas;
@@ -42,7 +43,7 @@ class AdaptadorLibroMayorTest {
     private AsientoJpaRepository asientos;
 
     private AdaptadorLibroMayor adaptador() {
-        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO);
+        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES);
     }
 
     private static CuentaEntity fila(UUID id, String numero) {
@@ -78,6 +79,18 @@ class AdaptadorLibroMayorTest {
         assertThat(adaptador().cuentaDeFondeo(Moneda.PEN).id()).isEqualTo(FONDEO);
         assertThatThrownBy(() -> adaptador().cuentaDeFondeo(Moneda.USD))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("la cuenta de intereses se resuelve por su id fijo, solo en soles, y su ausencia apunta a V5")
+    void cuentaDeIntereses() {
+        when(cuentas.findById(INTERESES)).thenReturn(Optional.of(fila(INTERESES, "00110000000003")));
+        assertThat(adaptador().cuentaDeIntereses(Moneda.PEN).id()).isEqualTo(INTERESES);
+        assertThatThrownBy(() -> adaptador().cuentaDeIntereses(Moneda.USD))
+                .isInstanceOf(IllegalStateException.class);
+
+        when(cuentas.findById(INTERESES)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> adaptador().cuentaDeIntereses(Moneda.PEN)).hasMessageContaining("V5");
     }
 
     @Test

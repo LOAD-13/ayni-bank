@@ -6,5 +6,7 @@ public enum TipoDeEventoDeOperacion {
     DEPOSITO_SIMULADO,
     /** La misma clave de idempotencia llego otra vez: se devolvio el comprobante original. */
     OPERACION_REPETIDA,
-    OPERACION_RECHAZADA
+    OPERACION_RECHAZADA,
+    /** HU-06: el interes del mes se abono en la cuenta. */
+    INTERES_CAPITALIZADO
 }
