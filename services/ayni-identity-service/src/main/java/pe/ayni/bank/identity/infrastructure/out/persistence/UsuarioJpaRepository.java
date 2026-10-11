@@ -11,4 +11,7 @@ interface UsuarioJpaRepository extends JpaRepository<UsuarioEntity, UUID> {
     boolean existsByCorreo(String correo);
 
     Optional<UsuarioEntity> findByCorreo(String correo);
+
+    /** HU-13: para republicar los titulares activos una sola vez. */
+    java.util.List<UsuarioEntity> findByEstado(String estado);
 }

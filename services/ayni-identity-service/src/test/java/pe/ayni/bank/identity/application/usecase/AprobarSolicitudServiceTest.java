@@ -77,6 +77,8 @@ class AprobarSolicitudServiceTest {
         servicio.aprobar(solicitudDeAna);
 
         assertThat(publicador.anuncios).containsExactly(Map.entry(solicitudDeAna, ana.id()));
+        // HU-13: notification-service recibe el correo y el nombre de pila del titular activado.
+        assertThat(publicador.titulares).containsExactly(ana.id() + "|" + ana.correo().valor() + "|Ana");
     }
 
     @Test
@@ -206,10 +208,16 @@ class AprobarSolicitudServiceTest {
 
     private static final class PublicadorFalso implements PublicadorDeSolicitudesPort {
         private final List<Map.Entry<UUID, UUID>> anuncios = new ArrayList<>();
+        private final List<String> titulares = new ArrayList<>();
 
         @Override
         public void anunciarAprobacion(UUID solicitudId, UUID usuarioId) {
             anuncios.add(Map.entry(solicitudId, usuarioId));
+        }
+
+        @Override
+        public void anunciarTitularActivado(UUID usuarioId, CorreoElectronico correo, String nombrePila) {
+            titulares.add(usuarioId + "|" + correo.valor() + "|" + nombrePila);
         }
     }
 }

@@ -99,6 +99,8 @@ services:
       # Clave del operador que aprueba solicitudes en revision (SSM /ayni/prod/operador-clave).
       # Sin ella, el endpoint del operador no responde.
       AYNI_OPERADOR_CLAVE: ${AYNI_OPERADOR_CLAVE:-}
+      # HU-13: true solo en el despliegue que estrena las notificaciones (RepublicadorDeTitulares).
+      AYNI_REPUBLICAR_TITULARES: ${AYNI_REPUBLICAR_TITULARES:-false}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE}
       AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}

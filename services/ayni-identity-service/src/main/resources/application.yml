@@ -70,6 +70,11 @@ ayni:
   # Clave HS256 del token de confirmacion de operaciones (HU-07, ADR-0031). Distinta de la
   # del token de acceso a proposito. La comparte solo core-banking, que lo verifica. En
   # produccion llega de SSM (AYNI_CONFIRMACION_CLAVE).
+  # HU-13: republicar una vez los titulares activos para notification-service (ver
+  # RepublicadorDeTitulares). Apagado salvo en el despliegue que estrena las notificaciones.
+  notificaciones:
+    republicar-titulares: ${AYNI_REPUBLICAR_TITULARES:false}
+
   confirmacion:
     clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
 

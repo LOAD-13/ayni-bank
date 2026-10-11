@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 import pe.ayni.bank.identity.domain.port.out.PublicadorDeSolicitudesPort;
 import pe.ayni.bank.identity.infrastructure.config.ConfiguracionDeMensajeria;
 
@@ -40,6 +41,24 @@ public class PublicadorDeSolicitudesPorAmqp implements PublicadorDeSolicitudesPo
                 ConfiguracionDeMensajeria.EXCHANGE,
                 ConfiguracionDeMensajeria.CLAVE_SOLICITUD_APROBADA,
                 new SolicitudAprobada(solicitudId, usuarioId, reloj.instant().toString()));
+    }
+
+    @Override
+    public void anunciarTitularActivado(UUID usuarioId, CorreoElectronico correo, String nombrePila) {
+        rabbit.convertAndSend(
+                ConfiguracionDeMensajeria.EXCHANGE,
+                ConfiguracionDeMensajeria.CLAVE_TITULAR_ACTIVADO,
+                new TitularActivado(usuarioId, correo.valor(), nombrePila, reloj.instant().toString()));
+    }
+
+    /** HU-13: el contrato con notification-service. Lleva el correo, y nada mas sensible. */
+    public record TitularActivado(UUID usuarioId, String correo, String nombrePila, String activadoEn) {
+
+        /** El correo es dato personal: no sale entero en una traza. */
+        @Override
+        public String toString() {
+            return "TitularActivado[usuarioId=" + usuarioId + "]";
+        }
     }
 
     /**
