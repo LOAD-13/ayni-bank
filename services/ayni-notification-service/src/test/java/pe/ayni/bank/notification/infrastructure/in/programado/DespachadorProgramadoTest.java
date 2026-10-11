@@ -42,10 +42,10 @@ class DespachadorProgramadoTest {
     void configuracion() {
         var mensajeria = new ConfiguracionDeMensajeria();
         assertThat(java.util.List.of(mensajeria.enlaceDeTitulares(), mensajeria.enlaceDeTransferencias(),
-                mensajeria.enlaceDeDepositos()))
+                mensajeria.enlaceDeDepositos(), mensajeria.enlaceDeIntereses()))
                 .extracting(Binding::getRoutingKey)
                 .containsExactly("identity.titular.activado", "core.transferencia.realizada",
-                        "core.deposito.simulado.registrado");
+                        "core.deposito.simulado.registrado", "core.interes.capitalizado");
         assertThat(mensajeria.conversorDeMensajes(new com.fasterxml.jackson.databind.ObjectMapper())).isNotNull();
 
         var notificaciones = new ConfiguracionDeNotificaciones();

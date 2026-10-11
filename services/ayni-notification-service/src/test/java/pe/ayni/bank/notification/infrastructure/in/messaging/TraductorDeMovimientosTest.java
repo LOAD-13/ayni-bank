@@ -26,6 +26,7 @@ import pe.ayni.bank.notification.domain.port.in.RegistrarAvisosUseCase;
 import pe.ayni.bank.notification.domain.port.in.RegistrarTitularUseCase;
 import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeTitulares.TitularActivado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.DepositoSimuladoRegistrado;
+import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.InteresCapitalizado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaRealizada;
 
 /** El contrato con core-banking e identity: lo que llega por RabbitMQ y como se convierte en avisos. */
@@ -101,6 +102,32 @@ class TraductorDeMovimientosTest {
                     .containsEntry("fecha", "10/10/2026 a las 22:30")
                     .doesNotContainKey("contraparte");
         });
+    }
+
+    @Test
+    @DisplayName("HU-06: el interes capitalizado avisa al titular con el mes en castellano y el saldo")
+    void interes() throws Exception {
+        var e = new ObjectMapper().readValue("""
+                {"movimientoId":"%s","cuentaId":"%s","usuarioId":"%s","cuenta":"****4321","importe":"4.20",
+                 "moneda":"PEN","saldo":"1004.20","periodo":"2026-10","registradoEn":"2026-11-01T05:00:00Z"}
+                """.formatted(MOVIMIENTO, UUID.randomUUID(), ANA), InteresCapitalizado.class);
+
+        assertThat(TraductorDeMovimientos.deInteres(EVENTO, e)).singleElement().satisfies(a -> {
+            assertThat(a.tipo()).isEqualTo(TipoDeAviso.INTERES_CAPITALIZADO);
+            assertThat(a.usuarioId()).isEqualTo(ANA);
+            assertThat(a.datos())
+                    .containsEntry("periodo", "octubre de 2026")
+                    .containsEntry("importe", "4.20")
+                    .containsEntry("saldo", "1,004.20")
+                    .containsEntry("fecha", "01/11/2026 a las 00:00");
+        });
+        var sinTitular = new InteresCapitalizado(MOVIMIENTO, UUID.randomUUID(), null, "****4321", "4.20", "PEN",
+                "1004.20", "2026-10", "2026-11-01T05:00:00Z");
+        assertThat(TraductorDeMovimientos.deInteres(EVENTO, sinTitular)).isEmpty();
+
+        RegistrarAvisosUseCase avisos = mock(RegistrarAvisosUseCase.class);
+        new EscuchadorDeMovimientos(avisos).alCapitalizarseLosIntereses(e, EVENTO.toString());
+        verify(avisos).registrar(TraductorDeMovimientos.deInteres(EVENTO, e));
     }
 
     @Test

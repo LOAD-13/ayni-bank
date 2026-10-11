@@ -119,7 +119,7 @@ class NotificacionesEnPostgresTest {
     private AvisoDeMovimiento aviso(UUID evento, TipoDeAviso tipo) {
         return new AvisoDeMovimiento(evento, ana, tipo, Map.of("importe", "1,234.50", "moneda", "PEN",
                 "cuenta", "****4321", "contraparte", "****8765", "saldo", "765.50",
-                "fecha", "11/10/2026 a las 10:04", "operacion", "A1B2C3D4"));
+                "fecha", "11/10/2026 a las 10:04", "operacion", "A1B2C3D4", "periodo", "octubre de 2026"));
     }
 
     @Test
@@ -167,15 +167,17 @@ class NotificacionesEnPostgresTest {
     }
 
     @Test
-    @DisplayName("las tres plantillas de V2 se rellenan con los datos del traductor")
+    @DisplayName("las plantillas de V2 y V3 se rellenan con los datos del traductor")
     void plantillasCompletas() {
         titulares.registrar(new Titular(ana, "ana@example.pe", "Ana"));
         avisos.registrar(List.of(aviso(UUID.randomUUID(), TipoDeAviso.TRANSFERENCIA_ENVIADA),
                 aviso(UUID.randomUUID(), TipoDeAviso.TRANSFERENCIA_RECIBIDA),
-                aviso(UUID.randomUUID(), TipoDeAviso.DEPOSITO_RECIBIDO)));
+                aviso(UUID.randomUUID(), TipoDeAviso.DEPOSITO_RECIBIDO),
+                aviso(UUID.randomUUID(), TipoDeAviso.INTERES_CAPITALIZADO)));
 
-        assertThat(despachador.despacharPendientes().enviadas()).isEqualTo(3);
-        assertThat(ENVIADOS).hasSize(3).allSatisfy(c -> assertThat(c).contains("765.50").doesNotContain("{{"));
+        assertThat(despachador.despacharPendientes().enviadas()).isEqualTo(4);
+        assertThat(ENVIADOS).anyMatch(c -> c.contains("Tus intereses de octubre de 2026"));
+        assertThat(ENVIADOS).hasSize(4).allSatisfy(c -> assertThat(c).contains("765.50").doesNotContain("{{"));
     }
 
     @Test

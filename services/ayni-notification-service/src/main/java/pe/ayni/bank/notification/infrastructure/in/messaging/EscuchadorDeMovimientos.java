@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import pe.ayni.bank.notification.domain.port.in.RegistrarAvisosUseCase;
 import pe.ayni.bank.notification.infrastructure.config.ConfiguracionDeMensajeria;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.DepositoSimuladoRegistrado;
+import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.InteresCapitalizado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaRealizada;
 
 /**
@@ -38,6 +39,14 @@ public class EscuchadorDeMovimientos {
                                         @Header(name = AmqpHeaders.MESSAGE_ID, required = false)
                                         String messageId) {
         registrar.registrar(TraductorDeMovimientos.deDeposito(
+                TraductorDeMovimientos.eventoId(messageId, evento.movimientoId()), evento));
+    }
+
+    @RabbitListener(queues = ConfiguracionDeMensajeria.COLA_INTERESES)
+    public void alCapitalizarseLosIntereses(InteresCapitalizado evento,
+                                           @Header(name = AmqpHeaders.MESSAGE_ID, required = false)
+                                           String messageId) {
+        registrar.registrar(TraductorDeMovimientos.deInteres(
                 TraductorDeMovimientos.eventoId(messageId, evento.movimientoId()), evento));
     }
 }
