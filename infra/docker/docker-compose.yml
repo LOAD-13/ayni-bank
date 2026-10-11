@@ -158,6 +158,8 @@ services:
       # arrancaria. En staging y produccion llega como secreto desde el .env.
       # Generar una nueva:  openssl rand -base64 32
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE:-YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+      # HU-13: true una sola vez para cargar en notification a los titulares ya activos.
+      AYNI_REPUBLICAR_TITULARES: ${AYNI_REPUBLICAR_TITULARES:-false}
     # minio-init crea el bucket ayni-kyc-documentos y termina. Sin esta
     # dependencia hay una condicion de carrera: identity-service podria
     # generar una URL pre-firmada de subida (AYNI-13 subtarea 7) contra un

@@ -25,9 +25,46 @@ spring:
     # registro, queremos enterarnos, no que los de por buenos en silencio.
     baseline-on-migrate: false
 
-  # ddl-auto no existe aqui a proposito. El esquema lo define Flyway y solo
-  # Flyway; que un ORM altere tablas por su cuenta es inaceptable en un
-  # sistema financiero. Ver §4.5 del documento de diseño.
+  # El esquema lo define Flyway y solo Flyway; que un ORM altere tablas por su
+  # cuenta es inaceptable en un sistema financiero. Ver §4.5 del documento de diseño.
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: notification
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:ayni}
+    password: ${SPRING_RABBITMQ_PASSWORD:cambiar_en_local}
+    listener:
+      simple:
+        # Igual que en core-banking: unos pocos reintentos con espera creciente y
+        # despues se descarta, en lugar de un mensaje envenenado en bucle.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 2s
+          multiplier: 2
+
+ayni:
+  notificaciones:
+    despacho:
+      # Cada cuanto se buscan avisos pendientes. Es la demora maxima de un correo.
+      cada: ${AYNI_NOTIFICACIONES_DESPACHO:5s}
+    reintentos:
+      # Espera tras el primer fallo; se duplica en cada intento (30 s, 1 min, 2 min...).
+      base: ${AYNI_NOTIFICACIONES_REINTENTO_BASE:30s}
+      # Intentos en total antes de dar el aviso por fallido.
+      maximo: ${AYNI_NOTIFICACIONES_REINTENTOS:5}
+  # ─── Correo al cliente (solo perfil prod, Amazon SES) ──────────────────
+  correo:
+    remitente: ${AYNI_CORREO_REMITENTE:Ayni Bank <no-responder@ayni.pe>}
+    region: ${AYNI_CORREO_REGION:us-east-1}
 
 server:
   port: 8083
