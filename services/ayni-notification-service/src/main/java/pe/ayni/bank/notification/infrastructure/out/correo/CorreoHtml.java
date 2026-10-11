@@ -7,7 +7,7 @@ import pe.ayni.bank.notification.domain.model.Titular;
 
 /**
  * La version HTML y la de texto de un aviso, con el mismo aspecto que los correos de identity.
- * Todo lo variable se escapa antes de entrar en el HTML.
+ * Cada dato variable se escapa antes de entrar en el HTML.
  */
 final class CorreoHtml {
 

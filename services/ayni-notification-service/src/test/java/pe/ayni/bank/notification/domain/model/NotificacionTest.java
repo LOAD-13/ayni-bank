@@ -80,9 +80,11 @@ class NotificacionTest {
         assertThatThrownBy(() -> new PoliticaDeReintentos(Duration.ZERO, 3))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new PoliticaDeReintentos(null, 3)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PoliticaDeReintentos(Duration.ofSeconds(-1), 3))
+        Duration negativa = Duration.ofSeconds(-1);
+        assertThatThrownBy(() -> new PoliticaDeReintentos(negativa, 3))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PoliticaDeReintentos(Duration.ofSeconds(1), 0))
+        Duration unSegundo = Duration.ofSeconds(1);
+        assertThatThrownBy(() -> new PoliticaDeReintentos(unSegundo, 0))
                 .isInstanceOf(IllegalArgumentException.class);
 
         PoliticaDeReintentos p = new PoliticaDeReintentos(Duration.ofSeconds(1), 100);

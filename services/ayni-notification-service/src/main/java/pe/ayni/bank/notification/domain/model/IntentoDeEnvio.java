@@ -9,7 +9,7 @@ public record IntentoDeEnvio(UUID id, UUID notificacionId, int numero, boolean e
                              Instant ocurridoEn) {
 
     private static final int LARGO_MAXIMO = 500;
-    private static final Pattern CORREO = Pattern.compile("[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+");
+    private static final Pattern CORREO = Pattern.compile("[\\w.+-]++@[\\w-]++(?:\\.[\\w-]++)++");
 
     public IntentoDeEnvio {
         detalle = detalle == null ? null : sinDatosPersonales(detalle);

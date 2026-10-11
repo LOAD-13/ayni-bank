@@ -14,7 +14,7 @@ import pe.ayni.bank.notification.domain.model.PoliticaDeReintentos;
 @EnableScheduling
 public class ConfiguracionDeNotificaciones {
 
-    /** UTC en todo el sistema, como en core-banking. La hora de Lima solo aparece en el texto del correo. */
+    /** UTC en el sistema entero, como en core-banking. La hora de Lima solo aparece en el texto del correo. */
     @Bean
     public Clock reloj() {
         return Clock.systemUTC();

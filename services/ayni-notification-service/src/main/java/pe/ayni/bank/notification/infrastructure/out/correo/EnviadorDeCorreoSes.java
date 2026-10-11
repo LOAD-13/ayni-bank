@@ -6,11 +6,7 @@ import pe.ayni.bank.notification.domain.model.MensajeRedactado;
 import pe.ayni.bank.notification.domain.model.Titular;
 import pe.ayni.bank.notification.domain.port.out.EnviadorDeCorreoPort;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
-import software.amazon.awssdk.services.sesv2.model.Body;
 import software.amazon.awssdk.services.sesv2.model.Content;
-import software.amazon.awssdk.services.sesv2.model.Destination;
-import software.amazon.awssdk.services.sesv2.model.EmailContent;
-import software.amazon.awssdk.services.sesv2.model.Message;
 import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 
 /**
@@ -31,14 +27,12 @@ public class EnviadorDeCorreoSes implements EnviadorDeCorreoPort {
     public void enviar(Titular destinatario, MensajeRedactado mensaje) {
         ses.sendEmail(SendEmailRequest.builder()
                 .fromEmailAddress(remitente)
-                .destination(Destination.builder().toAddresses(destinatario.correo()).build())
-                .content(EmailContent.builder().simple(Message.builder()
+                .destination(d -> d.toAddresses(destinatario.correo()))
+                .content(c -> c.simple(m -> m
                         .subject(contenido(mensaje.asunto()))
-                        .body(Body.builder()
+                        .body(b -> b
                                 .html(contenido(CorreoHtml.html(destinatario, mensaje)))
-                                .text(contenido(CorreoHtml.texto(destinatario, mensaje)))
-                                .build())
-                        .build()).build())
+                                .text(contenido(CorreoHtml.texto(destinatario, mensaje))))))
                 .build());
     }
 
