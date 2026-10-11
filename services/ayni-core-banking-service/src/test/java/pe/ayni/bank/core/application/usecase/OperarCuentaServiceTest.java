@@ -47,6 +47,7 @@ class OperarCuentaServiceTest {
     private final Libro libro = new Libro();
     private final Cuentas cuentas = new Cuentas(libro);
     private final List<String> eventos = new ArrayList<>();
+    private final List<Object> cargas = new ArrayList<>();
     private final Map<UUID, UUID> claves = new HashMap<>();
     private final List<String> pista = new ArrayList<>();
 
@@ -54,7 +55,10 @@ class OperarCuentaServiceTest {
     private final List<String> confirmacionesVistas = new ArrayList<>();
 
     private final OperarCuentaService servicio = new OperarCuentaService(cuentas, libro,
-            (tipo, id, evento, carga) -> eventos.add(evento),
+            (tipo, id, evento, carga) -> {
+                eventos.add(evento);
+                cargas.add(carga);
+            },
             new RegistroDeIdempotenciaPort() {
                 @Override
                 public Optional<UUID> resultadoDe(UUID clave) {
@@ -130,6 +134,28 @@ class OperarCuentaServiceTest {
         assertThat(eventos).containsExactly("DepositoSimuladoRegistrado", "TransferenciaRealizada");
         assertThat(libro.bloqueos).allSatisfy(ids ->
                 assertThat(ids).isSortedAccordingTo(Comparator.naturalOrder()));
+    }
+
+    @Test
+    @DisplayName("HU-13: el evento de la transferencia lleva a los dos titulares y sus saldos posteriores")
+    void eventoParaNotificar() {
+        servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
+        servicio.transferir(ana, deBeto.numero().valor(), soles("120.50"), "Cena", UUID.randomUUID(), CONFIRMADA);
+
+        assertThat(cargas.get(0)).isInstanceOfSatisfying(OperarCuentaService.DepositoSimuladoRegistrado.class, d -> {
+            assertThat(d.usuarioId()).isEqualTo(ana);
+            assertThat(d.saldo()).isEqualTo("500.00");
+            assertThat(d.cuenta()).isEqualTo(deAna.numero().enmascarado());
+        });
+        assertThat(cargas.get(1)).isInstanceOfSatisfying(OperarCuentaService.TransferenciaRealizada.class, t -> {
+            assertThat(t.usuarioOrigenId()).isEqualTo(ana);
+            assertThat(t.usuarioDestinoId()).isEqualTo(beto);
+            assertThat(t.saldoOrigen()).isEqualTo("379.50");
+            assertThat(t.saldoDestino()).isEqualTo("120.50");
+            assertThat(t.cuentaOrigen()).isEqualTo(deAna.numero().enmascarado());
+            assertThat(t.cuentaDestino()).isEqualTo(deBeto.numero().enmascarado()).doesNotContain(deBeto.numero().valor());
+            assertThat(t.registradoEn()).isNotBlank();
+        });
     }
 
     @Test

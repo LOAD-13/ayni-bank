@@ -156,13 +156,22 @@ public class OperarCuentaService implements OperarCuentaUseCase {
             return new Resultado(adelantada.get(), true);
         }
         Dinero saldo = libro.saldoDe(origen.id(), origen.moneda());
+        Dinero saldoDestino = libro.saldoDe(destino.id(), destino.moneda());
 
         Movimiento movimiento = Movimiento.transferencia(UUID.randomUUID(), origen, saldo,
                 destino, importe, concepto, reloj.instant());
 
+        // HU-13: el evento lleva lo que notification-service necesita para avisar a los dos
+        // titulares sin consultar a nadie, y nada sensible: numeros enmascarados, ni nombres
+        // ni documentos. Los saldos son los de despues del movimiento.
         return new Resultado(completar(movimiento, origen, clave,
                 new TransferenciaRealizada(movimiento.id(), origen.id(), destino.id(),
-                        importe.importe().toPlainString(), importe.moneda().name())), false);
+                        importe.importe().toPlainString(), importe.moneda().name(),
+                        origen.usuarioId(), destino.usuarioId(),
+                        origen.numero().enmascarado(), destino.numero().enmascarado(),
+                        saldo.menos(importe).importe().toPlainString(),
+                        saldoDestino.mas(importe).importe().toPlainString(),
+                        movimiento.asientos().get(0).registradoEn().toString())), false);
     }
 
     private Resultado hacerDeposito(UUID usuarioId, Dinero importe, UUID clave) {
@@ -180,12 +189,16 @@ public class OperarCuentaService implements OperarCuentaUseCase {
             return new Resultado(adelantada.get(), true);
         }
 
+        Dinero saldoDestino = libro.saldoDe(destino.id(), destino.moneda());
         Movimiento movimiento = Movimiento.depositoSimulado(UUID.randomUUID(), fondeo, destino,
                 importe, reloj.instant());
 
         return new Resultado(completar(movimiento, destino, clave,
                 new DepositoSimuladoRegistrado(movimiento.id(), destino.id(),
-                        importe.importe().toPlainString(), importe.moneda().name())), false);
+                        importe.importe().toPlainString(), importe.moneda().name(),
+                        destino.usuarioId(), destino.numero().enmascarado(),
+                        saldoDestino.mas(importe).importe().toPlainString(),
+                        movimiento.asientos().get(0).registradoEn().toString())), false);
     }
 
     private Comprobante completar(Movimiento movimiento, Cuenta delTitular, UUID clave,
@@ -284,11 +297,18 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     }
 
     /** Evento para el outbox. Sin numeros de cuenta: solo identificadores internos. */
+    /** HU-13: lo que necesita notification-service para avisar a los dos titulares. */
+    @SuppressWarnings("java:S107") // Un evento es un registro plano: un campo por dato.
     public record TransferenciaRealizada(UUID movimientoId, UUID cuentaOrigenId,
-                                         UUID cuentaDestinoId, String importe, String moneda) {
+                                         UUID cuentaDestinoId, String importe, String moneda,
+                                         UUID usuarioOrigenId, UUID usuarioDestinoId,
+                                         String cuentaOrigen, String cuentaDestino,
+                                         String saldoOrigen, String saldoDestino,
+                                         String registradoEn) {
     }
 
     public record DepositoSimuladoRegistrado(UUID movimientoId, UUID cuentaId, String importe,
-                                             String moneda) {
+                                             String moneda, UUID usuarioId, String cuenta,
+                                             String saldo, String registradoEn) {
     }
 }
