@@ -59,7 +59,8 @@ final class ComprobanteEnPdf {
         tabla.setWidthPercentage(100);
         fila(tabla, "Numero de operacion", c.movimientoId().toString());
         fila(tabla, "Fecha y hora (Lima)", FECHA.format(c.registradoEn()));
-        fila(tabla, "Importe", "S/ " + c.importe().importe().toPlainString() + " " + c.importe().moneda().name());
+        fila(tabla, "Importe", ("PEN".equals(c.importe().moneda().name()) ? "S/ " : "US$ ")
+                + c.importe().importe().toPlainString());
         fila(tabla, "Cuenta de origen", c.cuentaOrigen());
         fila(tabla, "Cuenta de destino", c.cuentaDestino());
         fila(tabla, "Concepto", c.concepto() == null || c.concepto().isBlank() ? "Transferencia" : c.concepto());
