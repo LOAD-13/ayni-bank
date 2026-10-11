@@ -101,6 +101,7 @@ services:
       AYNI_OPERADOR_CLAVE: ${AYNI_OPERADOR_CLAVE:-}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE}
+      AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}
       AYNI_COOKIES_SEGURAS: "true"
       MINIO_ENDPOINT: https://s3.us-east-1.amazonaws.com
       MINIO_ENDPOINT_PUBLICO: https://s3.us-east-1.amazonaws.com
@@ -123,6 +124,7 @@ services:
     image: ${REGISTRO}/ayni/ayni-core-banking-service:${ETIQUETA}
     container_name: ayni-core-banking-service
     environment:
+      AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}
       <<: *java-env
     depends_on:
       rabbitmq: { condition: service_healthy }
