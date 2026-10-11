@@ -16,6 +16,7 @@ import org.springframework.transaction.interceptor.TransactionAttribute;
 
 import java.util.stream.Stream;
 
+import pe.ayni.bank.identity.domain.model.CodigoDeConfirmacionIncorrectoException;
 import pe.ayni.bank.identity.domain.model.CodigoDesafioInvalidoException;
 import pe.ayni.bank.identity.domain.model.CredencialesInvalidasException;
 import pe.ayni.bank.identity.domain.model.CuentaBloqueadaException;
@@ -56,7 +57,11 @@ class RollbackDeLasDefensasTest {
                 Arguments.of(VerificarContactoRegistroService.class, "verificarContacto",
                         new CodigoDesafioInvalidoException()),
                 Arguments.of(VerificarContactoRegistroService.class, "verificarContacto",
-                        new MaximoIntentosDesafioExcedidoException()));
+                        new MaximoIntentosDesafioExcedidoException()),
+                Arguments.of(ConfirmarOperacionService.class, "verificar",
+                        new CodigoDeConfirmacionIncorrectoException(2)),
+                Arguments.of(ConfirmarOperacionService.class, "verificar",
+                        new CuentaBloqueadaException(Duration.ofMinutes(1))));
     }
 
     @ParameterizedTest(name = "{0}.{1} conserva lo escrito al lanzar {2}")

@@ -13,8 +13,14 @@ import pe.ayni.bank.core.domain.model.Dinero;
  */
 public interface OperarCuentaUseCase {
 
+    /**
+     * @param confirmacion comprobante de que el titular confirmo esta transferencia con su
+     *                     segundo factor (ADR-0031). Un reintento con la misma clave devuelve
+     *                     el comprobante original aunque la confirmacion ya haya caducado:
+     *                     repetir no mueve dinero.
+     */
     Comprobante transferir(UUID usuarioId, String numeroDestino, Dinero importe,
-                           String concepto, UUID claveDeIdempotencia);
+                           String concepto, UUID claveDeIdempotencia, String confirmacion);
 
     Comprobante depositarSimulado(UUID usuarioId, Dinero importe, UUID claveDeIdempotencia);
 }

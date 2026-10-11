@@ -59,6 +59,12 @@ spring:
           multiplier: 2
 
 ayni:
+  # Clave HS256 del token de confirmacion con segundo factor que emite identity (HU-07,
+  # ADR-0031). Es propia y distinta de la del token de acceso: un token de acceso no
+  # puede pasar por confirmacion ni al reves. En produccion llega de SSM
+  # (AYNI_CONFIRMACION_CLAVE). Generar una nueva:  openssl rand -base64 32
+  confirmacion:
+    clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
   cuentas:
     # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
     # migracion V3 con este mismo identificador.

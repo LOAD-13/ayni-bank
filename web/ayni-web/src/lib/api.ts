@@ -22,6 +22,8 @@ export interface Problema {
   errores?: ErrorDeCampo[];
   /** Motivo de negocio, p. ej. SIN_CUENTA o SALDO_INSUFICIENTE. */
   codigo?: string;
+  /** Intentos que le quedan a una confirmación con segundo factor (HU-07). */
+  intentosRestantes?: number;
 }
 
 export class ErrorDeApi extends Error {
@@ -406,6 +408,8 @@ interface Opciones {
   token?: string;
   /** Clave de idempotencia de las operaciones monetarias. */
   idempotencia?: string;
+  /** Token de confirmación con segundo factor de una transferencia (HU-07, ADR-0031). */
+  confirmacion?: string;
 }
 
 async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {}): Promise<T> {
@@ -415,6 +419,7 @@ async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {})
   if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
   if (opciones.token) cabeceras.Authorization = `Bearer ${opciones.token}`;
   if (opciones.idempotencia) cabeceras["Idempotency-Key"] = opciones.idempotencia;
+  if (opciones.confirmacion) cabeceras["X-Ayni-Confirmacion"] = opciones.confirmacion;
 
   try {
     // Sin cuerpo es una consulta: GET. Mandar un POST con el cuerpo vacío para leer algo
@@ -527,10 +532,43 @@ export async function transferir(
   importe: string,
   concepto: string,
   clave: string,
+  confirmacion: string,
 ): Promise<Comprobante> {
   return pedir<Comprobante>(
     "/api/v1/transferencias",
     { cuentaDestino, importe, concepto },
-    { token, idempotencia: clave },
+    { token, idempotencia: clave, confirmacion },
+  );
+}
+
+// ─── Confirmación con segundo factor · HU-07, ADR-0031 ───────────────────
+
+export interface ConfirmacionIniciada {
+  confirmacionId: string;
+  metodo: TipoDeSegundoFactor;
+  expiraEn: string;
+}
+
+/**
+ * Abre la confirmación de una transferencia. identity solo guarda su huella; si el titular
+ * eligió el correo, le envía el código.
+ */
+export async function iniciarConfirmacion(
+  token: string,
+  operacion: { destino: string; importe: string; moneda: string; claveIdempotencia: string },
+): Promise<ConfirmacionIniciada> {
+  return pedir<ConfirmacionIniciada>("/api/v1/confirmaciones", operacion, { token });
+}
+
+/** Comprueba el código y devuelve el token de 5 minutos que exige la transferencia. */
+export async function verificarConfirmacion(
+  token: string,
+  confirmacionId: string,
+  codigo: string,
+): Promise<{ token: string; expiraEn: string }> {
+  return pedir<{ token: string; expiraEn: string }>(
+    `/api/v1/confirmaciones/${confirmacionId}/verificacion`,
+    { codigo },
+    { token },
   );
 }
