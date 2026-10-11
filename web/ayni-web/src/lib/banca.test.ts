@@ -5,6 +5,7 @@ import {
   consultarMiCuenta,
   consultarMovimientos,
   depositarSimulado,
+  descargarComprobante,
   renovarSesion,
   iniciarConfirmacion,
   transferir,
@@ -169,6 +170,21 @@ describe("llamadas de la banca", () => {
       method: "POST",
       credentials: "include",
     });
+  });
+
+  it("el comprobante en PDF se pide con el token y falla con un ErrorDeApi", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("%PDF-", { status: 200 }));
+    const pdf = await descargarComprobante("tk", "m-1");
+    expect(pdf.size).toBe(5);
+    expect(vi.mocked(fetch).mock.calls.at(-1)![0]).toContain(
+      "/api/v1/movimientos/m-1/comprobante.pdf",
+    );
+
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 404 }));
+    await expect(descargarComprobante("tk", "otro")).rejects.toMatchObject({ estado: 404 });
+
+    vi.mocked(fetch).mockRejectedValue(new TypeError("red"));
+    await expect(descargarComprobante("tk", "m-1")).rejects.toMatchObject({ estado: 0 });
   });
 
   it("la confirmacion con segundo factor va a identity con el token de acceso", async () => {

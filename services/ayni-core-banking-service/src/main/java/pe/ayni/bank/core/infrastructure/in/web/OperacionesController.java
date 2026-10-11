@@ -11,12 +11,16 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -108,6 +112,30 @@ public class OperacionesController {
         Comprobante comprobante = operar.transferir(usuarioId, solicitud.cuentaDestino(),
                 soles(solicitud.importe()), solicitud.concepto(), clave, confirmacion);
         return creado(comprobante);
+    }
+
+    /** HU-07: el comprobante de un movimiento propio. 404 si no existe o no es del titular. */
+    @GetMapping("/api/v1/movimientos/{movimientoId}")
+    public ResponseEntity<ComprobanteDto> comprobante(@RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+                                                      @PathVariable UUID movimientoId) {
+        return operar.comprobante(usuarioId, movimientoId)
+                .map(c -> ResponseEntity.ok(ComprobanteDto.desde(c)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** HU-07: el mismo comprobante en PDF, para descargar o reenviar. */
+    @GetMapping(value = "/api/v1/movimientos/{movimientoId}/comprobante.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> comprobanteEnPdf(@RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+                                                   @PathVariable UUID movimientoId) {
+        return operar.comprobante(usuarioId, movimientoId)
+                .map(c -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename("comprobante-ayni-" + movimientoId + ".pdf").build().toString())
+                        // Un comprobante bancario no se queda en la cache de un equipo compartido.
+                        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                        .body(ComprobanteEnPdf.generar(c)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // ── Errores ───────────────────────────────────────────────────────────

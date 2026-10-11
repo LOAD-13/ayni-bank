@@ -133,6 +133,23 @@ class OperarCuentaServiceTest {
     }
 
     @Test
+    @DisplayName("HU-07: el comprobante se consulta despues; quien no participa no lo ve")
+    void consultarComprobante() {
+        servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
+        Comprobante hecho = servicio.transferir(ana, deBeto.numero().valor(), soles("100"), "Cena", UUID.randomUUID(), CONFIRMADA);
+
+        assertThat(servicio.comprobante(ana, hecho.movimientoId()))
+                .get().satisfies(c -> {
+                    assertThat(c.movimientoId()).isEqualTo(hecho.movimientoId());
+                    assertThat(c.cuentaDestino()).isEqualTo(deBeto.numero().enmascarado());
+                    assertThat(c.concepto()).startsWith("Cena");
+                });
+        assertThat(servicio.comprobante(beto, hecho.movimientoId())).isPresent();
+        assertThat(servicio.comprobante(UUID.randomUUID(), hecho.movimientoId())).isEmpty();
+        assertThat(servicio.comprobante(ana, UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
     @DisplayName("repetir con la misma clave devuelve el mismo comprobante y no mueve dinero")
     void idempotente() {
         servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());

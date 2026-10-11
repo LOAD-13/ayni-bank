@@ -103,6 +103,16 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Comprobante> comprobante(UUID usuarioId, UUID movimientoId) {
+        return cuentas.buscarActivaDe(usuarioId, Moneda.PEN).flatMap(cuenta -> {
+            List<Asiento> asientos = libro.asientosDelMovimiento(movimientoId);
+            boolean esSuyo = asientos.stream().anyMatch(a -> a.cuentaId().equals(cuenta.id()));
+            return esSuyo ? Optional.of(comprobanteDe(asientos, cuenta)) : Optional.<Comprobante>empty();
+        });
+    }
+
     /** Una peticion repetida no movio dinero: queda como tal en la pista. */
     private void auditar(Resultado resultado, TipoDeEventoDeOperacion siEsNueva, UUID usuarioId) {
         auditoria.registrar(resultado.repetida() ? TipoDeEventoDeOperacion.OPERACION_REPETIDA : siEsNueva,
