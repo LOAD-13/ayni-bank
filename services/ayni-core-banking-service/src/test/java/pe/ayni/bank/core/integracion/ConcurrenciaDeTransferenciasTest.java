@@ -192,6 +192,9 @@ class ConcurrenciaDeTransferenciasTest {
         assertThat(saldoDe(origen)).isEqualByComparingTo("10.00");
         assertThat(saldoDe(destino)).isEqualByComparingTo("90.00");
         assertThat(saldoDe(origen).add(saldoDe(destino))).isEqualByComparingTo("100.00");
+        // HU-13, escenario 3: las cinco rechazadas hicieron rollback y no dejaron evento.
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM core.outbox WHERE tipo_evento = 'TransferenciaRealizada' "
+                + "AND carga::jsonb ->> 'cuentaOrigenId' = ?", Integer.class, origen.id().toString())).isEqualTo(3);
     }
 
     @Test

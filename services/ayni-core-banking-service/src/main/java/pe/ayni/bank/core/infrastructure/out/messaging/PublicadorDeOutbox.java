@@ -1,10 +1,15 @@
 package pe.ayni.bank.core.infrastructure.out.messaging;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -58,10 +63,10 @@ public class PublicadorDeOutbox {
 
         for (BandejaDeSalida.EventoPendiente evento : pendientes) {
             try {
-                rabbit.convertAndSend(
+                rabbit.send(
                         ConfiguracionDeMensajeria.EXCHANGE,
                         claveDeEncaminamiento(evento.tipoEvento()),
-                        evento.carga());
+                        mensajeDe(evento));
 
                 bandeja.marcarPublicado(evento.id(), reloj.instant());
             } catch (RuntimeException fallo) {
@@ -81,6 +86,24 @@ public class PublicadorDeOutbox {
      * <p>La clave se deriva del nombre del evento en lugar de guardarla en la tabla: así no
      * hay dos sitios donde se pueda escribir mal la misma cosa.
      */
+    /**
+     * La carga ya es JSON: se envia tal cual, en bytes. Con {@code convertAndSend} el
+     * conversor de Jackson la volvia a serializar y llegaba como una cadena JSON escapada.
+     *
+     * <p>El {@code messageId} es el id del outbox: es el {@code eventId} con el que los
+     * consumidores descartan las entregas repetidas (HU-13). RabbitMQ entrega al menos una
+     * vez, asi que la idempotencia la pone quien consume.
+     */
+    static Message mensajeDe(BandejaDeSalida.EventoPendiente evento) {
+        return MessageBuilder.withBody(evento.carga().getBytes(StandardCharsets.UTF_8))
+                .setContentType(MessageProperties.CONTENT_TYPE_JSON)
+                .setContentEncoding(StandardCharsets.UTF_8.name())
+                .setMessageId(evento.id().toString())
+                .setType(evento.tipoEvento())
+                .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
+                .build();
+    }
+
     private static String claveDeEncaminamiento(String tipoEvento) {
         return "core." + tipoEvento
                 .replaceAll("([a-z])([A-Z])", "$1.$2")

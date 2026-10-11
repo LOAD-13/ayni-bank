@@ -20,6 +20,8 @@ public class ConfiguracionDeMensajeria {
 
     public static final String EXCHANGE = "ayni.eventos";
     public static final String CLAVE_SOLICITUD_APROBADA = "identity.solicitud.aprobada";
+    /** HU-13: lo escucha notification-service para su proyeccion de titulares. */
+    public static final String CLAVE_TITULAR_ACTIVADO = "identity.titular.activado";
 
     @Bean
     public TopicExchange exchangeDeEventos() {
