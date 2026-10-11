@@ -116,6 +116,44 @@ class OperacionesControllerTest {
     }
 
     @Test
+    @DisplayName("GET /movimientos/{id}: 200 con el comprobante propio; 404 si no existe o es ajeno")
+    void consultarComprobante() throws Exception {
+        Comprobante c = comprobante();
+        when(operar.comprobante(titular, c.movimientoId())).thenReturn(Optional.of(c));
+        when(operar.comprobante(eq(titular), eq(UUID.fromString("00000000-0000-4000-8000-000000000000"))))
+                .thenReturn(Optional.empty());
+
+        mvc.perform(get("/api/v1/movimientos/" + c.movimientoId()).header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.movimientoId").value(c.movimientoId().toString()))
+                .andExpect(jsonPath("$.cuentaDestino").value("**********0031"));
+        mvc.perform(get("/api/v1/movimientos/00000000-0000-4000-8000-000000000000").header(USUARIO, titular))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/movimientos/00000000-0000-4000-8000-000000000000/comprobante.pdf")
+                        .header(USUARIO, titular))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /movimientos/{id}/comprobante.pdf: un PDF real, descargable y sin cache")
+    void comprobanteEnPdf() throws Exception {
+        Comprobante c = comprobante();
+        when(operar.comprobante(titular, c.movimientoId())).thenReturn(Optional.of(c));
+
+        byte[] pdf = mvc.perform(get("/api/v1/movimientos/" + c.movimientoId() + "/comprobante.pdf")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("attachment; filename=\"comprobante-ayni-")))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        assertThat(pdf.length).isGreaterThan(800);
+    }
+
+    @Test
     @DisplayName("POST /transferencias: 201 con el comprobante y su ubicacion")
     void transferir() throws Exception {
         Comprobante c = comprobante();

@@ -1,5 +1,6 @@
 package pe.ayni.bank.core.domain.port.in;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import pe.ayni.bank.core.domain.model.Comprobante;
@@ -17,4 +18,10 @@ public interface OperarCuentaUseCase {
                            String concepto, UUID claveDeIdempotencia);
 
     Comprobante depositarSimulado(UUID usuarioId, Dinero importe, UUID claveDeIdempotencia);
+
+    /**
+     * HU-07: el comprobante de un movimiento visto desde la cuenta del titular. Vacio si el
+     * movimiento no existe o no toca su cuenta: un identificador ajeno no sirve para leerlo.
+     */
+    Optional<Comprobante> comprobante(UUID usuarioId, UUID movimientoId);
 }
