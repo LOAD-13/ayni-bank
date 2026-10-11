@@ -189,7 +189,7 @@ class ConcurrenciaDeTransferenciasTest {
         }
         List<Future<Comprobante>> resultados = enParalelo(tareas);
 
-        assertThat(resultados).allSatisfy(f -> assertThat(causaDe(f)).isNull());
+        assertThat(resultados).hasSize(4).allSatisfy(f -> assertThat(causaDe(f)).isNull());
         assertThat(resultados.stream().map(f -> {
             try {
                 return f.get().movimientoId();
@@ -218,7 +218,7 @@ class ConcurrenciaDeTransferenciasTest {
         }
         List<Future<Comprobante>> resultados = enParalelo(tareas);
 
-        assertThat(resultados).allSatisfy(f -> assertThat(causaDe(f)).isNull());
+        assertThat(resultados).hasSize(6).allSatisfy(f -> assertThat(causaDe(f)).isNull());
         assertThat(saldoDe(a)).isEqualByComparingTo("100.00");
         assertThat(saldoDe(b)).isEqualByComparingTo("100.00");
     }
