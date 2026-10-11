@@ -48,8 +48,11 @@ final class ComprobanteEnPdf {
         documento.open();
 
         documento.add(new Paragraph("AYNI Bank", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, AZUL)));
-        Paragraph titulo = new Paragraph(c.tipo() == TipoDeMovimiento.TRANSFERENCIA
-                ? "Constancia de transferencia" : "Constancia de deposito",
+        Paragraph titulo = new Paragraph(switch (c.tipo()) {
+            case TRANSFERENCIA -> "Constancia de transferencia";
+            case DEPOSITO_SIMULADO -> "Constancia de deposito";
+            case INTERES -> "Constancia de abono de intereses";
+        },
                 FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13));
         titulo.setSpacingBefore(10);
         titulo.setSpacingAfter(12);

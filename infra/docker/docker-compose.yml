@@ -179,6 +179,8 @@ services:
     environment:
       <<: *java-env
       AYNI_FX_SUNAT_URL: ${AYNI_FX_SUNAT_URL}
+      # HU-06: cada cuanto se buscan dias sin cerrar (por defecto, cada hora a los 5 min).
+      AYNI_DEVENGO_CRON: ${AYNI_DEVENGO_CRON:-0 5 * * * *}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

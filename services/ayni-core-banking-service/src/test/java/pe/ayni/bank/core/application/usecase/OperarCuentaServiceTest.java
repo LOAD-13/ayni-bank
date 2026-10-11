@@ -159,6 +159,20 @@ class OperarCuentaServiceTest {
     }
 
     @Test
+    @DisplayName("HU-06: el abono de intereses se reconoce por su contrapartida tecnica")
+    void comprobanteDeIntereses() {
+        UUID id = UUID.randomUUID();
+        libro.registrar(Movimiento.capitalizacionDeIntereses(id, libro.intereses, deAna, soles("4.20"), "10/2026",
+                AHORA));
+
+        assertThat(servicio.comprobante(ana, id)).get().satisfies(c -> {
+            assertThat(c.tipo()).isEqualTo(TipoDeMovimiento.INTERES);
+            assertThat(c.cuentaOrigen()).isEqualTo("Intereses Ayni");
+            assertThat(c.cuentaDestino()).isEqualTo(deAna.numero().enmascarado());
+        });
+    }
+
+    @Test
     @DisplayName("HU-07: el comprobante se consulta despues; quien no participa no lo ve")
     void consultarComprobante() {
         servicio.depositarSimulado(ana, soles("500"), UUID.randomUUID());
@@ -303,9 +317,13 @@ class OperarCuentaServiceTest {
         final Cuenta fondeo = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
                 new NumeroDeCuenta("00110000000001"), new Cci("99900101000000000103"), Moneda.PEN,
                 EstadoCuenta.ACTIVA, AHORA);
+        final Cuenta intereses = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
+                new NumeroDeCuenta("00110000000003"), new Cci("99900101000000000309"), Moneda.PEN,
+                EstadoCuenta.ACTIVA, AHORA);
 
         Libro() {
             porId.put(fondeo.id(), fondeo);
+            porId.put(intereses.id(), intereses);
         }
 
         Cuenta abrir(UUID titular, long correlativo) {
@@ -329,6 +347,11 @@ class OperarCuentaServiceTest {
         @Override
         public Cuenta cuentaDeFondeo(Moneda moneda) {
             return fondeo;
+        }
+
+        @Override
+        public Cuenta cuentaDeIntereses(Moneda moneda) {
+            return intereses;
         }
 
         @Override

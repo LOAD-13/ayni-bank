@@ -250,22 +250,33 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         Asiento propio = pago ? cargo : abono;
         UUID contraparteId = pago ? abono.cuentaId() : cargo.cuentaId();
 
-        Cuenta fondeo = libro.cuentaDeFondeo(delTitular.moneda());
-        boolean deposito = fondeo.id().equals(contraparteId);
-        String contraparte = deposito
-                ? "Deposito simulado"
-                : libro.buscarPorId(contraparteId)
-                        .map(c -> c.numero().enmascarado())
-                        .orElse("Cuenta Ayni");
+        TipoDeMovimiento tipo = tipoSegunContraparte(contraparteId, delTitular.moneda());
+        String contraparte = switch (tipo) {
+            case DEPOSITO_SIMULADO -> "Deposito simulado";
+            case INTERES -> "Intereses Ayni";
+            case TRANSFERENCIA -> libro.buscarPorId(contraparteId)
+                    .map(c -> c.numero().enmascarado())
+                    .orElse("Cuenta Ayni");
+        };
         String propia = delTitular.numero().enmascarado();
 
-        return new Comprobante(propio.movimientoId(),
-                deposito ? TipoDeMovimiento.DEPOSITO_SIMULADO : TipoDeMovimiento.TRANSFERENCIA,
+        return new Comprobante(propio.movimientoId(), tipo,
                 propio.importe(),
                 pago ? propia : contraparte,
                 pago ? contraparte : propia,
                 propio.concepto(), propio.registradoEn(),
                 libro.saldoDe(delTitular.id(), delTitular.moneda()));
+    }
+
+    /** Las cuentas tecnicas delatan el tipo: fondeo es un deposito; intereses, una capitalizacion. */
+    private TipoDeMovimiento tipoSegunContraparte(UUID contraparteId, Moneda moneda) {
+        if (libro.cuentaDeFondeo(moneda).id().equals(contraparteId)) {
+            return TipoDeMovimiento.DEPOSITO_SIMULADO;
+        }
+        if (libro.cuentaDeIntereses(moneda).id().equals(contraparteId)) {
+            return TipoDeMovimiento.INTERES;
+        }
+        return TipoDeMovimiento.TRANSFERENCIA;
     }
 
     private static Asiento unico(List<Asiento> asientos, TipoDeAsiento tipo) {
