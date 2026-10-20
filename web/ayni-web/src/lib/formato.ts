@@ -103,6 +103,26 @@ export function rendimientoMensualEstimado(saldo: string, trea: string): string 
   return deCentimos(dividirHalfEven(s.unidades * t.unidades, divisor));
 }
 
+/**
+ * Saldo al cabo de un año con la TREA: capital × (1 + TREA / 100), redondeado a céntimos
+ * con HALF_EVEN y sin coma flotante. `null` si el capital o la TREA no son decimales.
+ *
+ * La TREA ya es una tasa **efectiva anual**: incorpora la capitalización, así que aplicarla
+ * de nuevo día a día contaría el interés compuesto dos veces y prometería de más. Basta
+ * multiplicar una vez, y eso es justamente lo que significa «efectiva».
+ */
+export function proyeccionAUnAno(capital: string, trea: string): string | null {
+  const c = leerDecimal(capital);
+  const t = leerDecimal(trea);
+  if (!c || !t) return null;
+  // capital × (100 + trea) / 100, expresado en céntimos (× 100): capital × (100 + trea).
+  const escalaDeLaTasa = potenciaDeDiez(t.escala);
+  const factor = BigInt(100) * escalaDeLaTasa + t.unidades;
+  return deCentimos(
+    dividirHalfEven(c.unidades * factor, potenciaDeDiez(c.escala) * escalaDeLaTasa),
+  );
+}
+
 /** Clave de idempotencia nueva: una por intento de operación, no por clic. */
 export function nuevaClave(): string {
   return crypto.randomUUID();

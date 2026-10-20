@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dividirHalfEven, rendimientoMensualEstimado } from "./formato";
+import { dividirHalfEven, proyeccionAUnAno, rendimientoMensualEstimado } from "./formato";
 
 describe("dividirHalfEven", () => {
   it("redondea al entero más cercano cuando no hay empate", () => {
@@ -50,5 +50,35 @@ describe("rendimientoMensualEstimado · T-33", () => {
   it("rechaza un importe o una tasa que no son decimales", () => {
     expect(() => rendimientoMensualEstimado("abc", "4.50")).toThrow(RangeError);
     expect(() => rendimientoMensualEstimado("850.00", "4,50")).toThrow(RangeError);
+  });
+});
+
+describe("proyeccionAUnAno · T-34", () => {
+  it("aplica la TREA una sola vez, porque ya es efectiva", () => {
+    expect(proyeccionAUnAno("10000", "4.50")).toBe("10450.00");
+    expect(proyeccionAUnAno("10000", "1.2")).toBe("10120.00");
+  });
+
+  it("es exacta donde la coma flotante se desvía", () => {
+    // En double, 0.1 × (1 + 4.35 / 100) da 0.10435000000000001.
+    expect(proyeccionAUnAno("0.10", "4.35")).toBe("0.10");
+    expect(proyeccionAUnAno("1000.00", "4.355")).toBe("1043.55");
+  });
+
+  it("redondea con HALF_EVEN la fracción de céntimo", () => {
+    // 1 × 1.0050 = 1.005 → 1.00 (par) · 3 × 1.0050 = 3.015 → 3.02 (par).
+    // Con parseFloat, 3 × 1.005 daba 3.0149999999999997 y se mostraba 3.01.
+    expect(proyeccionAUnAno("1.00", "0.50")).toBe("1.00");
+    expect(proyeccionAUnAno("3.00", "0.50")).toBe("3.02");
+  });
+
+  it("con TREA cero devuelve el mismo capital", () => {
+    expect(proyeccionAUnAno("10000", "0")).toBe("10000.00");
+  });
+
+  it("devuelve null si la TREA o el capital no son decimales", () => {
+    expect(proyeccionAUnAno("10000", "")).toBeNull();
+    expect(proyeccionAUnAno("10000", "4.5%")).toBeNull();
+    expect(proyeccionAUnAno("diez mil", "4.50")).toBeNull();
   });
 });
