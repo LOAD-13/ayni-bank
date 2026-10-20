@@ -21,6 +21,7 @@ import {
   type CuentaAbierta,
   type Titular,
 } from "@/lib/api";
+import { proyeccionAUnAno } from "@/lib/formato";
 
 import { TarjetaDeLaCuenta } from "./TarjetaDeLaCuenta";
 
@@ -168,7 +169,7 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
             </strong>{" "}
             {cuenta.trea} % TREA en soles con devengo diario. Sobre S/{" "}
             {CAPITAL_DE_EJEMPLO.toLocaleString("es-PE")}, en 12 meses tendrías{" "}
-            <span className="cifra">S/ {proyeccionAUnAno(cuenta.trea)}</span>.
+            <span className="cifra">S/ {proyeccionEnPantalla(cuenta.trea)}</span>.
           </span>
         </p>
       )}
@@ -208,18 +209,13 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
 }
 
 /**
- * Lo que rendirían diez mil soles en un año con esa TREA.
- *
- * La TREA ya es una tasa **efectiva anual**: incorpora la capitalización, así que aplicarla
- * de nuevo día a día contaría el interés compuesto dos veces y prometería de más. Basta
- * multiplicar una vez, y eso es justamente lo que significa «efectiva».
+ * Lo que rendirían diez mil soles en un año con esa TREA, con separador de miles
+ * («10,450.00»). El cálculo es exacto, sin `parseFloat` ni coma flotante.
  */
-function proyeccionAUnAno(trea: string): string {
-  const tasa = Number.parseFloat(trea) / 100;
-  if (Number.isNaN(tasa)) return "—";
+function proyeccionEnPantalla(trea: string): string {
+  const importe = proyeccionAUnAno(String(CAPITAL_DE_EJEMPLO), trea);
+  if (importe === null) return "—";
 
-  return (CAPITAL_DE_EJEMPLO * (1 + tasa)).toLocaleString("es-PE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const [entero, decimales] = importe.split(".");
+  return `${BigInt(entero).toLocaleString("es-PE")}.${decimales}`;
 }

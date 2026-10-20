@@ -105,9 +105,11 @@ jobs:
           platforms: linux/amd64
           push: true
           provenance: false
+          pull: true
           build-args: |
             NEXT_PUBLIC_API_URL=
             NEXT_PUBLIC_APP_VERSION=${{ needs.version.outputs.version }}
+            ACTUALIZACION_DE_PAQUETES=${{ github.run_id }}
           tags: |
             ${{ steps.ecr.outputs.registry }}/ayni/${{ matrix.servicio }}:${{ needs.version.outputs.etiqueta }}
             ${{ steps.ecr.outputs.registry }}/ayni/${{ matrix.servicio }}:v${{ needs.version.outputs.version }}

@@ -274,6 +274,11 @@ jobs:
           push: false
           load: true
           tags: ayni/${{ matrix.servicio }}:ci
+          # Imagen base recien descargada y paquetes del sistema actualizados en
+          # cada ejecucion: ver ACTUALIZACION_DE_PAQUETES en los Dockerfile Java.
+          pull: true
+          build-args: |
+            ACTUALIZACION_DE_PAQUETES=${{ github.run_id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
