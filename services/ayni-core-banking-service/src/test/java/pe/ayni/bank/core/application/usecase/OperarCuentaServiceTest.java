@@ -85,6 +85,11 @@ class OperarCuentaServiceTest {
                 public void registrarAperturaDuplicada(UUID usuarioId) {
                     pista.add("APERTURA_RECHAZADA");
                 }
+
+                @Override
+                public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
+                    pista.add("ACCESO_AJENO:" + movimientoId);
+                }
             },
             (confirmacion, usuario, operacion) -> {
                 confirmacionesVistas.add(confirmacion);
@@ -192,6 +197,41 @@ class OperarCuentaServiceTest {
         assertThat(servicio.comprobante(beto, hecho.movimientoId())).isPresent();
         assertThat(servicio.comprobante(UUID.randomUUID(), hecho.movimientoId())).isEmpty();
         assertThat(servicio.comprobante(ana, UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("HU-08 · AYNI-328: pedir el comprobante de otra persona queda como evento de seguridad")
+    void accesoAjenoAuditado() {
+        UUID movimiento = servicio.depositarSimulado(ana, soles("80.00"), UUID.randomUUID()).movimientoId();
+        pista.clear();
+
+        assertThat(servicio.comprobante(beto, movimiento)).isEmpty();
+
+        assertThat(pista).containsExactly("ACCESO_AJENO:" + movimiento);
+    }
+
+    @Test
+    @DisplayName("HU-08 · AYNI-328: el propio movimiento y un identificador inexistente no son accesos ajenos")
+    void sinFalsosPositivos() {
+        UUID movimiento = servicio.depositarSimulado(ana, soles("80.00"), UUID.randomUUID()).movimientoId();
+        pista.clear();
+
+        assertThat(servicio.comprobante(ana, movimiento)).isPresent();
+        assertThat(servicio.comprobante(beto, UUID.randomUUID())).isEmpty();
+
+        assertThat(pista).isEmpty();
+    }
+
+    @Test
+    @DisplayName("HU-08 · AYNI-328: el titular de una cuenta bloqueada no ve su movimiento, pero no es un acceso ajeno")
+    void cuentaBloqueadaNoEsAccesoAjeno() {
+        UUID movimiento = servicio.depositarSimulado(ana, soles("80.00"), UUID.randomUUID()).movimientoId();
+        libro.porId.put(deAna.id(), deAna.bloquear());
+        pista.clear();
+
+        assertThat(servicio.comprobante(ana, movimiento)).isEmpty();
+
+        assertThat(pista).isEmpty();
     }
 
     @Test
@@ -407,7 +447,8 @@ class OperarCuentaServiceTest {
         @Override
         public Optional<Cuenta> buscarActivaDe(UUID usuarioId, Moneda moneda) {
             return libro.porId.values().stream()
-                    .filter(c -> c.usuarioId().equals(usuarioId) && c.moneda() == moneda)
+                    .filter(c -> c.usuarioId().equals(usuarioId) && c.moneda() == moneda
+                            && c.estado() == EstadoCuenta.ACTIVA)
                     .findFirst();
         }
 

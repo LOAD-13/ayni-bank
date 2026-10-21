@@ -28,4 +28,10 @@ public interface PistaDeAuditoriaPort {
      * de la apertura, pero no su rastro.
      */
     void registrarAperturaDuplicada(UUID usuarioId);
+
+    /**
+     * HU-08: el usuario pidio un movimiento que no es suyo y se le denego. Se confirma en una
+     * transaccion propia porque la consulta que lo detecta es de solo lectura.
+     */
+    void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId);
 }

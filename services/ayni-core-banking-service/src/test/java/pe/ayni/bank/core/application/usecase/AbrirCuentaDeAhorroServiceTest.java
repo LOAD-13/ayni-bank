@@ -278,5 +278,10 @@ class AbrirCuentaDeAhorroServiceTest {
         public void registrarAperturaDuplicada(UUID usuarioId) {
             aperturasDuplicadas.add(usuarioId);
         }
+
+        @Override
+        public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
+            throw new AssertionError("Abrir una cuenta no consulta movimientos.");
+        }
     }
 }

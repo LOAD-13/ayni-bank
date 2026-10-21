@@ -48,4 +48,12 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
         repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.APERTURA_RECHAZADA.name(),
                 usuarioId, null, MOTIVO_CUENTA_DUPLICADA, reloj.instant()));
     }
+
+    /** En una transaccion propia: la consulta que lo detecta es de solo lectura. */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
+        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.ACCESO_AJENO_DENEGADO.name(),
+                usuarioId, movimientoId, null, reloj.instant()));
+    }
 }
