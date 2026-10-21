@@ -15,6 +15,9 @@ import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 @Repository
 public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
 
+    /** El motivo de una apertura rechazada. Hoy solo hay uno; la columna exige que conste. */
+    static final String MOTIVO_CUENTA_DUPLICADA = "CUENTA_DUPLICADA";
+
     private final EventoAuditoriaJpaRepository repositorio;
     private final Clock reloj;
 
@@ -36,5 +39,13 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
     public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
         repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.OPERACION_RECHAZADA.name(),
                 usuarioId, null, motivo.name(), reloj.instant()));
+    }
+
+    /** En una transaccion propia, por la misma razon que {@link #registrarRechazo}. */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registrarAperturaDuplicada(UUID usuarioId) {
+        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.APERTURA_RECHAZADA.name(),
+                usuarioId, null, MOTIVO_CUENTA_DUPLICADA, reloj.instant()));
     }
 }

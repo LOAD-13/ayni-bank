@@ -21,4 +21,11 @@ public interface PistaDeAuditoriaPort {
      * deshaga: la implementacion la confirma en una transaccion propia.
      */
     void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo);
+
+    /**
+     * HU-05: se intento abrir una segunda cuenta activa en la misma moneda. Como
+     * {@link #registrarRechazo}, se confirma en una transaccion propia: el rechazo deshace la
+     * de la apertura, pero no su rastro.
+     */
+    void registrarAperturaDuplicada(UUID usuarioId);
 }

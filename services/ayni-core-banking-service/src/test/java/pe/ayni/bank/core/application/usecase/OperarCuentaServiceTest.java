@@ -80,6 +80,11 @@ class OperarCuentaServiceTest {
                 public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
                     pista.add("RECHAZO:" + motivo.name());
                 }
+
+                @Override
+                public void registrarAperturaDuplicada(UUID usuarioId) {
+                    pista.add("APERTURA_RECHAZADA");
+                }
             },
             (confirmacion, usuario, operacion) -> {
                 confirmacionesVistas.add(confirmacion);
