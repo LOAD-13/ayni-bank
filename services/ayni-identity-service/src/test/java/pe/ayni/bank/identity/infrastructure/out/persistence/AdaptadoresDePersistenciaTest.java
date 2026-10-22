@@ -1,6 +1,7 @@
 package pe.ayni.bank.identity.infrastructure.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,6 +29,7 @@ import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.FuenteDeLectura;
 import pe.ayni.bank.identity.domain.model.HuellaDeCliente;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.SecretoTotp;
 import pe.ayni.bank.identity.domain.model.SegundoFactor;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
@@ -302,6 +304,46 @@ class AdaptadoresDePersistenciaTest {
 
             org.assertj.core.api.Assertions.assertThatThrownBy(
                             () -> adaptador.registrarIntentoFallidoDeKyc(inexistente, TipoDeDocumentoKyc.ANVERSO))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Solicitudes · rechazo por un operador (AYNI-327)")
+    class RechazoDeSolicitud {
+
+        @Mock
+        private SolicitudJpaRepository repositorio;
+
+        @Mock
+        private CifradorDeDatosPort cifradorDeDatos;
+
+        private final SolicitudOnboardingEntity solicitud = new SolicitudOnboardingEntity(
+                UUID.randomUUID(), usuario, "EN_REVISION_MANUAL", (short) 4,
+                AHORA, AHORA.minusSeconds(60), AHORA.plusSeconds(3600));
+
+        @Test
+        @DisplayName("la solicitud pasa a RECHAZADA con el motivo y la fecha del rechazo")
+        void rechazaConMotivo() {
+            when(repositorio.findById(solicitud.getId())).thenReturn(Optional.of(solicitud));
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            adaptador.marcarRechazada(solicitud.getId(), MotivoDeRechazoDeSolicitud.DOCUMENTO_NO_VALIDO);
+
+            assertThat(solicitud.getEstado()).isEqualTo("RECHAZADA");
+            assertThat(solicitud.getMotivoRechazo()).isEqualTo("DOCUMENTO_NO_VALIDO");
+            assertThat(adaptador.estadoDe(solicitud.getId())).contains("RECHAZADA");
+        }
+
+        @Test
+        @DisplayName("el estado de una solicitud inexistente es vacio, y rechazarla es un error")
+        void inexistente() {
+            UUID otra = UUID.randomUUID();
+            when(repositorio.findById(otra)).thenReturn(Optional.empty());
+            var adaptador = new AdaptadorRepositorioDeSolicitudes(repositorio, cifradorDeDatos, RELOJ);
+
+            assertThat(adaptador.estadoDe(otra)).isEmpty();
+            assertThatThrownBy(() -> adaptador.marcarRechazada(otra, MotivoDeRechazoDeSolicitud.SELFIE_NO_COINCIDE))
                     .isInstanceOf(IllegalStateException.class);
         }
     }
