@@ -403,7 +403,7 @@ export async function entregarSelfie(
  * exactamente quince minutos sin que nada indique por qué.
  */
 interface Opciones {
-  metodo?: "GET" | "POST" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "DELETE";
   /** Token de acceso para las rutas protegidas. Viaja como `Authorization: Bearer`. */
   token?: string;
   /** Clave de idempotencia de las operaciones monetarias. */
@@ -589,6 +589,57 @@ export async function transferir(
     { cuentaDestino, importe, concepto },
     { token, idempotencia: clave, confirmacion },
   );
+}
+
+// ─── Controles de la tarjeta · HU-10 ─────────────────────────────────────
+// Contrato en contracts/core-banking-controles-de-tarjeta.openapi.yaml.
+
+/** Los controles de la tarjeta de débito virtual. Los importes llegan como texto, como el saldo. */
+export interface ControlesDeTarjeta {
+  estado: "ACTIVA" | "CONGELADA";
+  /** Solo los cuatro últimos dígitos: el número completo nunca viaja en esta respuesta (HU-09). */
+  ultimos4: string;
+  moneda: string;
+  limiteDiario: string;
+  /** Lo consumido hoy, en hora de Lima: es lo que se compara con el límite diario. */
+  consumidoHoy: string;
+  comprasPorInternet: boolean;
+}
+
+/** Lo que el titular puede configurar. Se envía entero: es un PUT, no un parche. */
+export interface ConfiguracionDeTarjeta {
+  limiteDiario: string;
+  comprasPorInternet: boolean;
+}
+
+/** 404 si el titular todavía no tiene tarjeta: se emite al abrirse la cuenta (HU-09). */
+export async function consultarControlesDeTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", undefined, { token });
+}
+
+/** Escenario 1: efecto inmediato; cualquier consumo posterior se rechaza. */
+export async function congelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "POST",
+  });
+}
+
+export async function descongelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "DELETE",
+  });
+}
+
+export async function configurarTarjeta(
+  token: string,
+  configuracion: ConfiguracionDeTarjeta,
+): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", configuracion, {
+    token,
+    metodo: "PUT",
+  });
 }
 
 // ─── Confirmación con segundo factor · HU-07, ADR-0031 ───────────────────

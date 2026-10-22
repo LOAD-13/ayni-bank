@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { dividirHalfEven, proyeccionAUnAno, rendimientoMensualEstimado } from "./formato";
+import {
+  dividirHalfEven,
+  porcentajeUsado,
+  proyeccionAUnAno,
+  rendimientoMensualEstimado,
+} from "./formato";
 
 describe("dividirHalfEven", () => {
   it("redondea al entero más cercano cuando no hay empate", () => {
@@ -80,5 +85,23 @@ describe("proyeccionAUnAno · T-34", () => {
     expect(proyeccionAUnAno("10000", "")).toBeNull();
     expect(proyeccionAUnAno("10000", "4.5%")).toBeNull();
     expect(proyeccionAUnAno("diez mil", "4.50")).toBeNull();
+  });
+});
+
+describe("porcentajeUsado · HU-10", () => {
+  it("calcula la parte usada del límite, en entero", () => {
+    expect(porcentajeUsado("250.00", "300.00")).toBe(83);
+    expect(porcentajeUsado("150", "300.00")).toBe(50);
+    expect(porcentajeUsado("0.00", "300.00")).toBe(0);
+  });
+
+  it("nunca pasa de 100 ni baja de 0", () => {
+    expect(porcentajeUsado("450.00", "300.00")).toBe(100);
+    expect(porcentajeUsado("-10.00", "300.00")).toBe(0);
+  });
+
+  it("un límite cero o un texto que no es importe dan 0", () => {
+    expect(porcentajeUsado("10.00", "0.00")).toBe(0);
+    expect(porcentajeUsado("diez", "300.00")).toBe(0);
   });
 });
