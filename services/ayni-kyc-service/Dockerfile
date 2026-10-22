@@ -30,4 +30,6 @@ USER ayni
 EXPOSE 8000
 HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=5     CMD curl -fsS http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "src.infrastructure.web.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Apagado ordenado: ante SIGTERM, uvicorn deja de aceptar conexiones y espera hasta 20 s
+# a que terminen las verificaciones en curso. Docker espera 30 s antes de matarlo.
+CMD ["uvicorn", "src.infrastructure.web.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-graceful-shutdown", "20"]

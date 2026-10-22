@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   application:
     name: ayni-gateway
 
@@ -10,6 +12,12 @@ spring:
           # host, y eso no es una comodidad: es lo que garantiza que la validacion del
           # JWT, el CORS y la limitacion de tasa no se puedan esquivar llamando
           # directamente al servicio de detras.
+          # Limites de la llamada a cada servicio: sin ellos, un servicio colgado retiene la
+          # conexion del navegador indefinidamente. 30 s de respuesta cubren la verificacion
+          # del DNI, que espera a kyc-service hasta 10 s mas sus reintentos de conexion.
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 30s
           routes:
             - id: identity
               uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
@@ -59,8 +67,31 @@ ayni:
     rutas-protegidas: >-
       /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**
 
+# Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
+# defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de
+# cada servicio solo se crean con la misma variable (RutasDeDocumentacion). Ver ADR-0033.
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+    path: /api/docs/gateway
+  swagger-ui:
+    enabled: ${AYNI_API_DOCS:false}
+    path: /api/docs
+    urls:
+      - name: identity
+        url: /api/docs/identity
+      - name: core-banking
+        url: /api/docs/core-banking
+      - name: kyc
+        url: /api/docs/kyc
+
 server:
   port: 8080
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
+  shutdown: graceful
 
 management:
   endpoints:

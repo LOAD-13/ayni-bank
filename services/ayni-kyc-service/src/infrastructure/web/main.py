@@ -43,6 +43,10 @@ app = FastAPI(
     description="Verificacion de identidad: deteccion de DNI, OCR, vivacidad y cotejo facial",
     version="0.2.0",
     lifespan=ciclo_de_vida,
+    # Sin KYC_API_DOCS las rutas de documentacion no existen: responden 404 (ADR-0033).
+    docs_url="/docs" if settings.KYC_API_DOCS else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if settings.KYC_API_DOCS else None,
 )
 
 app.include_router(kyc_router)
