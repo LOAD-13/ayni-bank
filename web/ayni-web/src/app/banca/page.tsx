@@ -388,6 +388,9 @@ function DatosDeLaCuenta({ cuenta }: { cuenta: CuentaAbierta | null }) {
 /** Quien entra sin cuenta abierta: se le dice por qué y se le lleva a terminar la apertura. */
 function CuentaPendiente({ titular }: { titular: Titular | null }) {
   const solicitud = titular?.solicitudPendiente;
+  // HU-05 escenario 3 (AYNI-327): una solicitud rechazada no venció, y volver a registrarse
+  // con el mismo correo no es posible, así que no se le ofrece.
+  const rechazada = titular?.estadoSolicitud === "RECHAZADA";
   return (
     <section
       aria-labelledby="titulo-pendiente"
@@ -399,9 +402,11 @@ function CuentaPendiente({ titular }: { titular: Titular | null }) {
       <p className="mt-2 max-w-2xl text-body text-gris-800">
         {solicitud
           ? "Falta verificar tu identidad: una foto de cada lado de tu DNI y una selfie. Toma unos tres minutos y tu cuenta se abre al terminar."
-          : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
-            ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
-            : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
+          : rechazada
+            ? "No pudimos aprobar tu solicitud de apertura. Te escribimos por correo con el motivo."
+            : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
+              ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
+              : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
       </p>
       {solicitud && (
         <Link
