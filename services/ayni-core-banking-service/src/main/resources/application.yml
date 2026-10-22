@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   application:
     name: ayni-core-banking-service
 
@@ -80,8 +82,22 @@ ayni:
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
 
+# Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
+# compose local pone AYNI_API_DOCS=true. En produccion la ruta no existe (ADR-0033), y
+# DocumentacionDeLaApiTest comprueba que sin la variable sigue apagado.
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+  swagger-ui:
+    enabled: false
+
 server:
   port: 8082
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
+  shutdown: graceful
 
 management:
   endpoints:
