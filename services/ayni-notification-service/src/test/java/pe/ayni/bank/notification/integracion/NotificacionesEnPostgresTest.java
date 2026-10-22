@@ -44,6 +44,8 @@ import pe.ayni.bank.notification.domain.model.ResultadoDelDespacho;
 import pe.ayni.bank.notification.domain.model.Titular;
 import pe.ayni.bank.notification.domain.model.TipoDeAviso;
 import pe.ayni.bank.notification.domain.port.out.EnviadorDeCorreoPort;
+import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeSolicitudesRechazadas;
+import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeSolicitudesRechazadas.SolicitudRechazada;
 import pe.ayni.bank.notification.infrastructure.out.persistence.AdaptadorCatalogoDePlantillas;
 import pe.ayni.bank.notification.infrastructure.out.persistence.AdaptadorRepositorioDeNotificaciones;
 import pe.ayni.bank.notification.infrastructure.out.persistence.AdaptadorRepositorioDeTitulares;
@@ -164,6 +166,23 @@ class NotificacionesEnPostgresTest {
 
         // Una segunda pasada no reenvia nada.
         assertThat(despachador.despacharPendientes()).isEqualTo(new ResultadoDelDespacho(0, 0, 0));
+    }
+
+    @Test
+    @DisplayName("AYNI-327: el rechazo de una solicitud sale con la plantilla de V4 y una sola vez aunque llegue dos")
+    void rechazoDeSolicitud() {
+        var escuchador = new EscuchadorDeSolicitudesRechazadas(titulares, avisos);
+        var evento = new SolicitudRechazada(UUID.randomUUID(), ana, "ana@example.pe", "Ana", "SELFIE_NO_COINCIDE",
+                "La foto de tu rostro no coincide con la de tu DNI.", "2026-10-21T15:00:00Z");
+
+        escuchador.alRechazarseLaSolicitud(evento);
+        escuchador.alRechazarseLaSolicitud(evento);
+
+        assertThat(despachador.despacharPendientes().enviadas()).isEqualTo(1);
+        assertThat(ENVIADOS).singleElement().satisfies(c -> assertThat(c)
+                .contains("No pudimos aprobar tu solicitud")
+                .contains("Motivo: La foto de tu rostro no coincide con la de tu DNI.")
+                .doesNotContain("{{"));
     }
 
     @Test

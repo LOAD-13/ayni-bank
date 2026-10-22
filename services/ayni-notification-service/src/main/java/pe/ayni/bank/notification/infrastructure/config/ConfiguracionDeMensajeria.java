@@ -27,11 +27,13 @@ public class ConfiguracionDeMensajeria {
     public static final String COLA_TRANSFERENCIAS = "notification.transferencia-realizada";
     public static final String COLA_DEPOSITOS = "notification.deposito-registrado";
     public static final String COLA_INTERESES = "notification.interes-capitalizado";
+    public static final String COLA_SOLICITUDES_RECHAZADAS = "notification.solicitud-rechazada";
 
     static final String CLAVE_TITULAR_ACTIVADO = "identity.titular.activado";
     static final String CLAVE_TRANSFERENCIA = "core.transferencia.realizada";
     static final String CLAVE_DEPOSITO = "core.deposito.simulado.registrado";
     static final String CLAVE_INTERES = "core.interes.capitalizado";
+    static final String CLAVE_SOLICITUD_RECHAZADA = "identity.solicitud.rechazada";
 
     @Bean
     public TopicExchange exchangeDeEventos() {
@@ -56,6 +58,17 @@ public class ConfiguracionDeMensajeria {
     @Bean
     public Queue colaDeIntereses() {
         return QueueBuilder.durable(COLA_INTERESES).build();
+    }
+
+    @Bean
+    public Queue colaDeSolicitudesRechazadas() {
+        return QueueBuilder.durable(COLA_SOLICITUDES_RECHAZADAS).build();
+    }
+
+    @Bean
+    public Binding enlaceDeSolicitudesRechazadas() {
+        return BindingBuilder.bind(colaDeSolicitudesRechazadas()).to(exchangeDeEventos())
+                .with(CLAVE_SOLICITUD_RECHAZADA);
     }
 
     @Bean

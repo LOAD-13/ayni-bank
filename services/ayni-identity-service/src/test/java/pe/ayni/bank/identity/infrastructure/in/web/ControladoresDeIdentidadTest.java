@@ -30,6 +30,7 @@ import pe.ayni.bank.identity.domain.model.FuenteDeLectura;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
 import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeCaptura;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.ResultadoDeCaptura;
 import pe.ayni.bank.identity.domain.model.ResultadoDeExtraccion;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
@@ -376,6 +377,11 @@ class ControladoresDeIdentidadTest {
         @Override
         public void marcarAprobada(UUID solicitudId) {
             // Sin efecto: esta prueba no aprueba nada.
+        }
+
+        @Override
+        public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
+            // Sin efecto: esta prueba no rechaza nada.
         }
 
         @Override
