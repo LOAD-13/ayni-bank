@@ -14,6 +14,7 @@ name: ayni-bank
 
 x-java-common: &java-common
   restart: unless-stopped
+  stop_grace_period: 30s
   networks: [ayni]
   environment: &java-env
     SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
@@ -29,12 +30,24 @@ x-java-common: &java-common
     AYNI_JWT_SECRET: ${AYNI_JWT_SECRET}
     AYNI_ENCRYPTION_KEY: ${AYNI_ENCRYPTION_KEY}
     JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70"
+    # Swagger UI en http://localhost:8080/api/docs. Solo en local: el compose de
+    # produccion no lleva esta variable, y una prueba del gateway lo comprueba (ADR-0033).
+    AYNI_API_DOCS: "true"
+
+# ─────────────────────────── Coexistencia (ISO/IEC 25010) ───────────────────────────
+# Cada contenedor tiene un techo de memoria y de CPU (deploy.resources.limits, que Docker
+# aplica con cgroups). Un servicio con una fuga o un bucle ya no puede consumir la maquina
+# entera y tumbar a sus vecinos: el que pasa su techo de memoria muere solo, y Docker lo
+# reinicia. Los servicios Java ajustan su heap al techo (MaxRAMPercentage=70). Ver ADR-0034.
 
 services:
 
   # ─────────────────────────── Infraestructura ───────────────────────────
 
   postgres:
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "1.0" }
     image: postgres:16-alpine
     container_name: ayni-postgres
     restart: unless-stopped
@@ -54,6 +67,9 @@ services:
     networks: [ayni]
 
   rabbitmq:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
     image: rabbitmq:3.13-management-alpine
     container_name: ayni-rabbitmq
     restart: unless-stopped
@@ -71,6 +87,9 @@ services:
     networks: [ayni]
 
   minio:
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.5" }
     image: minio/minio:latest
     container_name: ayni-minio
     restart: unless-stopped
@@ -90,6 +109,9 @@ services:
 
   # Crea los buckets privados en el primer arranque y sale
   minio-init:
+    deploy:
+      resources:
+        limits: { memory: 64M, cpus: "0.25" }
     image: minio/mc:latest
     container_name: ayni-minio-init
     depends_on:
@@ -114,6 +136,9 @@ services:
   # servicio: el Dockerfile copia el pom.xml padre y los pom de los cuatro modulos
   # Java, porque Maven aborta si el padre declara un modulo que no encuentra.
   ayni-gateway:
+    deploy:
+      resources:
+        limits: { memory: 640M, cpus: "0.5" }
     <<: *java-common
     build:
       context: ../..
@@ -142,6 +167,9 @@ services:
       retries: 5
 
   ayni-identity-service:
+    deploy:
+      resources:
+        limits: { memory: 768M, cpus: "1.0" }
     <<: *java-common
     build:
       context: ../..
@@ -171,6 +199,9 @@ services:
       minio-init: { condition: service_completed_successfully }
 
   ayni-core-banking-service:
+    deploy:
+      resources:
+        limits: { memory: 768M, cpus: "1.0" }
     <<: *java-common
     build:
       context: ../..
@@ -186,6 +217,9 @@ services:
       rabbitmq: { condition: service_healthy }
 
   ayni-notification-service:
+    deploy:
+      resources:
+        limits: { memory: 640M, cpus: "0.5" }
     <<: *java-common
     build:
       context: ../..
@@ -202,6 +236,10 @@ services:
       rabbitmq: { condition: service_healthy }
 
   ayni-kyc-service:
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { memory: 2560M, cpus: "2.0" }
     build:
       context: ../..
       dockerfile: services/ayni-kyc-service/Dockerfile
@@ -216,6 +254,8 @@ services:
       # Carga PaddleOCR al arrancar: la primera extraccion no debe pagar la carga
       # del modelo dentro del timeout de 10 s de identity (HU-02).
       KYC_PRECARGAR_OCR: "true"
+      # /docs y /openapi.json de kyc, que Swagger UI del gateway agrupa. Solo en local.
+      KYC_API_DOCS: "true"
       AYNI_UMBRAL_SIMILITUD_FACIAL: ${AYNI_UMBRAL_SIMILITUD_FACIAL:-0.80}
     ports: ["8000:8000"]
     # minio-init crea los buckets y termina. Declararlo con
@@ -236,6 +276,9 @@ services:
     networks: [ayni]
 
   ayni-web:
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "0.5" }
     build:
       context: ../..
       dockerfile: web/ayni-web/Dockerfile
@@ -268,6 +311,9 @@ services:
   # ─────────────────────────── Observabilidad ───────────────────────────
 
   prometheus:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
     image: prom/prometheus:latest
     container_name: ayni-prometheus
     restart: unless-stopped
@@ -278,6 +324,9 @@ services:
     networks: [ayni]
 
   grafana:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
     image: grafana/grafana:latest
     container_name: ayni-grafana
     restart: unless-stopped
@@ -292,6 +341,9 @@ services:
     networks: [ayni]
 
   loki:
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.5" }
     image: grafana/loki:latest
     container_name: ayni-loki
     restart: unless-stopped

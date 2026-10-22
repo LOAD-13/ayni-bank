@@ -7,6 +7,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import pe.ayni.bank.identity.domain.model.CorreoElectronico;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.port.out.PublicadorDeSolicitudesPort;
 import pe.ayni.bank.identity.infrastructure.config.ConfiguracionDeMensajeria;
 
@@ -49,6 +50,30 @@ public class PublicadorDeSolicitudesPorAmqp implements PublicadorDeSolicitudesPo
                 ConfiguracionDeMensajeria.EXCHANGE,
                 ConfiguracionDeMensajeria.CLAVE_TITULAR_ACTIVADO,
                 new TitularActivado(usuarioId, correo.valor(), nombrePila, reloj.instant().toString()));
+    }
+
+    @Override
+    public void anunciarRechazo(UUID solicitudId, UUID usuarioId, CorreoElectronico correo, String nombrePila,
+                                MotivoDeRechazoDeSolicitud motivo) {
+        rabbit.convertAndSend(
+                ConfiguracionDeMensajeria.EXCHANGE,
+                ConfiguracionDeMensajeria.CLAVE_SOLICITUD_RECHAZADA,
+                new SolicitudRechazada(solicitudId, usuarioId, correo.valor(), nombrePila, motivo.name(),
+                        motivo.detalle(), reloj.instant().toString()));
+    }
+
+    /**
+     * HU-05 escenario 3: el contrato con notification-service. Lleva el motivo y su texto ya
+     * redactado, para que quien envia el correo no tenga que conocer los motivos de identity.
+     */
+    public record SolicitudRechazada(UUID solicitudId, UUID usuarioId, String correo, String nombrePila,
+                                     String motivo, String detalle, String rechazadaEn) {
+
+        /** El correo es dato personal: no sale entero en una traza. */
+        @Override
+        public String toString() {
+            return "SolicitudRechazada[solicitudId=" + solicitudId + ", motivo=" + motivo + "]";
+        }
     }
 
     /** HU-13: el contrato con notification-service. Lleva el correo, y nada mas sensible. */
