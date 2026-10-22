@@ -22,6 +22,7 @@ import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.SolicitudNoAprobableException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.Usuario;
@@ -176,6 +177,11 @@ class AprobarSolicitudServiceTest {
         }
 
         @Override
+        public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
+            throw new AssertionError("Aprobar nunca rechaza.");
+        }
+
+        @Override
         public int registrarIntentoFallidoDeKyc(UUID solicitudId, TipoDeDocumentoKyc lado) {
             throw new UnsupportedOperationException("No usado en estas pruebas");
         }
@@ -218,6 +224,12 @@ class AprobarSolicitudServiceTest {
         @Override
         public void anunciarTitularActivado(UUID usuarioId, CorreoElectronico correo, String nombrePila) {
             titulares.add(usuarioId + "|" + correo.valor() + "|" + nombrePila);
+        }
+
+        @Override
+        public void anunciarRechazo(UUID solicitudId, UUID usuarioId, CorreoElectronico correo, String nombrePila,
+                                    MotivoDeRechazoDeSolicitud motivo) {
+            throw new AssertionError("Aprobar nunca anuncia un rechazo.");
         }
     }
 }

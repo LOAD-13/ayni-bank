@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 
 /**
@@ -43,6 +44,14 @@ public interface RepositorioDeSolicitudesPort {
 
     /** Lleva la solicitud a APROBADA, que es lo que dispara la apertura de la cuenta. */
     void marcarAprobada(UUID solicitudId);
+
+    /** Lleva la solicitud a RECHAZADA y guarda el motivo. HU-05, escenario 3. */
+    void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo);
+
+    /** El estado de esa solicitud (INICIADA, APROBADA, RECHAZADA...). Vacio si no existe. */
+    default Optional<String> estadoDe(UUID solicitudId) {
+        return Optional.empty();
+    }
 
     /**
      * Suma un intento fallido de verificacion de ese lado del DNI y devuelve el total

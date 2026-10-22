@@ -23,6 +23,7 @@ import pe.ayni.bank.identity.domain.model.FuenteDeLectura;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
 import pe.ayni.bank.identity.domain.model.KycServiceNoDisponibleException;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
@@ -31,6 +32,7 @@ import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeContrasenasPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeRegistroPort;
 import pe.ayni.bank.identity.domain.port.out.NotificadorDeVerificacionKycPort;
+import pe.ayni.bank.identity.domain.port.out.PublicadorDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort;
@@ -89,6 +91,7 @@ public final class DoblesEnMemoria {
         public final Map<UUID, Map<TipoDeDocumentoKyc, Integer>> intentosKyc = new HashMap<>();
         public final List<UUID> enRevisionManual = new ArrayList<>();
         public final List<UUID> documentosCargados = new ArrayList<>();
+        public final Map<UUID, MotivoDeRechazoDeSolicitud> rechazadas = new HashMap<>();
 
         @Override
         public UUID abrirPara(UUID usuarioId, IdentidadDeclarada identidad) {
@@ -116,6 +119,29 @@ public final class DoblesEnMemoria {
         @Override
         public void marcarAprobada(UUID solicitudId) {
             aprobadas.add(solicitudId);
+        }
+
+        @Override
+        public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
+            rechazadas.put(solicitudId, motivo);
+        }
+
+        /** El mismo orden de precedencia que tendria la columna estado en la base. */
+        @Override
+        public Optional<String> estadoDe(UUID solicitudId) {
+            if (!reales.containsKey(solicitudId)) {
+                return Optional.empty();
+            }
+            if (rechazadas.containsKey(solicitudId)) {
+                return Optional.of("RECHAZADA");
+            }
+            if (aprobadas.contains(solicitudId)) {
+                return Optional.of("APROBADA");
+            }
+            if (enRevisionManual.contains(solicitudId)) {
+                return Optional.of("EN_REVISION_MANUAL");
+            }
+            return Optional.of(documentosCargados.contains(solicitudId) ? "DOCUMENTO_CARGADO" : "INICIADA");
         }
 
         /** Tope de 3, igual que la restriccion de la tabla (V8). */
@@ -155,6 +181,32 @@ public final class DoblesEnMemoria {
         @Override
         public Optional<String> nombreDePilaDe(UUID usuarioId) {
             return Optional.of("Ana");
+        }
+    }
+
+    /** Lo que identity anuncia al resto del sistema, para comprobarlo sin RabbitMQ. */
+    public static final class Publicador implements PublicadorDeSolicitudesPort {
+        public final List<UUID> aprobaciones = new ArrayList<>();
+        public final List<Rechazo> rechazos = new ArrayList<>();
+
+        public record Rechazo(UUID solicitudId, UUID usuarioId, String correo, String nombrePila,
+                              MotivoDeRechazoDeSolicitud motivo) {
+        }
+
+        @Override
+        public void anunciarAprobacion(UUID solicitudId, UUID usuarioId) {
+            aprobaciones.add(solicitudId);
+        }
+
+        @Override
+        public void anunciarTitularActivado(UUID usuarioId, CorreoElectronico correo, String nombrePila) {
+            // Sin efecto: los escenarios que usan este doble no comprueban la activacion.
+        }
+
+        @Override
+        public void anunciarRechazo(UUID solicitudId, UUID usuarioId, CorreoElectronico correo, String nombrePila,
+                                    MotivoDeRechazoDeSolicitud motivo) {
+            rechazos.add(new Rechazo(solicitudId, usuarioId, correo.valor(), nombrePila, motivo));
         }
     }
 
