@@ -46,6 +46,12 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Swagger UI en /api/docs con los contratos de los servicios. Apagada salvo con
+             AYNI_API_DOCS=true, que solo pone el compose local. Ver ADR-0033. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
