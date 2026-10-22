@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Configuration;
 public class RutasDeDocumentacion {
 
     @Bean
-    public RouteLocator rutasDeDocumentacion(RouteLocatorBuilder rutas,
+    public RouteLocator rutasHaciaLosContratos(RouteLocatorBuilder rutas,
                                              @Value("${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}") String identity,
                                              @Value("${AYNI_CORE_URI:http://ayni-core-banking-service:8082}") String core,
                                              @Value("${AYNI_KYC_URI:http://ayni-kyc-service:8000}") String kyc) {

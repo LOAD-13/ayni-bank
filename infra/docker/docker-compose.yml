@@ -326,7 +326,7 @@ services:
   grafana:
     deploy:
       resources:
-        limits: { memory: 256M, cpus: "0.5" }
+        limits: { memory: 384M, cpus: "0.5" }
     image: grafana/grafana:latest
     container_name: ayni-grafana
     restart: unless-stopped

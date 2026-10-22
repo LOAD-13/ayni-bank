@@ -37,7 +37,7 @@ al techo del contenedor (`-XX:MaxRAMPercentage=70`).
 | kyc (TensorFlow + PaddleOCR) | 2560 MB | 1.5 |
 | web | 384 MB | 0.5 |
 | RabbitMQ | 384 MB | 0.5 |
-| Prometheus · Grafana · Caddy · node-exporter | 512 · 256 · 128 · 64 MB | 0.1–0.25 |
+| Prometheus · Grafana · Caddy · node-exporter | 512 · 384 · 128 · 64 MB | 0.1–0.25 |
 
 La suma en producción es de unos 7 GB y deja margen al sistema operativo. Los valores se validan
 midiendo con `docker stats` bajo carga; si un servicio vive pegado a su techo, se sube el techo.
