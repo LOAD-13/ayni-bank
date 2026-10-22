@@ -35,6 +35,8 @@ import pe.ayni.bank.notification.domain.port.out.CatalogoDePlantillasPort;
 import pe.ayni.bank.notification.domain.port.out.RepositorioDeNotificacionesPort;
 import pe.ayni.bank.notification.domain.port.out.RepositorioDeTitularesPort;
 import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeMovimientos;
+import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeSolicitudesRechazadas;
+import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeSolicitudesRechazadas.SolicitudRechazada;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.DepositoSimuladoRegistrado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaRealizada;
 
@@ -53,7 +55,11 @@ public class PasosDeNotificacionDeMovimientos {
                             + "{{fecha}}. Tu saldo disponible es {{moneda}} {{saldo}}. Operación {{operacion}}."),
             TipoDeAviso.DEPOSITO_RECIBIDO, new Plantilla("Recibiste un depósito",
                     "Recibiste un depósito de {{moneda}} {{importe}} en tu cuenta {{cuenta}} el {{fecha}}. "
-                            + "Tu saldo disponible es {{moneda}} {{saldo}}. Operación {{operacion}}."));
+                            + "Tu saldo disponible es {{moneda}} {{saldo}}. Operación {{operacion}}."),
+            // V4 · HU-05 escenario 3 (AYNI-327)
+            TipoDeAviso.SOLICITUD_RECHAZADA, new Plantilla("No pudimos aprobar tu solicitud",
+                    "Revisamos la solicitud para abrir tu Cuenta Ayni y no pudimos aprobarla. Motivo: {{motivo}} "
+                            + "No se abrió ninguna cuenta a tu nombre y tus datos siguen protegidos."));
 
     private Instant ahora;
     private final Map<String, UUID> personas = new HashMap<>();
@@ -181,6 +187,21 @@ public class PasosDeNotificacionDeMovimientos {
                 personas.get(titular), "****4321", saldo, ahora.toString());
         String messageId = UUID.randomUUID().toString();
         ultimoMensaje = () -> escuchador().alRegistrarseUnDeposito(evento, messageId);
+        ultimoMensaje.run();
+    }
+
+    /**
+     * {@code aviso-de-solicitud-rechazada.feature} · HU-05 escenario 3 (AYNI-327). Vive aqui
+     * porque comparte los dobles, el despachador y los pasos de comprobacion de HU-13.
+     */
+    @Cuando("identity publica que rechazó la solicitud de {string} con el correo {string} porque {string}")
+    public void rechazo(String nombre, String correo, String detalle) {
+        UUID usuario = personas.computeIfAbsent(nombre, n -> UUID.randomUUID());
+        var evento = new SolicitudRechazada(UUID.randomUUID(), usuario, correo, nombre, "SELFIE_NO_COINCIDE",
+                detalle, ahora.toString());
+        var escuchador = new EscuchadorDeSolicitudesRechazadas(new RegistrarTitularService(repoTitulares, reloj()),
+                new RegistrarAvisosService(repoNotificaciones, reloj()));
+        ultimoMensaje = () -> escuchador.alRechazarseLaSolicitud(evento);
         ultimoMensaje.run();
     }
 

@@ -6,5 +6,7 @@ public enum TipoDeAviso {
     TRANSFERENCIA_RECIBIDA,
     DEPOSITO_RECIBIDO,
     /** HU-06: el interes del mes se abono en la cuenta. */
-    INTERES_CAPITALIZADO
+    INTERES_CAPITALIZADO,
+    /** HU-05 escenario 3: un operador rechazo la solicitud de apertura. Lleva el motivo. */
+    SOLICITUD_RECHAZADA
 }
