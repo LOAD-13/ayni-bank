@@ -1,5 +1,6 @@
 package pe.ayni.bank.core.infrastructure.in.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.mock;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
@@ -82,5 +84,15 @@ class ManejadorDeErroresTest {
                 .andExpect(jsonPath("$.detail").value(containsString("movimientoId")))
                 // El valor solo aparece en `instance`, la ruta que el propio cliente pidio (RFC 7807).
                 .andExpect(jsonPath("$.detail").value(not(containsString("no-es-un-uuid"))));
+    }
+
+    @Test
+    @DisplayName("Un parametro obligatorio ausente: 400 que lo nombra")
+    void parametroAusente() {
+        var respuesta = new ManejadorDeErrores()
+                .alFaltarUnParametro(new MissingServletRequestParameterException("limite", "int"));
+
+        assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
+        assertThat(respuesta.getBody().getDetail()).contains("limite");
     }
 }

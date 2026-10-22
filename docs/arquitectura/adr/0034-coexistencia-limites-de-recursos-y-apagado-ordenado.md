@@ -60,6 +60,12 @@ los consumidores de RabbitMQ.
 Antes salía el 400 genérico de Spring, distinto según el error. Ningún mensaje repite el valor
 recibido ni el texto interno del parser.
 
+**5. 503 cuando un servicio no acepta conexiones.** Si un servicio se está apagando, reiniciando
+tras pasar su techo de memoria o está caído, el gateway responde `503` con `Retry-After: 5` y
+`codigo: SERVICIO_NO_DISPONIBLE`, no el `500` por defecto. 500 dice «fallo imprevisto»; 503 dice
+«ahora no, reintenta», que es lo que pasa y lo que la web sabe tratar. Se midió: con core-banking
+detenido en plena carga, el gateway devolvió 186 respuestas 500 antes de este cambio.
+
 ## Consecuencias
 
 - Un pico real de kyc que pase de 2.5 GB reinicia kyc en lugar de degradar la máquina. Se vigila
