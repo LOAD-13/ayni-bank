@@ -31,6 +31,6 @@ class RutasDeDocumentacionTest {
                 .collect(Collectors.toMap(Route::getId, r -> r.getUri().toString()));
 
         assertThat(destinos).containsOnlyKeys("docs-identity", "docs-core-banking", "docs-kyc");
-        assertThat(destinos.get("docs-kyc")).isEqualTo("http://ayni-kyc-service:8000");
+        assertThat(destinos).containsEntry("docs-kyc", "http://ayni-kyc-service:8000");
     }
 }
