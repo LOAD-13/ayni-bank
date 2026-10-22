@@ -10,20 +10,24 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import java.net.ConnectException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.amqp.AmqpConnectException;
+import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.cucumber.java.Before;
-import io.cucumber.java.PendingException;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Entonces;
@@ -47,6 +51,9 @@ public class PasosDeAperturaDeCuenta {
 
     private static final short AHORRO_PEN = 1;
 
+    /** La clave con la que identity publica el rechazo en {@code ayni.eventos} (AYNI-327). */
+    private static final String CLAVE_SOLICITUD_RECHAZADA = "identity.solicitud.rechazada";
+
     @Autowired
     private JdbcTemplate jdbc;
     @Autowired
@@ -61,6 +68,9 @@ public class PasosDeAperturaDeCuenta {
     private LibroMayorPort libro;
     @Autowired
     private RabbitTemplate rabbit;
+    /** Los enlaces reales de {@link ConfiguracionDeMensajeria}: deciden qué eventos llegan a core-banking. */
+    @Autowired
+    private List<Binding> enlaces;
 
     /** Cada nombre del escenario es un titular distinto, con su propia solicitud. */
     private final Map<String, UUID> titulares = new HashMap<>();
@@ -86,6 +96,18 @@ public class PasosDeAperturaDeCuenta {
     private void aprobar(String nombre) {
         UUID solicitud = solicitudes.computeIfAbsent(nombre, n -> UUID.randomUUID());
         escuchador.alAprobarseLaSolicitud(new SolicitudAprobada(solicitud, titular(nombre), "2026-10-20T15:00:00Z"));
+    }
+
+    /** Las reglas de un topic exchange: {@code *} es exactamente una palabra y {@code #}, cualquier cantidad. */
+    private static boolean coincide(String patron, String clave) {
+        String expresion = Arrays.stream(patron.split("\\.", -1))
+                .map(palabra -> switch (palabra) {
+                    case "*" -> "[^.]+";
+                    case "#" -> ".*";
+                    default -> Pattern.quote(palabra);
+                })
+                .collect(Collectors.joining("\\."));
+        return clave.matches(expresion);
     }
 
     /** {@code queryForMap} exige exactamente una fila: dos eventos de apertura tambien serian un fallo. */
@@ -117,8 +139,7 @@ public class PasosDeAperturaDeCuenta {
 
     @Dado("que la solicitud de onboarding de {word} queda en estado RECHAZADA")
     public void solicitudRechazada(String nombre) {
-        throw new PendingException("AYNI-327 · HU-05 escenario 3: identity no publica la solicitud rechazada, "
-                + "asi que no hay evento que procesar ni motivo que notificar.");
+        solicitudes.put(nombre, UUID.randomUUID());
     }
 
     // ─── Cuando ──────────────────────────────────────────────────────────────
@@ -144,7 +165,21 @@ public class PasosDeAperturaDeCuenta {
 
     @Cuando("el sistema procesa el rechazo de {word}")
     public void procesaRechazo(String nombre) {
-        throw new PendingException("AYNI-327 · HU-05 escenario 3: no existe el evento de solicitud rechazada.");
+        // El rechazo se reparte con la topologia real de core-banking. Hoy ninguna de sus colas
+        // lo recibe; si un enlace mas amplio (identity.solicitud.*) llegara a recibirlo, el
+        // escuchador de aprobaciones lo procesaria igual que una aprobacion y abriria la cuenta.
+        // Sin la topologia cargada el paso pasaria sin comprobar nada: por eso se exige antes.
+        assertThat(enlaces).extracting(Binding::getDestination)
+                .contains(ConfiguracionDeMensajeria.COLA_SOLICITUDES_APROBADAS);
+        enlaces.stream()
+                .filter(enlace -> ConfiguracionDeMensajeria.EXCHANGE.equals(enlace.getExchange()))
+                .filter(enlace -> coincide(enlace.getRoutingKey(), CLAVE_SOLICITUD_RECHAZADA))
+                .forEach(enlace -> {
+                    assertThat(enlace.getDestination())
+                            .as("core-banking solo escucha la cola de aprobaciones")
+                            .isEqualTo(ConfiguracionDeMensajeria.COLA_SOLICITUDES_APROBADAS);
+                    aprobar(nombre);
+                });
     }
 
     // ─── Entonces ────────────────────────────────────────────────────────────
@@ -205,19 +240,24 @@ public class PasosDeAperturaDeCuenta {
 
     @Entonces("el intento duplicado de {word} queda registrado en la pista de auditoría")
     public void auditoriaDelDuplicado(String nombre) {
-        throw new PendingException("AYNI-326 · HU-05 escenario 2: AbrirCuentaDeAhorroService rechaza el duplicado "
-                + "sin escribir el intento en core.evento_auditoria.");
+        // La primera apertura no deja evento: solo el intento rechazado. Y queda aunque la
+        // transaccion de la apertura se deshizo, porque se escribe en una propia.
+        assertThat(jdbc.queryForList("""
+                SELECT tipo, motivo, movimiento_id FROM core.evento_auditoria WHERE usuario_id = ?
+                """, titular(nombre))).singleElement().satisfies(evento -> {
+                    assertThat(evento.get("tipo")).isEqualTo("APERTURA_RECHAZADA");
+                    assertThat(evento.get("motivo")).isEqualTo("CUENTA_DUPLICADA");
+                    assertThat(evento.get("movimiento_id")).isNull();
+                });
     }
 
     @Entonces("el sistema no crea ninguna cuenta para {word}")
     public void sinCuenta(String nombre) {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM core.cuenta WHERE usuario_id = ?", Integer.class,
                 titular(nombre))).isZero();
-    }
-
-    @Y("el sistema notifica a {word} el motivo del rechazo")
-    public void notificaRechazo(String nombre) {
-        throw new PendingException("AYNI-327 · HU-05 escenario 3: nadie envia la plantilla KYC_RECHAZADO de notification.");
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM core.outbox WHERE carga ->> 'usuarioId' = ?
+                """, Integer.class, titular(nombre).toString())).isZero();
     }
 
     @Entonces("la cuenta de {word} permanece creada y consistente")

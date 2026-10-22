@@ -30,22 +30,18 @@ Característica: Apertura automática de cuenta de ahorro
     Entonces el sistema rechaza la apertura
     Y Luis mantiene una única cuenta activa en soles
 
-  # Pendiente · AYNI-326: AbrirCuentaDeAhorroService rechaza el duplicado pero no escribe el
-  # intento en core.evento_auditoria, que es lo que pide el criterio.
-  @pendiente
+  # AYNI-326
   Escenario: Intento de apertura duplicada · registro en la pista de auditoría
     Dado que Luis ya posee una cuenta de ahorro activa en soles
     Cuando se intenta abrir una segunda cuenta en soles para Luis
     Entonces el intento duplicado de Luis queda registrado en la pista de auditoría
 
-  # Pendiente · AYNI-327: core-banking no abre cuenta sin aprobación, pero identity no publica
-  # la solicitud rechazada y la plantilla KYC_RECHAZADO de notification no tiene quien la use.
-  @pendiente
+  # AYNI-327 · Aquí solo cabe la parte de core-banking. El aviso con el motivo lo prueba
+  # aviso-de-solicitud-rechazada.feature, en notification.
   Escenario: KYC rechazado
     Dado que la solicitud de onboarding de Luis queda en estado RECHAZADA
     Cuando el sistema procesa el rechazo de Luis
     Entonces el sistema no crea ninguna cuenta para Luis
-    Y el sistema notifica a Luis el motivo del rechazo
 
   Escenario: Fallo al publicar el evento
     Dado que la cuenta de Luis se creó correctamente pero RabbitMQ no está disponible

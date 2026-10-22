@@ -44,9 +44,7 @@ Característica: Consulta de saldo e historial de movimientos
     Entonces el sistema le deniega el acceso a Ana sin revelar el movimiento
     Pero Bruno sí puede consultar el comprobante de su depósito
 
-  # Pendiente · AYNI-328: el acceso se deniega, pero el intento no queda en la pista de
-  # auditoría como evento de seguridad.
-  @pendiente
+  # AYNI-328
   Escenario: Intento de acceso a un movimiento ajeno · registro como evento de seguridad
     Dado que Bruno tiene su cuenta Ayni en soles
     Y que Bruno recibió estos depósitos:
