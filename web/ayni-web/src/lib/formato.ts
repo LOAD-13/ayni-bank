@@ -123,6 +123,23 @@ export function proyeccionAUnAno(capital: string, trea: string): string | null {
   );
 }
 
+/**
+ * Qué parte de un límite ya se usó, en tanto por ciento entero entre 0 y 100, para pintar
+ * la barra del límite diario de la tarjeta (HU-10). Es solo visual, pero se calcula igual
+ * que el resto: sin `parseFloat` ni coma flotante. Un límite cero o un texto que no es un
+ * importe dan 0.
+ */
+export function porcentajeUsado(usado: string, limite: string): number {
+  const u = leerDecimal(usado);
+  const l = leerDecimal(limite);
+  if (!u || !l || l.unidades <= BigInt(0)) return 0;
+  // usado / limite × 100, llevando los dos a la misma escala.
+  const numerador = u.unidades * potenciaDeDiez(l.escala) * BigInt(100);
+  const denominador = l.unidades * potenciaDeDiez(u.escala);
+  const porcentaje = Number(numerador / denominador);
+  return Math.min(100, Math.max(0, porcentaje));
+}
+
 /** Clave de idempotencia nueva: una por intento de operación, no por clic. */
 export function nuevaClave(): string {
   return crypto.randomUUID();

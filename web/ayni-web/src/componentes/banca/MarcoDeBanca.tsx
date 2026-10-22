@@ -26,7 +26,7 @@ const NAVEGACION = [
   { href: "/banca/transferir", texto: "Transferir", Icono: ArrowLeftRight },
   { href: "/banca/depositar", texto: "Depositar", Icono: PiggyBank },
   { href: "/pendiente", texto: "Cuentas", Icono: Wallet },
-  { href: "/pendiente", texto: "Tarjetas", Icono: CreditCard },
+  { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },
   { href: "/pendiente", texto: "Estados de cuenta", Icono: ReceiptText },
   { href: "/banca/configuracion", texto: "Configuración", Icono: Settings },
 ];
