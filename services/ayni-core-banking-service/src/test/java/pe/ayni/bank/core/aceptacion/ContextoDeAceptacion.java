@@ -25,6 +25,7 @@ import pe.ayni.bank.core.application.usecase.CierreDiarioService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
+import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeMensajeria;
 import pe.ayni.bank.core.infrastructure.in.messaging.EscuchadorDeSolicitudAprobada;
 import pe.ayni.bank.core.infrastructure.out.messaging.PublicadorDeOutbox;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
@@ -51,7 +52,7 @@ import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({CierreDiarioService.class, ConsultarRendimientoService.class, AbrirCuentaDeAhorroService.class,
         OperarCuentaService.class, EscuchadorDeSolicitudAprobada.class, PublicadorDeOutbox.class,
-        BandejaDeSalida.class,
+        BandejaDeSalida.class, ConfiguracionDeMensajeria.class,
         AdaptadorRegistroDeIntereses.class, AdaptadorLibroMayor.class, AdaptadorRepositorioDeCuentas.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
         ObjectMapper.class, ContextoDeAceptacion.Infraestructura.class})

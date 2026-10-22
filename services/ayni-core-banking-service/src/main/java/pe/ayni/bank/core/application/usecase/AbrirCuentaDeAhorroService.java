@@ -15,6 +15,7 @@ import pe.ayni.bank.core.domain.model.CuentaDuplicadaException;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.PublicadorDeEventosPort;
 import pe.ayni.bank.core.domain.port.out.RegistroDeIdempotenciaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -39,6 +40,7 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
     private final RepositorioDeCuentasPort cuentas;
     private final PublicadorDeEventosPort eventos;
     private final RegistroDeIdempotenciaPort idempotencia;
+    private final PistaDeAuditoriaPort auditoria;
     private final short productoDeAhorro;
     private final Clock reloj;
 
@@ -46,11 +48,13 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
             RepositorioDeCuentasPort cuentas,
             PublicadorDeEventosPort eventos,
             RegistroDeIdempotenciaPort idempotencia,
+            PistaDeAuditoriaPort auditoria,
             @Value("${ayni.productos.ahorro-soles}") short productoDeAhorro,
             Clock reloj) {
         this.cuentas = cuentas;
         this.eventos = eventos;
         this.idempotencia = idempotencia;
+        this.auditoria = auditoria;
         this.productoDeAhorro = productoDeAhorro;
         this.reloj = reloj;
     }
@@ -73,7 +77,10 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
         //    comprobacion se hace aqui para poder responder con un error con sentido, pero
         //    quien de verdad impide el duplicado es el indice unico parcial de la base: dos
         //    peticiones simultaneas superarian esta linea a la vez.
+        //    El intento queda en la pista antes de rechazarlo (AYNI-326): la auditoria se
+        //    confirma en su propia transaccion y sobrevive al rollback de esta.
         if (cuentas.existeCuentaActiva(usuarioId, moneda)) {
+            auditoria.registrarAperturaDuplicada(usuarioId);
             throw new CuentaDuplicadaException(moneda);
         }
 

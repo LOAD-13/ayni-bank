@@ -106,11 +106,29 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     @Override
     @Transactional(readOnly = true)
     public Optional<Comprobante> comprobante(UUID usuarioId, UUID movimientoId) {
-        return cuentas.buscarActivaDe(usuarioId, Moneda.PEN).flatMap(cuenta -> {
-            List<Asiento> asientos = libro.asientosDelMovimiento(movimientoId);
+        List<Asiento> asientos = libro.asientosDelMovimiento(movimientoId);
+        Optional<Comprobante> visto = cuentas.buscarActivaDe(usuarioId, Moneda.PEN).flatMap(cuenta -> {
             boolean esSuyo = asientos.stream().anyMatch(a -> a.cuentaId().equals(cuenta.id()));
             return esSuyo ? Optional.of(comprobanteDe(asientos, cuenta)) : Optional.<Comprobante>empty();
         });
+        // HU-08 escenario 2 (AYNI-328): pedir el movimiento de otra persona es un evento de
+        // seguridad. La pista se escribe en su propia transaccion: esta es de solo lectura.
+        if (visto.isEmpty() && esAjeno(usuarioId, asientos)) {
+            auditoria.registrarAccesoAjeno(usuarioId, movimientoId);
+        }
+        return visto;
+    }
+
+    /**
+     * El movimiento existe y ninguna de sus cuentas es del usuario. Un identificador que no
+     * existe no cuenta, y tampoco el titular de una cuenta bloqueada que pide un movimiento
+     * suyo: se le niega igual, pero no es un acceso ajeno y no debe ensuciar la pista.
+     */
+    private boolean esAjeno(UUID usuarioId, List<Asiento> asientos) {
+        return !asientos.isEmpty() && asientos.stream()
+                .map(a -> libro.buscarPorId(a.cuentaId()))
+                .flatMap(Optional::stream)
+                .noneMatch(c -> usuarioId.equals(c.usuarioId()));
     }
 
     /** Una peticion repetida no movio dinero: queda como tal en la pista. */

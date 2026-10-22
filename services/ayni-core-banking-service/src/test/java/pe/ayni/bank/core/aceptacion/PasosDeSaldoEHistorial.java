@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.PendingException;
@@ -46,11 +47,14 @@ public class PasosDeSaldoEHistorial {
     private OperarCuentaUseCase operar;
     @Autowired
     private LibroMayorPort libro;
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private final Map<String, Cuenta> cuentas = new HashMap<>();
     private final Map<String, List<UUID>> depositos = new HashMap<>();
     private Dinero saldo;
     private List<Asiento> movimientos;
+    private UUID movimientoSolicitado;
     private Optional<Comprobante> comprobanteSolicitado;
 
     private Cuenta cuentaDe(String nombre) {
@@ -100,7 +104,8 @@ public class PasosDeSaldoEHistorial {
 
     @Cuando("{word} solicita el comprobante del depósito de {word}")
     public void solicitaComprobanteAjeno(String quien, String titular) {
-        comprobanteSolicitado = operar.comprobante(cuentaDe(quien).usuarioId(), primerDepositoDe(titular));
+        movimientoSolicitado = primerDepositoDe(titular);
+        comprobanteSolicitado = operar.comprobante(cuentaDe(quien).usuarioId(), movimientoSolicitado);
     }
 
     // ─── Entonces ────────────────────────────────────────────────────────────
@@ -142,7 +147,15 @@ public class PasosDeSaldoEHistorial {
 
     @Entonces("el intento de {word} queda registrado como evento de seguridad en la pista de auditoría")
     public void eventoDeSeguridad(String nombre) {
-        throw new PendingException("AYNI-328 · HU-08 escenario 2: el acceso ajeno se deniega sin dejar rastro "
-                + "en core.evento_auditoria.");
+        // Queda quien lo intento y que movimiento quiso leer; el titular del movimiento no
+        // aparece como sospechoso. Se escribe en una transaccion propia porque la consulta
+        // del comprobante es de solo lectura.
+        assertThat(jdbc.queryForList("SELECT tipo, usuario_id, movimiento_id, motivo FROM core.evento_auditoria"))
+                .singleElement().satisfies(evento -> {
+                    assertThat(evento.get("tipo")).isEqualTo("ACCESO_AJENO_DENEGADO");
+                    assertThat(evento.get("usuario_id")).isEqualTo(cuentaDe(nombre).usuarioId());
+                    assertThat(evento.get("movimiento_id")).isEqualTo(movimientoSolicitado);
+                    assertThat(evento.get("motivo")).isNull();
+                });
     }
 }
