@@ -141,6 +141,25 @@ describe("Transferencia con segundo factor (HU-07)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos completar");
   });
 
+  it("corregir vuelve al formulario con lo que la persona ya escribió", async () => {
+    // Si al corregir el formulario aparece vacío, arreglar un dígito obliga a teclear de
+    // nuevo la cuenta, el importe y el concepto: el error se corrige con más esfuerzo del
+    // que costó cometerlo (ISO 25010, protección contra errores del usuario).
+    const user = userEvent.setup();
+    render(<PaginaDeTransferencia />);
+    await user.type(screen.getByLabelText("Cuenta Ayni de destino"), "001-1100000-0-031");
+    await user.type(screen.getByLabelText("Importe en soles"), "150,5");
+    await user.type(screen.getByLabelText("Concepto (opcional)"), "Cena");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    await user.click(screen.getByRole("button", { name: "Corregir" }));
+
+    expect(screen.getByLabelText("Cuenta Ayni de destino")).toHaveValue("001-1100000-0-031");
+    expect(screen.getByLabelText("Importe en soles")).toHaveValue("150,5");
+    expect(screen.getByLabelText("Concepto (opcional)")).toHaveValue("Cena");
+    expect(iniciar).not.toHaveBeenCalled();
+  });
+
   it("cancelar el código vuelve a la revisión sin transferir", async () => {
     const user = await llegarAlCodigo();
     await user.click(screen.getByRole("button", { name: "Cancelar" }));

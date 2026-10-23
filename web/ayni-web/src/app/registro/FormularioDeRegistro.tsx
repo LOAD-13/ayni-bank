@@ -334,11 +334,12 @@ export function FormularioDeRegistro() {
         )}
       </div>
 
-      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
-        <Link href="/pendiente" className="text-[14px] font-semibold text-azul-600 hover:underline">
-          Ya tengo cuenta · Iniciar sesión
-        </Link>
-
+      {/* El botón va primero en el código y el enlace después, que es el orden del Tab.
+          En el celular se ven así, uno debajo del otro; en pantallas anchas
+          `flex-row-reverse` deja el enlace a la izquierda, como en el diseño aprobado. Con
+          el orden al revés en el código, el foco bajaba al enlace y volvía a subir al
+          botón (WCAG 2.4.3). */}
+      <div className="flex flex-col items-center gap-4 sm:flex-row-reverse sm:justify-between">
         <button
           type="submit"
           disabled={enviando}
@@ -348,6 +349,10 @@ export function FormularioDeRegistro() {
           {enviando ? "Un momento…" : "Continuar con mi DNI"}
           {!enviando && <span aria-hidden="true">→</span>}
         </button>
+
+        <Link href="/ingresar" className="text-[14px] font-semibold text-azul-600 hover:underline">
+          Ya tengo cuenta · Iniciar sesión
+        </Link>
       </div>
     </form>
   );
