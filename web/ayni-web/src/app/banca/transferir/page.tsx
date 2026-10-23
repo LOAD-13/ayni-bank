@@ -36,6 +36,9 @@ interface Borrador {
 export default function PaginaDeTransferencia() {
   const { token } = useSesion();
   const [borrador, setBorrador] = useState<Borrador | null>(null);
+  // Lo que la persona tecleó, tal cual, para devolvérselo al pulsar «Corregir»: el
+  // formulario se vuelve a montar y sin esto aparecería vacío.
+  const [escrito, setEscrito] = useState<Borrador | null>(null);
   const [clave, setClave] = useState<string | null>(null);
   const [comprobante, setComprobante] = useState<Comprobante | null>(null);
   const [errores, setErrores] = useState<Partial<Record<keyof Borrador, string>>>({});
@@ -46,9 +49,15 @@ export default function PaginaDeTransferencia() {
   function revisar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const datos = new FormData(evento.currentTarget);
-    const cuentaDestino = String(datos.get("cuentaDestino") ?? "").replace(/[\s-]/g, "");
-    const importe = normalizarImporte(String(datos.get("importe") ?? ""));
-    const concepto = String(datos.get("concepto") ?? "").trim();
+    const tecleado = {
+      cuentaDestino: String(datos.get("cuentaDestino") ?? ""),
+      importe: String(datos.get("importe") ?? ""),
+      concepto: String(datos.get("concepto") ?? ""),
+    };
+    setEscrito(tecleado);
+    const cuentaDestino = tecleado.cuentaDestino.replace(/[\s-]/g, "");
+    const importe = normalizarImporte(tecleado.importe);
+    const concepto = tecleado.concepto.trim();
 
     const encontrados: Partial<Record<keyof Borrador, string>> = {};
     if (!/^\d{14}$/.test(cuentaDestino)) {
@@ -190,6 +199,7 @@ export default function PaginaDeTransferencia() {
             autoComplete="off"
             placeholder="001-1000000001-0-01"
             ayuda="Los 14 dígitos de la cuenta, con o sin guiones."
+            defaultValue={escrito?.cuentaDestino}
             error={errores.cuentaDestino}
           />
           <CampoDeTexto
@@ -198,6 +208,7 @@ export default function PaginaDeTransferencia() {
             inputMode="decimal"
             autoComplete="off"
             placeholder="0.00"
+            defaultValue={escrito?.importe}
             error={errores.importe}
           />
           <CampoDeTexto
@@ -205,6 +216,7 @@ export default function PaginaDeTransferencia() {
             name="concepto"
             maxLength={60}
             autoComplete="off"
+            defaultValue={escrito?.concepto}
           />
           <Boton type="submit">Continuar</Boton>
         </form>
