@@ -137,17 +137,17 @@ la medición.
 
 ## 6. Relación con el capítulo 14: la suite automatizada
 
-La suite de usabilidad tiene **22 pruebas** que corren en escritorio y en celular en cada pull request
+La suite de usabilidad tiene **24 pruebas** que corren en escritorio y en celular en cada pull request
 (`npm run test:usabilidad`).
 
 | Subcaracterística | Pruebas | Resultado del corte |
 |---|---:|---|
-| Facilidad de aprendizaje | 5 | Todas pasan |
+| Facilidad de aprendizaje | 6 | Todas pasan |
 | Operabilidad | 5 | Todas pasan (la de tamaño táctil solo se mide en el celular) |
 | Protección contra errores | 4 | Todas pasan |
-| Asistencia al usuario | 3 | Todas pasan |
+| Asistencia al usuario | 4 | Todas pasan |
 | Inclusividad | 5 | Todas pasan |
-| **Total** | **22** | **43 ejecuciones aprobadas y 1 omitida a propósito** |
+| **Total** | **24** | **47 ejecuciones aprobadas y 1 omitida a propósito** |
 
 ![Informe de Playwright de la suite de usabilidad al corte del 27-oct-2026](evidencia/usabilidad-playwright.png)
 

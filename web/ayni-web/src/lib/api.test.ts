@@ -54,6 +54,23 @@ describe("api client", () => {
     });
   });
 
+  it("una respuesta de error sin cuerpo legible trae un detalle que dice qué hacer", async () => {
+    // Las pantallas muestran el detalle antes que el título; sin él, el cliente leía solo
+    // «No pudimos completar la operación» y no sabía qué hacer.
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new SyntaxError("Unexpected token <");
+      },
+    } as unknown as Response);
+
+    const error = await consultarTitular("usuario").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ErrorDeApi);
+    expect((error as ErrorDeApi).problema.detail).toMatch(/inténtalo de nuevo/i);
+  });
+
   it("seleccionarMetodoSegundoFactor hace un POST al endpoint de método de 2FA", async () => {
     const mockRespuesta = {
       id: "m-123",
