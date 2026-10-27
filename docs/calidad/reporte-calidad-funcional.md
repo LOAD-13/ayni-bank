@@ -1,9 +1,9 @@
 # Reporte de calidad funcional · ISO/IEC 25010
 
-**Historia:** AYNI-219 (T-19, capítulo 12 del informe del APF3) · **Corte:** 26-oct-2026, Sprint 5 en
+**Historia:** AYNI-219 (T-19, capítulo 12 del informe del APF3) · **Corte:** 27-oct-2026, Sprint 5 en
 curso (de 8) · **Métricas:** ISO/IEC 25023 para la característica *adecuación funcional* de ISO/IEC
 25010:2023 · **Datos:** historias y criterios de aceptación de Jira, y la ejecución de CI de
-`develop` [40446515695](https://github.com/LOAD-13/ayni-bank/actions/runs/40446515695) descrita en el
+`develop` [40452694016](https://github.com/LOAD-13/ayni-bank/actions/runs/40452694016) descrita en el
 [plan de pruebas](plan-de-pruebas.md).
 
 ---
@@ -94,7 +94,7 @@ AYNI-229 y AYNI-231 (Sprint 5).
 
 | Medida | Evaluadas (B) | Incorrectas (A) | X | Nivel |
 |---|---:|---:|---:|---|
-| Ejecuciones de prueba en la CI de `develop` | 1 208 | 0 | **1,00** | Alto |
+| Ejecuciones de prueba en la CI de `develop` | 1 236 | 0 | **1,00** | Alto |
 | Criterios implementados con resultado correcto | 40 | 0 | **1,00** | Alto |
 | Defectos funcionales abiertos en Jira | — | 0 | — | — |
 

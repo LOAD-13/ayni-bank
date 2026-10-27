@@ -89,32 +89,32 @@ El listado completo, con identificador, nivel, nombre y archivo de cada caso, es
 | Componente | Unitaria | Arquitectura | Integración | Aceptación | Navegador | Usabilidad | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | identity | 449 | 5 | 19 | 18 | — | — | **491** |
-| core-banking | 143 | 5 | 4 | 13 | — | — | **165** |
+| core-banking | 143 | 5 | 15 | 13 | — | — | **176** |
 | notification | 21 | 5 | 6 | 5 | — | — | **37** |
-| gateway | 23 | — | 1 | — | — | — | **24** |
+| gateway | 31 | — | 10 | — | — | — | **41** |
 | kyc | 59 | — | 25 | — | — | — | **84** |
 | web | 138 | — | — | — | 32 | 17 | **187** |
-| **Total** | **833** | **15** | **55** | **36** | **32** | **17** | **988** |
+| **Total** | **841** | **15** | **75** | **36** | **32** | **17** | **1 016** |
 <!-- /resumen-casos -->
 
 ## 7. Ejecución y resultados
 
 Ejecución de referencia: **CI de `develop`, ejecución
-[40446515695](https://github.com/LOAD-13/ayni-bank/actions/runs/40446515695)** (commit `5673235`,
-26-oct-2026). Los casos parametrizados y los de navegador cuentan una vez por ejecución (los de
+[40452694016](https://github.com/LOAD-13/ayni-bank/actions/runs/40452694016)** (commit `8ae035b`,
+27-oct-2026). Los casos parametrizados y los de navegador cuentan una vez por ejecución (los de
 Playwright corren en escritorio y en celular), por eso hay más ejecuciones que casos.
 
 <!-- resultados -->
 | Suite | Ejecutadas | Pasan | Fallan | Omitidas | Tiempo |
 |---|---:|---:|---:|---:|---:|
-| Java · identity | 558 | 558 | 0 | 0 | 24,5 s |
-| Java · core-banking | 165 | 164 | 0 | 1 (`@pendiente`) | 33,0 s |
-| Java · notification | 37 | 37 | 0 | 0 | 18,8 s |
-| Java · gateway | 24 | 24 | 0 | 0 | 9,0 s |
-| Python · kyc (pytest) | 92 | 92 | 0 | 0 | 14 s |
+| Java · identity | 558 | 558 | 0 | 0 | 24,8 s |
+| Java · core-banking | 176 | 175 | 0 | 1 (`@pendiente`) | 34,0 s |
+| Java · notification | 37 | 37 | 0 | 0 | 19,0 s |
+| Java · gateway | 41 | 41 | 0 | 0 | 19,2 s |
+| Python · kyc (pytest) | 92 | 92 | 0 | 0 | 9 s |
 | Web · unitarias (Vitest, 19 archivos) | 140 | 140 | 0 | 0 | — |
-| Web · navegador, accesibilidad y usabilidad (Playwright) | 194 | 193 | 0 | 1 | 1,5 min |
-| **Total** | **1 210** | **1 208** | **0** | **2** | |
+| Web · navegador, accesibilidad y usabilidad (Playwright) | 194 | 193 | 0 | 1 | 1,9 min |
+| **Total** | **1 238** | **1 236** | **0** | **2** | |
 <!-- /resultados -->
 
 La omisión de Playwright es deliberada: el tamaño táctil mínimo (WCAG 2.5.8) solo se mide en el
@@ -136,9 +136,9 @@ proyecto de celular.
 | Componente | Líneas | Ramas | Fuente |
 |---|---:|---:|---|
 | identity | 94,2 % | 83,0 % | JaCoCo |
-| core-banking | 97,4 % | 88,6 % | JaCoCo |
+| core-banking | 97,3 % | 88,1 % | JaCoCo |
 | notification | 99,0 % | 100 % | JaCoCo |
-| gateway | 97,6 % | 92,1 % | JaCoCo |
+| gateway | 97,4 % | 87,5 % | JaCoCo |
 | kyc | 94,8 % | — | coverage.py |
 | web · `dominio` | 100 % | 100 % | V8 |
 | web · `lib` (cliente de la API, validaciones) | 89,4 % | 94,3 % | V8 |

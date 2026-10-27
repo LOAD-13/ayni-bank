@@ -1,18 +1,18 @@
 # Listado de casos de prueba
 
-> Generado con `infra/scripts/listar-casos-de-prueba.py` el 26-10-2026 sobre el commit `5673235`. **No se edita a mano**: se vuelve a generar. Anexo del [plan de pruebas](plan-de-pruebas.md).
+> Generado con `infra/scripts/listar-casos-de-prueba.py` el 26-10-2026 sobre el commit `bf3ea43`. **No se edita a mano**: se vuelve a generar. Anexo del [plan de pruebas](plan-de-pruebas.md).
 
 ## Resumen por componente y nivel
 
 | Componente | Unitaria | Arquitectura | Integración | Aceptación (Gherkin) | Navegador (E2E) | Usabilidad | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | `ayni-identity-service` | 449 | 5 | 19 | 18 | 0 | 0 | **491** |
-| `ayni-core-banking-service` | 143 | 5 | 4 | 13 | 0 | 0 | **165** |
+| `ayni-core-banking-service` | 143 | 5 | 15 | 13 | 0 | 0 | **176** |
 | `ayni-notification-service` | 21 | 5 | 6 | 5 | 0 | 0 | **37** |
-| `ayni-gateway` | 23 | 0 | 1 | 0 | 0 | 0 | **24** |
+| `ayni-gateway` | 31 | 0 | 10 | 0 | 0 | 0 | **41** |
 | `ayni-kyc-service` | 59 | 0 | 25 | 0 | 0 | 0 | **84** |
 | `ayni-web` | 138 | 0 | 0 | 0 | 32 | 17 | **187** |
-| **Total** | **833** | **15** | **55** | **36** | **32** | **17** | **988** |
+| **Total** | **841** | **15** | **75** | **36** | **32** | **17** | **1016** |
 
 Los escenarios Gherkin marcados como pendientes (1) documentan un criterio que el código todavía no cumple. Se cuentan como casos especificados, pero no se ejecutan.
 
@@ -668,19 +668,30 @@ Los escenarios Gherkin marcados como pendientes (1) documentan un criterio que e
 | CP-CORE-150 | Integración | una rafaga de transferencias nunca deja el saldo negativo y el dinero se conserva | `ConcurrenciaDeTransferenciasTest.java` |
 | CP-CORE-151 | Integración | escenario 3 en paralelo: la misma clave a la vez mueve el dinero una sola vez y todos reciben el mismo comprobante | `ConcurrenciaDeTransferenciasTest.java` |
 | CP-CORE-152 | Integración | transferencias cruzadas A→B y B→A a la vez no se interbloquean | `ConcurrenciaDeTransferenciasTest.java` |
-| CP-CORE-153 | Aceptación (Gherkin) | Apertura exitosa tras aprobación del KYC | `apertura-automatica-de-cuenta.feature` |
-| CP-CORE-154 | Aceptación (Gherkin) | Intento de apertura duplicada | `apertura-automatica-de-cuenta.feature` |
-| CP-CORE-155 | Aceptación (Gherkin) | Intento de apertura duplicada · registro en la pista de auditoría | `apertura-automatica-de-cuenta.feature` |
-| CP-CORE-156 | Aceptación (Gherkin) | KYC rechazado | `apertura-automatica-de-cuenta.feature` |
-| CP-CORE-157 | Aceptación (Gherkin) | Fallo al publicar el evento | `apertura-automatica-de-cuenta.feature` |
-| CP-CORE-158 | Aceptación (Gherkin) | Devengo diario correcto | `rendimiento-diario.feature` |
-| CP-CORE-159 | Aceptación (Gherkin) | Capitalización mensual | `rendimiento-diario.feature` |
-| CP-CORE-160 | Aceptación (Gherkin) | Cambio de tasa preservando el histórico | `rendimiento-diario.feature` |
-| CP-CORE-161 | Aceptación (Gherkin) | Saldo cero | `rendimiento-diario.feature` |
-| CP-CORE-162 | Aceptación (Gherkin) | Saldo disponible calculado desde los movimientos | `saldo-e-historial.feature` |
-| CP-CORE-163 | Aceptación (Gherkin) | Consulta de movimientos con filtro *(pendiente: describe una brecha, no se ejecuta)* | `saldo-e-historial.feature` |
-| CP-CORE-164 | Aceptación (Gherkin) | Intento de acceso a un movimiento ajeno | `saldo-e-historial.feature` |
-| CP-CORE-165 | Aceptación (Gherkin) | Intento de acceso a un movimiento ajeno · registro como evento de seguridad | `saldo-e-historial.feature` |
+| CP-CORE-153 | Integración | asiento queda particionada por rango de registrado_en, con clave (id, registrado_en) | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-154 | Integración | No se pierde un asiento: mismas filas y mismo saldo que antes de migrar | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-155 | Integración | Cada asiento cae en la particion de su mes en hora de Lima, no en la de UTC | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-156 | Integración | Hay particion desde el mes mas antiguo hasta tres meses por delante, mas la de reserva | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-157 | Integración | Un asiento fuera de toda particion mensual cae en la de reserva en lugar de rechazarse | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-158 | Integración | Las restricciones siguen vigentes: importe positivo y cuenta existente | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-159 | Integración | Existen los indices de la tabla y los dos que pidio el taller de diseno fisico | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-160 | Integración | Crear particiones es idempotente: la segunda vez no crea nada ni falla | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-161 | Integración | El mantenimiento crea las particiones que falten si se le pide mas antelacion | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-162 | Integración | Purga el outbox publicado hace mas de 7 dias, nunca lo pendiente ni lo reciente | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-163 | Integración | Purga las claves de idempotencia de mas de 30 dias y conserva las recientes | `ParticionadoDeAsientoTest.java` |
+| CP-CORE-164 | Aceptación (Gherkin) | Apertura exitosa tras aprobación del KYC | `apertura-automatica-de-cuenta.feature` |
+| CP-CORE-165 | Aceptación (Gherkin) | Intento de apertura duplicada | `apertura-automatica-de-cuenta.feature` |
+| CP-CORE-166 | Aceptación (Gherkin) | Intento de apertura duplicada · registro en la pista de auditoría | `apertura-automatica-de-cuenta.feature` |
+| CP-CORE-167 | Aceptación (Gherkin) | KYC rechazado | `apertura-automatica-de-cuenta.feature` |
+| CP-CORE-168 | Aceptación (Gherkin) | Fallo al publicar el evento | `apertura-automatica-de-cuenta.feature` |
+| CP-CORE-169 | Aceptación (Gherkin) | Devengo diario correcto | `rendimiento-diario.feature` |
+| CP-CORE-170 | Aceptación (Gherkin) | Capitalización mensual | `rendimiento-diario.feature` |
+| CP-CORE-171 | Aceptación (Gherkin) | Cambio de tasa preservando el histórico | `rendimiento-diario.feature` |
+| CP-CORE-172 | Aceptación (Gherkin) | Saldo cero | `rendimiento-diario.feature` |
+| CP-CORE-173 | Aceptación (Gherkin) | Saldo disponible calculado desde los movimientos | `saldo-e-historial.feature` |
+| CP-CORE-174 | Aceptación (Gherkin) | Consulta de movimientos con filtro *(pendiente: describe una brecha, no se ejecuta)* | `saldo-e-historial.feature` |
+| CP-CORE-175 | Aceptación (Gherkin) | Intento de acceso a un movimiento ajeno | `saldo-e-historial.feature` |
+| CP-CORE-176 | Aceptación (Gherkin) | Intento de acceso a un movimiento ajeno · registro como evento de seguridad | `saldo-e-historial.feature` |
 
 ## `ayni-notification-service`
 
@@ -732,26 +743,43 @@ Los escenarios Gherkin marcados como pendientes (1) documentan un criterio que e
 | CP-GW-002 | Unitaria | Sin AYNI_API_DOCS no se crean las rutas hacia los contratos de los servicios | `DocumentacionDeLaApiTest.java` |
 | CP-GW-003 | Unitaria | El compose de produccion no enciende la documentacion de la API | `DocumentacionDeLaApiTest.java` |
 | CP-GW-004 | Integración | Con la documentacion encendida existen las rutas hacia los contratos de identity, core-banking y kyc | `RutasDeDocumentacionTest.java` |
-| CP-GW-005 | Unitaria | Conexion rechazada por el servicio: 503, Retry-After y problem+json | `ManejadorDeServicioNoDisponibleTest.java` |
-| CP-GW-006 | Unitaria | Cualquier otro error sigue su camino: el manejador no lo convierte en 503 | `ManejadorDeServicioNoDisponibleTest.java` |
-| CP-GW-007 | Unitaria | Sin token en ruta protegida responde401 yno llega al servicio | `FiltroDeAutenticacionTest.java` |
-| CP-GW-008 | Unitaria | Con token valido reenvia con el usuario del token | `FiltroDeAutenticacionTest.java` |
-| CP-GW-009 | Unitaria | La cabecera de usuario que manda el cliente se descarta siempre | `FiltroDeAutenticacionTest.java` |
-| CP-GW-010 | Unitaria | La cabecera fabricada no sustituye al token en ruta protegida | `FiltroDeAutenticacionTest.java` |
-| CP-GW-011 | Unitaria | Las rutas publicas pasan sin token | `FiltroDeAutenticacionTest.java` |
-| CP-GW-012 | Unitaria | El preflight cors pasa sin token | `FiltroDeAutenticacionTest.java` |
-| CP-GW-013 | Unitaria | Una cabecera que no es bearer se rechaza | `FiltroDeAutenticacionTest.java` |
-| CP-GW-014 | Unitaria | Un bearer vacio se rechaza | `FiltroDeAutenticacionTest.java` |
-| CP-GW-015 | Unitaria | Se ejecuta antes que el enrutado | `FiltroDeAutenticacionTest.java` |
-| CP-GW-016 | Unitaria | Un token caducado no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-017 | Unitaria | Un token firmado con otra clave no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-018 | Unitaria | Un token de otro emisor no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-019 | Unitaria | Un token sin sujeto no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-020 | Unitaria | Un token sin caducidad no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-021 | Unitaria | El algoritmo none se rechaza | `FiltroDeAutenticacionTest.java` |
-| CP-GW-022 | Unitaria | Basura no identifica anadie | `FiltroDeAutenticacionTest.java` |
-| CP-GW-023 | Unitaria | Una clave corta impide arrancar | `FiltroDeAutenticacionTest.java` |
-| CP-GW-024 | Unitaria | La configuracion crea el filtro con las rutas indicadas | `FiltroDeAutenticacionTest.java` |
+| CP-GW-005 | Unitaria | Detras de Caddy cuenta el ultimo X-Forwarded-For: los anteriores los puede inventar el cliente | `ConfiguracionDeLimitesTest.java` |
+| CP-GW-006 | Unitaria | Sin X-Forwarded-For cuenta la direccion de la conexion | `ConfiguracionDeLimitesTest.java` |
+| CP-GW-007 | Unitaria | Con sesion, el dinero se cuenta por el titular que fijo el filtro de autenticacion | `ConfiguracionDeLimitesTest.java` |
+| CP-GW-008 | Unitaria | Sin titular, la cuenta por usuario cae a la IP en lugar de dejar la peticion sin clave | `ConfiguracionDeLimitesTest.java` |
+| CP-GW-009 | Unitaria | Retry-After es lo que tarda el cubo en reponer las fichas que faltan | `LimitadorConRetryAfterTest.java` |
+| CP-GW-010 | Unitaria | Se redondea hacia arriba: reintentar antes de tiempo volveria a dar 429 | `LimitadorConRetryAfterTest.java` |
+| CP-GW-011 | Unitaria | Sin cabeceras del limitador (o con valores raros) se espera 1 s, nunca 0 ni negativo | `LimitadorConRetryAfterTest.java` |
+| CP-GW-012 | Unitaria | Con Redis caido el limitador deja pasar: sin contador no se bloquea la banca entera | `LimitadorConRetryAfterTest.java` |
+| CP-GW-013 | Integración | Inicio de sesion: 5 por minuto por IP; la sexta recibe 429 con Retry-After | `LimiteDeTasaTest.java` |
+| CP-GW-014 | Integración | El cupo es por IP: otra direccion no hereda el bloqueo | `LimiteDeTasaTest.java` |
+| CP-GW-015 | Integración | Registro: 3 por minuto por IP | `LimiteDeTasaTest.java` |
+| CP-GW-016 | Integración | El desafio por correo tiene ruta: /api/v1/segundo-factor/** llega a identity y no da 404 | `LimiteDeTasaTest.java` |
+| CP-GW-017 | Integración | Segundo factor: 10 por minuto, contando juntas sus dos rutas | `LimiteDeTasaTest.java` |
+| CP-GW-018 | Integración | Renovacion del token: 20 por minuto | `LimiteDeTasaTest.java` |
+| CP-GW-019 | Integración | URL de subida de documentos: 10 por hora, con Retry-After de minutos | `LimiteDeTasaTest.java` |
+| CP-GW-020 | Integración | Transferencias y depositos: 10 por minuto por usuario, no por IP | `LimiteDeTasaTest.java` |
+| CP-GW-021 | Integración | Las rutas que no se limitan siguen igual | `LimiteDeTasaTest.java` |
+| CP-GW-022 | Unitaria | Conexion rechazada por el servicio: 503, Retry-After y problem+json | `ManejadorDeServicioNoDisponibleTest.java` |
+| CP-GW-023 | Unitaria | Cualquier otro error sigue su camino: el manejador no lo convierte en 503 | `ManejadorDeServicioNoDisponibleTest.java` |
+| CP-GW-024 | Unitaria | Sin token en ruta protegida responde401 yno llega al servicio | `FiltroDeAutenticacionTest.java` |
+| CP-GW-025 | Unitaria | Con token valido reenvia con el usuario del token | `FiltroDeAutenticacionTest.java` |
+| CP-GW-026 | Unitaria | La cabecera de usuario que manda el cliente se descarta siempre | `FiltroDeAutenticacionTest.java` |
+| CP-GW-027 | Unitaria | La cabecera fabricada no sustituye al token en ruta protegida | `FiltroDeAutenticacionTest.java` |
+| CP-GW-028 | Unitaria | Las rutas publicas pasan sin token | `FiltroDeAutenticacionTest.java` |
+| CP-GW-029 | Unitaria | El preflight cors pasa sin token | `FiltroDeAutenticacionTest.java` |
+| CP-GW-030 | Unitaria | Una cabecera que no es bearer se rechaza | `FiltroDeAutenticacionTest.java` |
+| CP-GW-031 | Unitaria | Un bearer vacio se rechaza | `FiltroDeAutenticacionTest.java` |
+| CP-GW-032 | Unitaria | Se ejecuta antes que el enrutado | `FiltroDeAutenticacionTest.java` |
+| CP-GW-033 | Unitaria | Un token caducado no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-034 | Unitaria | Un token firmado con otra clave no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-035 | Unitaria | Un token de otro emisor no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-036 | Unitaria | Un token sin sujeto no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-037 | Unitaria | Un token sin caducidad no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-038 | Unitaria | El algoritmo none se rechaza | `FiltroDeAutenticacionTest.java` |
+| CP-GW-039 | Unitaria | Basura no identifica anadie | `FiltroDeAutenticacionTest.java` |
+| CP-GW-040 | Unitaria | Una clave corta impide arrancar | `FiltroDeAutenticacionTest.java` |
+| CP-GW-041 | Unitaria | La configuracion crea el filtro con las rutas indicadas | `FiltroDeAutenticacionTest.java` |
 
 ## `ayni-kyc-service`
 
