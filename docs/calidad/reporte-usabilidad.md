@@ -187,6 +187,46 @@ corrigió **diez defectos de usabilidad**:
 | Aplicar el cuestionario SUS del anexo A a cinco participantes y completar la sección 5 | T-22, antes del APF3 |
 | Añadir la recuperación de la contraseña a las pruebas permanentes de axe | Nueva tarea de HU-17 |
 | Repetir esta evaluación al cierre del Sprint 8, con la tarjeta y la transferencia interbancaria ya entregadas | T-22 del PROY |
+| Cerrar los elementos marcados como «Falta» o «Parcial» en la sección 8 | Taller de la semana 12 (ver sección 8) |
+
+## 8. Contraste con lo pedido en clase (semana 12)
+
+Las sesiones 23 y 24 del curso fijaron qué se espera de la usabilidad en el APF3. Esta sección
+compara cada punto con lo que Ayni Bank tiene hoy, sin contar lo que todavía no existe.
+
+### 8.1 Diseño defensivo y protección contra errores (sesión 23)
+
+| Lo pedido | Estado | Cómo está en Ayni |
+|---|---|---|
+| **Restricción**: máscaras de entrada y botones deshabilitados en estados no válidos | Parcial | El código del segundo factor solo acepta números y no se envía sin seis dígitos; el DNI admite ocho dígitos como máximo. Los demás campos validan al enviar |
+| **Retroalimentación al escribir** (validación en línea) | Parcial | La política de contraseña se marca requisito a requisito mientras se escribe. El resto de campos valida al enviar, no al escribir |
+| **Doble paso**: confirmación en acciones críticas | Cumple | La transferencia muestra un resumen y pide el segundo factor antes de mover el dinero |
+| **Reversibilidad**: deshacer | Cumple donde aplica | Congelar la tarjeta, las compras por internet y el límite se revierten al instante. La transferencia no se puede deshacer, y por eso lleva el doble paso |
+| **Prevención del doble envío**: botón bloqueado con indicador y clave de idempotencia en el servidor | Cumple | En la transferencia y, tras la corrección de la sección 3, también en el depósito |
+| **Señales claras**: color acompañado de texto e ícono | Cumple | Los requisitos de la contraseña dicen «Cumplido» o «Falta» además del color y del ícono |
+| **Mensajes constructivos**: qué falló y cómo resolverlo | Cumple | 50 de 50 (sección 4) |
+| **Validar también en el servidor** | Cumple | Los servicios validan cada petición y responden 400 con el campo y el motivo |
+| **URL escrita a mano** sin acceso o sin función | Cumple | La banca sin sesión lleva al ingreso; lo que aún no existe lleva a la página de pendientes |
+| **Nada sensible en el almacenamiento local** | Cumple | El token de acceso vive solo en memoria y el de renovación en una cookie `HttpOnly` |
+
+### 8.2 Asistencia, compromiso y accesibilidad (sesión 24)
+
+| Lo pedido | Estado | Cómo está en Ayni |
+|---|---|---|
+| WCAG 2.1 AA con axe, **cero violaciones críticas** | Cumple | 12 pantallas sin violaciones (sección 4) |
+| Documentar las **tres violaciones más críticas** y su corrección | Cumple | Orden del foco (WCAG 2.4.3), foco visible (2.4.7) y movimiento reducido (2.3.3), encontradas y corregidas en el capítulo 14 |
+| Probar la aplicación con alguien que solo usa el teclado | Parcial | El ingreso completo solo con teclado es una prueba automatizada; falta hacerlo con una persona |
+| **Personalización** | Cumple | El panel saluda por el nombre: «Hola, Ana» |
+| **Progreso visible** en las tareas de varios pasos | Parcial | El registro y la verificación de identidad muestran el paso actual; la transferencia tiene cuatro pasos y no lo muestra |
+| **Tooltips** de 80 caracteres como máximo en los íconos principales, accesibles con el teclado | Falta | |
+| **Asistente de bienvenida** en el primer ingreso, de 3 a 5 pasos | Falta | |
+| **Reconocimiento de logro** en la primera acción completada | Falta | |
+| **Ayuda contextual**: preguntas frecuentes o tutorial breve | Falta | |
+| **Retroalimentación del usuario** sobre la aplicación | Falta | La medición con usuarios es el cuestionario del anexo A |
+
+Lo marcado como «Falta» o «Parcial» corresponde al taller de la semana 12, que se revisa en el
+laboratorio antes del APF3. No baja las medidas de las secciones 2 a 4: esas miden si lo que existe
+funciona; esta sección dice qué falta añadir.
 
 ---
 
