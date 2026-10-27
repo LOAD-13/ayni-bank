@@ -19,8 +19,108 @@ spring:
             connect-timeout: 3000
             response-timeout: 30s
           routes:
+            # ─── Limite de tasa (AYNI-160, ADR-0035) ─────────────────────────────────
+            # El filtro RequestRateLimiter va por ruta, asi que lo que se limita tiene ruta
+            # propia, delante de las generales (order -1). Cada ruta cuenta aparte en Redis.
+            # El cubo gana una ficha por segundo (replenishRate 1) y cada peticion gasta
+            # requestedTokens: 60 fichas de capacidad / 12 por peticion = 5 por minuto. Es
+            # la forma de expresar limites por minuto o por hora con un limitador que repone
+            # por segundo. Al pasarse: 429 con Retry-After.
+            - id: limite-sesion
+              uri: &identity ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 12
+
+            - id: limite-registro
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/registro
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 20
+
+            # Las dos rutas del segundo factor comparten cupo: verificar el codigo de la
+            # sesion y el del desafio por correo son el mismo intento de adivinar un codigo.
+            # `/api/v1/segundo-factor/**` no tenia ruta y el desafio por correo daba 404.
+            - id: limite-segundo-factor
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion/segundo-factor,/api/v1/segundo-factor/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 6
+
+            - id: limite-renovacion
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion/renovacion
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 3
+
+            # 10 por hora: 3600 fichas / 360 por peticion.
+            - id: limite-url-de-subida
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/solicitudes/*/documentos/url-de-subida
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3600
+                    redis-rate-limiter.requestedTokens: 360
+
+            # Lo que mueve dinero se cuenta por titular, no por IP (ver porUsuario).
+            - id: limite-dinero
+              uri: &core ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              order: -1
+              predicates:
+                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porUsuario}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 6
+
+            # ─── Rutas generales ─────────────────────────────────────────────────────
             - id: identity
-              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              uri: *identity
               predicates:
                 # `/api/v1/registro` sin `/**` ademas de con el, porque el comodin de
                 # Spring Cloud Gateway NO casa con la ruta desnuda: sin las dos formas,
@@ -34,7 +134,7 @@ spring:
                 - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/recuperacion,/api/v1/recuperacion/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
 
             - id: core-banking
-              uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              uri: *core
               predicates:
                 - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
 
@@ -52,8 +152,17 @@ spring:
                 allowedOrigins: ${AYNI_ORIGENES_PERMITIDOS:http://localhost:3000,http://localhost:3500}
                 allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
                 allowedHeaders: ["*"]
+                # Sin esto el navegador oculta Retry-After al codigo de la web, que no podria
+                # decir al cliente cuanto esperar tras un 429.
+                exposedHeaders: [Retry-After]
                 allowCredentials: true
                 maxAge: 3600
+
+  # Contadores del limite de tasa. Sin puerto publicado: solo lo ve el gateway.
+  data:
+    redis:
+      host: ${AYNI_REDIS_HOST:redis}
+      port: 6379
 
 ayni:
   jwt:
@@ -111,6 +220,10 @@ management:
       probes:
         enabled: true
   health:
+    # Redis no cuenta para la salud del gateway: si cae, el limitador deja pasar (ADR-0035)
+    # y el gateway sigue sirviendo. Marcarlo DOWN haria que Docker lo diera por enfermo.
+    redis:
+      enabled: false
     livenessState:
       enabled: true
     readinessState:
