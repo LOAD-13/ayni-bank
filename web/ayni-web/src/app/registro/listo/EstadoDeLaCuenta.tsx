@@ -187,8 +187,9 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
       {/* Proporción 3:2 como en el diseño. Con `flex-1` en los dos, el texto del botón
           principal se partía en tres líneas dentro de la píldora. */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        {/* A la banca, que ya existe: sin sesión, ella misma manda a ingresar. */}
         <Link
-          href="/pendiente"
+          href="/banca"
           className="inline-flex min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-azul-700 px-5 text-[14.5px] font-bold whitespace-nowrap text-blanco sm:flex-[3] hover:bg-azul-800"
         >
           Entrar a mi banca por internet
