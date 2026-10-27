@@ -144,3 +144,50 @@ la red interna de Docker. La configuración se versiona en `infra/observability/
 Las métricas de negocio las emiten los servicios con Micrometer (`ayni_operaciones_total`,
 `ayni_operaciones_importe_soles_total`, `ayni_operaciones_rechazos_total`,
 `ayni_acceso_eventos_total`) y no llevan etiquetas que identifiquen al cliente.
+
+## 11. Alta disponibilidad de la base de datos
+
+El nivel 1 del [ADR-0037](../arquitectura/adr/0037-alta-disponibilidad-de-la-base-de-datos.md)
+(RPO 0 y RTO menor de 5 minutos ante la caída de un nodo) está en la plantilla, **apagado**. Activarlo
+duplica el coste de la instancia y del almacenamiento de RDS y saca la base del plan gratuito, así que
+lo decide el equipo con el presupuesto delante (calculadora de AWS).
+
+**Activarlo** (RDS crea la réplica en otra zona sin parar la base; tarda de 15 a 30 minutos):
+
+```bash
+aws cloudformation deploy \
+  --stack-name ayni-bank-prod \
+  --template-file infra/aws/ayni-bank.cfn.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides AltaDisponibilidad=true \
+  --region us-east-1
+```
+
+**Comprobar la conmutación** en una ventana sin clientes. RDS promueve la réplica y mueve el DNS del
+*endpoint*, y los servicios reconectan solos:
+
+```bash
+aws rds reboot-db-instance --db-instance-identifier ayni-bank-prod --force-failover
+aws rds describe-events --source-identifier ayni-bank-prod --source-type db-instance --duration 30
+```
+
+El tiempo entre los eventos *Multi-AZ instance failover started* y *completed* es el RTO real. Hay
+que anotarlo como evidencia.
+
+**Nivel 2 (desastre regional, RPO menor de 5 minutos).** Se replican las copias automáticas y el WAL
+a otra región. Desde ahí se restaura a un instante si cae `us-east-1`:
+
+```bash
+aws rds start-db-instance-automated-backups-replication \
+  --source-db-instance-arn <arn-de-ayni-bank-prod> \
+  --backup-retention-period 7 --region us-west-2 \
+  --kms-key-id <arn-de-una-clave-kms-en-us-west-2>   # la base esta cifrada: hace falta una clave en destino
+```
+
+**Laboratorio local.** Para ver y medir el nivel 1 sin AWS, sin tocar la base de desarrollo:
+
+```bash
+docker compose -f infra/docker/ha/docker-compose.yml up -d --wait
+infra/scripts/prueba-de-conmutacion.sh        # RPO, coste por confirmación y RTO
+docker compose -f infra/docker/ha/docker-compose.yml down -v
+```
