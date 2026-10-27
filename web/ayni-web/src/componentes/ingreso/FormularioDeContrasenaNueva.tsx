@@ -73,7 +73,9 @@ export function FormularioDeContrasenaNueva() {
       if (fallo instanceof ErrorDeApi && fallo.estado === 410) {
         setEstado("invalido");
       } else if (fallo instanceof ErrorDeApi && fallo.estado === 400) {
-        setError("La contraseña nueva no cumple la política de seguridad.");
+        setError(
+          "La contraseña nueva no cumple la política de seguridad. Revisa los requisitos de la lista.",
+        );
       } else {
         setError("No pudimos conectar con Ayni. Revisa tu conexión e inténtalo de nuevo.");
       }
