@@ -77,6 +77,15 @@ ayni:
     # Cada hora, a los 5 minutos, en hora de Lima. Solo trabaja si hay dias sin cerrar:
     # si el servicio estuvo caido a medianoche, el siguiente disparo recupera lo pendiente.
     cron: ${AYNI_DEVENGO_CRON:0 5 * * * *}
+  mantenimiento:
+    # Particiones de asiento y purga del outbox y de la idempotencia (AYNI-155, ADR-0036).
+    # A las 03:30 de Lima, lejos del cierre diario de medianoche y del trafico del dia.
+    cron: ${AYNI_MANTENIMIENTO_CRON:0 30 3 * * *}
+    meses-de-antelacion: 3
+    dias-de-outbox: 7
+    dias-de-idempotencia: 30
+    # Filas por DELETE: lotes cortos para no retener bloqueos ni llenar el WAL de golpe.
+    lote: 10000
   productos:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
