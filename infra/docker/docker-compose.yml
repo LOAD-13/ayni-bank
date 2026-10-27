@@ -66,6 +66,24 @@ services:
       retries: 10
     networks: [ayni]
 
+  # Contadores del limite de tasa del gateway (AYNI-160, ADR-0035). Sin disco: los
+  # contadores caducan en minutos y perderlos al reiniciar no hace dano. Sin puerto en el
+  # host: solo lo usa el gateway.
+  redis:
+    deploy:
+      resources:
+        limits: { memory: 64M, cpus: "0.25" }
+    image: redis:7-alpine
+    container_name: ayni-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "48mb", "--maxmemory-policy", "volatile-ttl"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [ayni]
+
   rabbitmq:
     deploy:
       resources:
@@ -157,9 +175,11 @@ services:
     # incluye el estado de la base de datos, asi que esperar a que esten sanos
     # verifica que Flyway aplico sus migraciones. Con service_started el gateway
     # arrancaria sobre servicios que todavia no pueden atender.
+    # Redis con service_started: si cae, el gateway sigue atendiendo sin limite (ADR-0035).
     depends_on:
       ayni-identity-service: { condition: service_healthy }
       ayni-core-banking-service: { condition: service_healthy }
+      redis: { condition: service_started }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 20s
