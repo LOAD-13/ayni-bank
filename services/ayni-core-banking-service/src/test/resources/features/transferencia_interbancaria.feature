@@ -1,5 +1,6 @@
 
 # language: es
+@interbancarias
 
 Característica: Transferencias interbancarias por CCI
 
