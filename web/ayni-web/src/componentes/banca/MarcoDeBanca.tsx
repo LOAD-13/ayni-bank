@@ -3,6 +3,7 @@
 import {
   ArrowLeftRight,
   CreditCard,
+  Landmark,
   LayoutGrid,
   LogOut,
   PiggyBank,
@@ -24,6 +25,7 @@ import { useSesion } from "./SesionDeBanca";
 const NAVEGACION = [
   { href: "/banca", texto: "Resumen", Icono: LayoutGrid },
   { href: "/banca/transferir", texto: "Transferir", Icono: ArrowLeftRight },
+  { href: "/banca/interbancaria", texto: "A otro banco", Icono: Landmark },
   { href: "/banca/depositar", texto: "Depositar", Icono: PiggyBank },
   { href: "/pendiente", texto: "Cuentas", Icono: Wallet },
   { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },

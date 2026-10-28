@@ -102,12 +102,13 @@ spring:
                     redis-rate-limiter.burstCapacity: 3600
                     redis-rate-limiter.requestedTokens: 360
 
-            # Lo que mueve dinero se cuenta por titular, no por IP (ver porUsuario).
+            # Lo que mueve dinero se cuenta por titular, no por IP (ver porUsuario). La
+            # interbancaria (HU-11) comparte cupo con la transferencia y el deposito.
             - id: limite-dinero
               uri: &core ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
               order: -1
               predicates:
-                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados
+                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados,/api/v1/interbancarias
                 - Method=POST
               filters:
                 - name: RequestRateLimiter
@@ -136,7 +137,7 @@ spring:
             - id: core-banking
               uri: *core
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
 
             # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
@@ -174,7 +175,7 @@ ayni:
     # muestra o mueve el dinero del titular. `cuentas/titular/**` queda fuera porque
     # la pantalla final del onboarding la consulta antes de que exista sesion.
     rutas-protegidas: >-
-      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**
+      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**
 
 # Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
 # defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de

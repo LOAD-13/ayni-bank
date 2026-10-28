@@ -34,6 +34,7 @@ export async function conSesion(page: Page) {
     }),
   );
   await page.route("**/api/v1/cuentas/mia/movimientos**", (ruta) => ruta.fulfill({ json: [] }));
+  await page.route("**/api/v1/interbancarias/beneficiarios", (ruta) => ruta.fulfill({ json: [] }));
   await page.route("**/api/v1/cuentas/mia", (ruta) =>
     ruta.fulfill({
       json: {

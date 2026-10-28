@@ -597,6 +597,71 @@ export async function transferir(
   );
 }
 
+// ─── Transferencia interbancaria · HU-11 ─────────────────────────────────
+
+export type EstadoInterbancario = "PENDIENTE" | "COMPLETADA" | "RECHAZADA";
+
+export interface TransferenciaInterbancaria {
+  id: string;
+  estado: EstadoInterbancario;
+}
+
+export interface Beneficiario {
+  id: string;
+  alias: string;
+  cci: string;
+}
+
+/** Comprueba el dígito de control del CCI mientras se escribe; no toca datos de nadie. */
+export async function validarCci(token: string, cci: string): Promise<boolean> {
+  return pedir<boolean>(`/api/v1/interbancarias/validar-cci/${cci}`, undefined, { token });
+}
+
+/**
+ * Envía dinero a otro banco. La identidad la pone el gateway; aquí solo viajan el CCI, el
+ * importe como texto y, en cabeceras, la clave de idempotencia y la confirmación.
+ */
+export async function transferirInterbancaria(
+  token: string,
+  cci: string,
+  importe: string,
+  concepto: string,
+  clave: string,
+  confirmacion: string,
+): Promise<TransferenciaInterbancaria> {
+  return pedir<TransferenciaInterbancaria>(
+    "/api/v1/interbancarias",
+    { cci, importe, concepto },
+    { token, idempotencia: clave, confirmacion },
+  );
+}
+
+export async function consultarInterbancaria(
+  token: string,
+  id: string,
+): Promise<TransferenciaInterbancaria> {
+  return pedir<TransferenciaInterbancaria>(`/api/v1/interbancarias/${id}`, undefined, { token });
+}
+
+export async function beneficiariosFrecuentes(token: string): Promise<Beneficiario[]> {
+  return pedir<Beneficiario[]>("/api/v1/interbancarias/beneficiarios", undefined, { token });
+}
+
+export async function guardarBeneficiario(
+  token: string,
+  alias: string,
+  cci: string,
+): Promise<Beneficiario> {
+  return pedir<Beneficiario>("/api/v1/interbancarias/beneficiarios", { alias, cci }, { token });
+}
+
+export async function borrarBeneficiario(token: string, id: string): Promise<void> {
+  return pedir<void>(`/api/v1/interbancarias/beneficiarios/${id}`, undefined, {
+    token,
+    metodo: "DELETE",
+  });
+}
+
 // ─── Controles de la tarjeta · HU-10 ─────────────────────────────────────
 // Contrato en contracts/core-banking-controles-de-tarjeta.openapi.yaml.
 
