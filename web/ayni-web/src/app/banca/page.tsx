@@ -186,7 +186,9 @@ export default function PanelDeBanca() {
               <TablaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
             ) : (
               <p role="status" className="px-6 pb-6 text-body text-gris-700">
-                {estado.tipo === "error" ? "No se pudieron cargar los movimientos." : "Cargando…"}
+                {estado.tipo === "error"
+                  ? "No pudimos cargar tus movimientos. Inténtalo de nuevo en unos minutos."
+                  : "Cargando…"}
               </p>
             )}
           </section>

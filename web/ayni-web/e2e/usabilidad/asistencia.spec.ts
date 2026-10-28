@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { conSesion } from "./apoyo";
+
 /** El aviso de la página. Next.js añade su propio anunciador de rutas, vacío, con el mismo rol. */
 function alerta(page: Page) {
   return page.getByRole("alert").filter({ hasText: /\S/ });
@@ -36,6 +38,18 @@ test.describe("Usabilidad · Asistencia al usuario", () => {
     await page.getByRole("button", { name: "Ingresar" }).click();
 
     await expect(alerta(page)).toContainText(/revisa tu conexión/i);
+  });
+
+  test("si no cargan los movimientos, el panel dice qué hacer", async ({ page }) => {
+    await conSesion(page);
+    await page.route("**/api/v1/cuentas/mia/movimientos**", (ruta) =>
+      ruta.fulfill({ status: 503, contentType: "text/plain", body: "" }),
+    );
+    await page.goto("/banca");
+
+    await expect(page.getByText(/no pudimos cargar tus movimientos/i)).toContainText(
+      /inténtalo de nuevo/i,
+    );
   });
 
   test("un error de credenciales se anuncia y deja los datos para reintentar", async ({ page }) => {

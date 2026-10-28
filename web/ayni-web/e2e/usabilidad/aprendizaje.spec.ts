@@ -69,6 +69,13 @@ test.describe("Usabilidad · Facilidad de aprendizaje", () => {
     await expect(page.getByRole("heading", { name: "Entra a tu banca" })).toBeVisible();
   });
 
+  test("el número de DNI dice cuántos dígitos lleva antes de escribirlo", async ({ page }) => {
+    await page.goto("/registro");
+
+    // Un formato que se descubre al fallar se aprende por ensayo y error.
+    await expect(page.getByLabel("Número de documento")).toHaveAccessibleDescription(/8 dígitos/);
+  });
+
   test("el registro muestra la política de contraseña antes de escribirla", async ({ page }) => {
     await page.goto("/registro");
 

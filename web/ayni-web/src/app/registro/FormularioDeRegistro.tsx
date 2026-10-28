@@ -195,7 +195,7 @@ export function FormularioDeRegistro() {
           placeholder="••••••78"
           inputMode="numeric"
           maxLength={8}
-          ayuda="Se guarda cifrado y se muestra siempre enmascarado"
+          ayuda="Los 8 dígitos de tu DNI. Se guarda cifrado y se muestra siempre enmascarado."
           value={numeroDocumento}
           onChange={setNumeroDocumento}
           error={errores.numeroDocumento}
