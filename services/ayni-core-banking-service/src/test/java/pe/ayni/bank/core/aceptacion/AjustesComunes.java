@@ -1,5 +1,6 @@
 package pe.ayni.bank.core.aceptacion;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,21 +23,35 @@ public class AjustesComunes {
 
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private CamaraDePrueba camara;
 
     @ParameterType("\\d{4}-\\d{2}-\\d{2}")
     public LocalDate fecha(String texto) {
         return LocalDate.parse(texto);
     }
 
+    /**
+     * Un importe como 120.50. No sirve {@code {bigdecimal}}: Cucumber lo lee con la configuracion
+     * regional de la feature, y en espanol el punto separa miles: «500.00» seria 50 000.
+     */
+    @ParameterType("\\d+\\.\\d{2}")
+    public BigDecimal importe(String texto) {
+        return new BigDecimal(texto);
+    }
+
     /** Cada escenario empieza con la base como la dejan las migraciones. */
     @Before(order = 0)
     public void limpiar() {
+        camara.reiniciar();
         jdbc.update("DELETE FROM core.devengo_interes");
         jdbc.update("DELETE FROM core.capitalizacion_interes");
         jdbc.update("DELETE FROM core.cierre_diario");
         jdbc.update("DELETE FROM core.evento_auditoria");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
+        jdbc.update("DELETE FROM core.transferencia_interbancaria");
+        jdbc.update("DELETE FROM core.beneficiario_interbancario");
         jdbc.update("DELETE FROM core.asiento");
         jdbc.update("DELETE FROM core.cuenta WHERE NOT tecnica");
         jdbc.update("DELETE FROM core.tasa_producto WHERE producto_id = ? AND vigencia_desde > DATE '2026-08-17'",
