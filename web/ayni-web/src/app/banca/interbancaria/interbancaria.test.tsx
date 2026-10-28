@@ -113,7 +113,7 @@ describe("Transferencia interbancaria (HU-11)", () => {
       claveIdempotencia: expect.any(String),
     });
 
-    await user.type(await screen.findByLabelText(/código/i), "123456");
+    await user.type(await screen.findByRole("textbox", { name: /código/i }), "123456");
     await user.click(screen.getByRole("button", { name: /verificar|confirmar/i }));
 
     expect(
@@ -148,7 +148,7 @@ describe("Transferencia interbancaria (HU-11)", () => {
     await user.type(screen.getByLabelText("Importe en soles"), "80");
     await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Confirmar con mi segundo factor" }));
-    await user.type(await screen.findByLabelText(/código/i), "123456");
+    await user.type(await screen.findByRole("textbox", { name: /código/i }), "123456");
     await user.click(screen.getByRole("button", { name: /verificar|confirmar/i }));
 
     expect(
