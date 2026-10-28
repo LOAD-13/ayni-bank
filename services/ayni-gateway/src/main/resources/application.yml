@@ -1,8 +1,6 @@
-
 spring:
   lifecycle:
     timeout-per-shutdown-phase: 20s
-
   application:
     name: ayni-gateway
 
@@ -10,12 +8,24 @@ spring:
     gateway:
       server:
         webflux:
+          # El navegador habla SOLO con el gateway. Ningun servicio publica puerto en el
+          # host, y eso no es una comodidad: es lo que garantiza que la validacion del
+          # JWT, el CORS y la limitacion de tasa no se puedan esquivar llamando
+          # directamente al servicio de detras.
+          # Limites de la llamada a cada servicio: sin ellos, un servicio colgado retiene la
+          # conexion del navegador indefinidamente. 30 s de respuesta cubren la verificacion
+          # del DNI, que espera a kyc-service hasta 10 s mas sus reintentos de conexion.
           httpclient:
             connect-timeout: 3000
             response-timeout: 30s
-
           routes:
-            # Limite de tasa: inicio de sesion
+            # ─── Limite de tasa (AYNI-160, ADR-0035) ─────────────────────────────────
+            # El filtro RequestRateLimiter va por ruta, asi que lo que se limita tiene ruta
+            # propia, delante de las generales (order -1). Cada ruta cuenta aparte en Redis.
+            # El cubo gana una ficha por segundo (replenishRate 1) y cada peticion gasta
+            # requestedTokens: 60 fichas de capacidad / 12 por peticion = 5 por minuto. Es
+            # la forma de expresar limites por minuto o por hora con un limitador que repone
+            # por segundo. Al pasarse: 429 con Retry-After.
             - id: limite-sesion
               uri: &identity ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
               order: -1
@@ -31,7 +41,6 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 12
 
-            # Limite de tasa: registro
             - id: limite-registro
               uri: *identity
               order: -1
@@ -47,7 +56,9 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 20
 
-            # Limite de tasa: segundo factor
+            # Las dos rutas del segundo factor comparten cupo: verificar el codigo de la
+            # sesion y el del desafio por correo son el mismo intento de adivinar un codigo.
+            # `/api/v1/segundo-factor/**` no tenia ruta y el desafio por correo daba 404.
             - id: limite-segundo-factor
               uri: *identity
               order: -1
@@ -62,7 +73,6 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 6
 
-            # Limite de tasa: renovacion de sesion
             - id: limite-renovacion
               uri: *identity
               order: -1
@@ -77,7 +87,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 3
 
-            # Limite de tasa: URL de subida
+            # 10 por hora: 3600 fichas / 360 por peticion.
             - id: limite-url-de-subida
               uri: *identity
               order: -1
@@ -92,7 +102,8 @@ spring:
                     redis-rate-limiter.burstCapacity: 3600
                     redis-rate-limiter.requestedTokens: 360
 
-            # Limite de tasa: operaciones monetarias
+            # Lo que mueve dinero se cuenta por titular, no por IP (ver porUsuario). La
+            # interbancaria (HU-11) comparte cupo con la transferencia y el deposito.
             - id: limite-dinero
               uri: &core ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
               order: -1
@@ -108,28 +119,47 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 6
 
-            # Rutas generales de identidad
+            # ─── Rutas generales ─────────────────────────────────────────────────────
             - id: identity
               uri: *identity
               predicates:
+                # `/api/v1/registro` sin `/**` ademas de con el, porque el comodin de
+                # Spring Cloud Gateway NO casa con la ruta desnuda: sin las dos formas,
+                # un POST a `/api/v1/registro` devuelve 404 y el de
+                # `/api/v1/registro/algo` funciona, que es de las cosas mas
+                # desconcertantes de depurar.
+                # `/api/v1/dev/**` encamina el disparador que aprueba una solicitud a
+                # mano mientras no exista el OCR. El endpoint al que llega lleva
+                # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
+                # resuelve a nada: el bean ni se crea. Se retira con HU-02.
                 - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/recuperacion,/api/v1/recuperacion/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
 
-            # Core bancario: rutas de develop + AYNI-22
             - id: core-banking
               uri: *core
               predicates:
                 - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
 
+            # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
+            # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
+            # (`/api/v1/kyc/**`) no reescribia el prefijo y no llegaba a ningun endpoint,
+            # pero de haberlo hecho habria expuesto a Internet la lectura de documentos
+            # KYC por clave. Ver ADR-0028.
+
           globalcors:
             cors-configurations:
               "[/**]":
+                # Lista explicita de origenes, nunca `*`. Con comodin no se pueden enviar
+                # credenciales, y el refresh token viaja en cookie HttpOnly.
                 allowedOrigins: ${AYNI_ORIGENES_PERMITIDOS:http://localhost:3000,http://localhost:3500}
                 allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
                 allowedHeaders: ["*"]
+                # Sin esto el navegador oculta Retry-After al codigo de la web, que no podria
+                # decir al cliente cuanto esperar tras un 429.
                 exposedHeaders: [Retry-After]
                 allowCredentials: true
                 maxAge: 3600
 
+  # Contadores del limite de tasa. Sin puerto publicado: solo lo ve el gateway.
   data:
     redis:
       host: ${AYNI_REDIS_HOST:redis}
@@ -137,19 +167,23 @@ spring:
 
 ayni:
   jwt:
+    # La misma clave con la que firma identity-service. El valor por defecto es el
+    # de desarrollo de identity; en produccion llega como secreto (AYNI_JWT_CLAVE).
     clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
-
   seguridad:
-    # Rutas protegidas de develop + interbancarias
+    # Rutas que exigen un token de acceso valido, separadas por comas: todo lo que
+    # muestra o mueve el dinero del titular. `cuentas/titular/**` queda fuera porque
+    # la pantalla final del onboarding la consulta antes de que exista sesion.
     rutas-protegidas: >-
       /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**
 
-# Documentacion OpenAPI del Gateway
+# Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
+# defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de
+# cada servicio solo se crean con la misma variable (RutasDeDocumentacion). Ver ADR-0033.
 springdoc:
   api-docs:
     enabled: ${AYNI_API_DOCS:false}
     path: /api/docs/gateway
-
   swagger-ui:
     enabled: ${AYNI_API_DOCS:false}
     path: /api/docs
@@ -163,6 +197,10 @@ springdoc:
 
 server:
   port: 8080
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
   shutdown: graceful
 
 management:
@@ -170,20 +208,21 @@ management:
     web:
       exposure:
         include: health,info,prometheus
-
+  # Histograma de latencias para calcular el p95 en Grafana, y el nombre del
+  # servicio como etiqueta comun de todas las metricas (AYNI-159).
   metrics:
     distribution:
       percentiles-histogram:
         http.server.requests: true
     tags:
       application: ${spring.application.name}
-
   endpoint:
     health:
       probes:
         enabled: true
-
   health:
+    # Redis no cuenta para la salud del gateway: si cae, el limitador deja pasar (ADR-0035)
+    # y el gateway sigue sirviendo. Marcarlo DOWN haria que Docker lo diera por enfermo.
     redis:
       enabled: false
     livenessState:
