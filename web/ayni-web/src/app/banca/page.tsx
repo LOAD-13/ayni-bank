@@ -16,8 +16,11 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { Pista } from "@/componentes/Pista";
+import { AsistenteDeBienvenida } from "@/componentes/banca/AsistenteDeBienvenida";
 import { PanelDeRendimiento } from "@/componentes/banca/PanelDeRendimiento";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
+import { PISTAS_DEL_PANEL } from "@/componentes/banca/pistas";
 import { TablaDeMovimientos } from "@/componentes/banca/TablaDeMovimientos";
 import {
   consultarMiCuenta,
@@ -98,6 +101,7 @@ export default function PanelDeBanca() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AsistenteDeBienvenida />
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1 font-bold text-azul-800">{nombre ? `Hola, ${nombre}` : "Hola"}</h1>
@@ -155,18 +159,21 @@ export default function PanelDeBanca() {
             <AccesoRapido
               href="/banca/transferir"
               titulo="Transferir"
+              pista={PISTAS_DEL_PANEL.transferir}
               detalle="A otra cuenta Ayni, al instante"
               Icono={ArrowLeftRight}
             />
             <AccesoRapido
               href="/banca/depositar"
               titulo="Depositar"
+              pista={PISTAS_DEL_PANEL.depositar}
               detalle="Depósito simulado (entorno académico)"
               Icono={PiggyBank}
             />
             <AccesoRapido
               href="#movimientos"
               titulo="Movimientos"
+              pista={PISTAS_DEL_PANEL.movimientos}
               detalle="Cargos y abonos de tu cuenta"
               Icono={ReceiptText}
             />
@@ -227,18 +234,20 @@ function SaldoTotal({
             con el servicio
           </span>
         ) : (
-          <button
-            type="button"
-            onClick={alternar}
-            className="flex items-center gap-2 rounded-full border border-gris-300 px-3 py-1 text-small text-gris-700 hover:border-azul-400"
-          >
-            {oculto ? (
-              <Eye aria-hidden="true" className="h-4 w-4" />
-            ) : (
-              <EyeOff aria-hidden="true" className="h-4 w-4" />
-            )}
-            {oculto ? "Mostrar saldos" : "Ocultar saldos"}
-          </button>
+          <Pista texto={PISTAS_DEL_PANEL.saldos}>
+            <button
+              type="button"
+              onClick={alternar}
+              className="flex items-center gap-2 rounded-full border border-gris-300 px-3 py-1 text-small text-gris-700 hover:border-azul-400"
+            >
+              {oculto ? (
+                <Eye aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <EyeOff aria-hidden="true" className="h-4 w-4" />
+              )}
+              {oculto ? "Mostrar saldos" : "Ocultar saldos"}
+            </button>
+          </Pista>
         )}
       </div>
 
@@ -371,18 +380,20 @@ function DatosDeLaCuenta({ cuenta }: { cuenta: CuentaAbierta | null }) {
           </dd>
         </div>
       </dl>
-      <button
-        type="button"
-        disabled={!cuenta}
-        onClick={() => {
-          if (!cuenta) return;
-          void navigator.clipboard?.writeText(cuenta.numero).then(() => setCopiado(true));
-        }}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-azul-800 py-3 text-body font-semibold text-blanco hover:bg-azul-900 disabled:opacity-50"
-      >
-        <Copy aria-hidden="true" className="h-4 w-4" />
-        {copiado ? "Número copiado" : "Copiar número de cuenta"}
-      </button>
+      <Pista texto={PISTAS_DEL_PANEL.copiar} className="relative mt-5 flex">
+        <button
+          type="button"
+          disabled={!cuenta}
+          onClick={() => {
+            if (!cuenta) return;
+            void navigator.clipboard?.writeText(cuenta.numero).then(() => setCopiado(true));
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-azul-800 py-3 text-body font-semibold text-blanco hover:bg-azul-900 disabled:opacity-50"
+        >
+          <Copy aria-hidden="true" className="h-4 w-4" />
+          {copiado ? "Número copiado" : "Copiar número de cuenta"}
+        </button>
+      </Pista>
     </section>
   );
 }
@@ -427,28 +438,32 @@ function AccesoRapido({
   titulo,
   detalle,
   Icono,
+  pista,
 }: {
   href: string;
   titulo: string;
   detalle: string;
   Icono: typeof Wallet;
+  pista: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="flex items-center gap-4 rounded-[16px] border border-azul-200 bg-blanco p-5 hover:border-azul-400"
-    >
-      <span
-        aria-hidden="true"
-        className="flex h-11 w-11 items-center justify-center rounded-xl bg-azul-100 text-azul-700"
+    <Pista texto={pista}>
+      <Link
+        href={href}
+        className="flex w-full items-center gap-4 rounded-[16px] border border-azul-200 bg-blanco p-5 hover:border-azul-400"
       >
-        <Icono className="h-5 w-5" />
-      </span>
-      <span className="flex-1">
-        <span className="block text-body font-semibold text-gris-900">{titulo}</span>
-        <span className="block text-small text-gris-700">{detalle}</span>
-      </span>
-      <ChevronRight aria-hidden="true" className="h-5 w-5 text-gris-500" />
-    </Link>
+        <span
+          aria-hidden="true"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-azul-100 text-azul-700"
+        >
+          <Icono className="h-5 w-5" />
+        </span>
+        <span className="flex-1">
+          <span className="block text-body font-semibold text-gris-900">{titulo}</span>
+          <span className="block text-small text-gris-700">{detalle}</span>
+        </span>
+        <ChevronRight aria-hidden="true" className="h-5 w-5 text-gris-500" />
+      </Link>
+    </Pista>
   );
 }
