@@ -1,12 +1,10 @@
-
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { normalizarImporte } from "@/lib/formato";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 type Beneficiario = {
   id: string;
@@ -33,8 +31,7 @@ export default function PaginaInterbancaria() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  const [beneficiarios, setBeneficiarios] =
-    useState<Beneficiario[]>([]);
+  const [beneficiarios, setBeneficiarios] = useState<Beneficiario[]>([]);
 
   const [clave, setClave] = useState("");
 
@@ -59,15 +56,12 @@ export default function PaginaInterbancaria() {
       try {
         const jwt = await token();
 
-        const respuesta = await fetch(
-          `${API_URL}/api/v1/interbancarias/validar-cci/${cci}`,
-          {
-            headers: {
-              Authorization: `Bearer ${jwt}`,
-            },
-            signal: controller.signal,
-          }
-        );
+        const respuesta = await fetch(`${API_URL}/api/v1/interbancarias/validar-cci/${cci}`, {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+          signal: controller.signal,
+        });
 
         if (!respuesta.ok) {
           throw new Error("Error al validar");
@@ -111,7 +105,7 @@ export default function PaginaInterbancaria() {
               Authorization: `Bearer ${jwt}`,
             },
             signal: controller.signal,
-          }
+          },
         );
 
         if (!respuesta.ok) return;
@@ -140,30 +134,24 @@ export default function PaginaInterbancaria() {
     try {
       const jwt = await token();
 
-      const respuesta = await fetch(
-        `${API_URL}/api/v1/interbancarias/beneficiarios`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({
-            usuarioId,
-            alias: alias.trim(),
-            cci,
-          }),
-        }
-      );
+      const respuesta = await fetch(`${API_URL}/api/v1/interbancarias/beneficiarios`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          usuarioId,
+          alias: alias.trim(),
+          cci,
+        }),
+      });
 
       if (!respuesta.ok) throw new Error();
 
       const guardado: Beneficiario = await respuesta.json();
 
-      setBeneficiarios((actuales) => [
-        ...actuales.filter((b) => b.cci !== guardado.cci),
-        guardado,
-      ]);
+      setBeneficiarios((actuales) => [...actuales.filter((b) => b.cci !== guardado.cci), guardado]);
 
       setAlias("");
       setMensaje("Beneficiario guardado correctamente.");
@@ -186,14 +174,12 @@ export default function PaginaInterbancaria() {
           headers: {
             Authorization: `Bearer ${jwt}`,
           },
-        }
+        },
       );
 
       if (!respuesta.ok) throw new Error();
 
-      setBeneficiarios((actuales) =>
-        actuales.filter((b) => b.id !== id)
-      );
+      setBeneficiarios((actuales) => actuales.filter((b) => b.id !== id));
 
       setMensaje("Beneficiario eliminado.");
     } catch {
@@ -211,11 +197,7 @@ export default function PaginaInterbancaria() {
 
     const monto = normalizarImporte(importe);
 
-    if (
-      monto === null ||
-      Number(monto) < 1 ||
-      Number(monto) > 5000
-    ) {
+    if (monto === null || Number(monto) < 1 || Number(monto) > 5000) {
       setError("El importe debe estar entre S/ 1 y S/ 5,000.");
       return;
     }
@@ -227,40 +209,32 @@ export default function PaginaInterbancaria() {
     try {
       const jwt = await token();
 
-      const respuesta = await fetch(
-        `${API_URL}/api/v1/interbancarias`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-          body: JSON.stringify({
-            usuarioId,
-            clave,
-            cci,
-            importe: monto,
-            concepto: concepto.trim(),
-          }),
-        }
-      );
+      const respuesta = await fetch(`${API_URL}/api/v1/interbancarias`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          usuarioId,
+          clave,
+          cci,
+          importe: monto,
+          concepto: concepto.trim(),
+        }),
+      });
 
       if (!respuesta.ok) throw new Error();
 
       const resultado: Transferencia = await respuesta.json();
 
-      setMensaje(
-        `Transferencia ${resultado.estado}. Operacion: ${resultado.id}`
-      );
+      setMensaje(`Transferencia ${resultado.estado}. Operacion: ${resultado.id}`);
 
       setClave(crypto.randomUUID());
       setImporte("");
       setConcepto("");
     } catch {
-      setError(
-        "No se pudo confirmar la operacion. " +
-        "Consulta su estado antes de reintentar."
-      );
+      setError("No se pudo confirmar la operacion. " + "Consulta su estado antes de reintentar.");
     } finally {
       setEnviando(false);
     }
@@ -268,13 +242,9 @@ export default function PaginaInterbancaria() {
 
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-2 text-2xl font-bold">
-        Transferencia interbancaria
-      </h1>
+      <h1 className="mb-2 text-2xl font-bold">Transferencia interbancaria</h1>
 
-      <p className="mb-6 text-gray-600">
-        Envia dinero a otro banco mediante CCI.
-      </p>
+      <p className="mb-6 text-gray-600">Envia dinero a otro banco mediante CCI.</p>
 
       {error && (
         <p role="alert" className="mb-4 text-red-600">
@@ -288,10 +258,7 @@ export default function PaginaInterbancaria() {
         </p>
       )}
 
-      <form
-        onSubmit={transferir}
-        className="space-y-5 rounded-xl border bg-white p-6"
-      >
+      <form onSubmit={transferir} className="space-y-5 rounded-xl border bg-white p-6">
         <div>
           <label htmlFor="cci" className="block font-medium">
             CCI del destinatario
@@ -304,27 +271,18 @@ export default function PaginaInterbancaria() {
             maxLength={20}
             required
             value={cci}
-            onChange={(e) =>
-              setCci(e.target.value.replace(/\D/g, ""))
-            }
+            onChange={(e) => setCci(e.target.value.replace(/\D/g, ""))}
             placeholder="20 digitos del CCI"
             className="w-full rounded-lg border p-3"
           />
 
           <p role="status" className="mt-2 text-sm">
-            {validando
-              ? "Validando CCI..."
-              : cciValido
-                ? "CCI valido"
-                : "Ingrese un CCI valido"}
+            {validando ? "Validando CCI..." : cciValido ? "CCI valido" : "Ingrese un CCI valido"}
           </p>
         </div>
 
         <div>
-          <label
-            htmlFor="beneficiario"
-            className="block font-medium"
-          >
+          <label htmlFor="beneficiario" className="block font-medium">
             Beneficiarios frecuentes
           </label>
 
@@ -372,10 +330,7 @@ export default function PaginaInterbancaria() {
         </div>
 
         {beneficiarios.map((b) => (
-          <div
-            key={b.id}
-            className="flex justify-between gap-2 rounded border p-2"
-          >
+          <div key={b.id} className="flex justify-between gap-2 rounded border p-2">
             <span className="text-sm">
               {b.alias} - {b.cci}
             </span>
@@ -430,9 +385,7 @@ export default function PaginaInterbancaria() {
           disabled={!cciValido || validando || enviando || !clave}
           className="w-full rounded-lg bg-blue-800 p-3 font-semibold text-white disabled:opacity-50"
         >
-          {enviando
-            ? "Procesando transferencia..."
-            : "Realizar transferencia"}
+          {enviando ? "Procesando transferencia..." : "Realizar transferencia"}
         </button>
       </form>
     </main>
