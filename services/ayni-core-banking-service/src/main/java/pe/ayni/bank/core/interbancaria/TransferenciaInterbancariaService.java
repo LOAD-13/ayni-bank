@@ -23,6 +23,7 @@ public class TransferenciaInterbancariaService {
 
     private final JdbcTemplate db;
     private final CamaraPort camara;
+    private final ResolucionInterbancariaService resolucion;
     private final Duration espera;
 
     public record Solicitud(
@@ -47,11 +48,13 @@ public class TransferenciaInterbancariaService {
     public TransferenciaInterbancariaService(
         JdbcTemplate db,
         CamaraPort camara,
+        ResolucionInterbancariaService resolucion,
         @Value("${ayni.camara.espera-maxima:PT5M}")
         Duration espera
     ) {
         this.db = db;
         this.camara = camara;
+        this.resolucion = resolucion;
         this.espera = espera;
     }
 
@@ -78,55 +81,55 @@ public class TransferenciaInterbancariaService {
         }
 
 
-var previos = db.query(
-    """
-    SELECT id, estado, cci_destino, importe, concepto
-    FROM transferencia_interbancaria
-    WHERE clave = ? AND usuario_id = ?
-    """,
-    (rs, n) -> new Object[] {
-        UUID.fromString(rs.getString("id")),
-        EstadoInterbancario.valueOf(
-            rs.getString("estado")
-        ),
-        rs.getString("cci_destino"),
-        rs.getBigDecimal("importe"),
-        rs.getString("concepto")
-    },
-    s.clave(),
-    s.usuarioId()
-);
-
-if (!previos.isEmpty()) {
-
-    Object[] anterior = previos.get(0);
-
-    String conceptoActual =
-        s.concepto() == null || s.concepto().isBlank()
-            ? "Transferencia interbancaria"
-            : s.concepto().trim();
-
-    boolean mismoCci =
-        anterior[2].equals(s.cci());
-
-    boolean mismoImporte =
-        ((BigDecimal) anterior[3])
-            .compareTo(s.importe()) == 0;
-
-    boolean mismoConcepto =
-        anterior[4].equals(conceptoActual);
-
-    if (!mismoCci || !mismoImporte || !mismoConcepto) {
-        throw new IllegalArgumentException(
-            "Clave de idempotencia utilizada con otros datos"
+        var previos = db.query(
+            """
+            SELECT id, estado, cci_destino, importe, concepto
+            FROM transferencia_interbancaria
+            WHERE clave = ? AND usuario_id = ?
+            """,
+            (rs, n) -> new Object[] {
+                UUID.fromString(rs.getString("id")),
+                EstadoInterbancario.valueOf(
+                    rs.getString("estado")
+                ),
+                rs.getString("cci_destino"),
+                rs.getBigDecimal("importe"),
+                rs.getString("concepto")
+            },
+            s.clave(),
+            s.usuarioId()
         );
-    }
 
-    return new Resultado(
-        (UUID) anterior[0],
-        (EstadoInterbancario) anterior[1]
-    );
-}
+        if (!previos.isEmpty()) {
+
+            Object[] anterior = previos.get(0);
+
+            String conceptoActual =
+                s.concepto() == null || s.concepto().isBlank()
+                    ? "Transferencia interbancaria"
+                    : s.concepto().trim();
+
+            boolean mismoCci =
+                anterior[2].equals(s.cci());
+
+            boolean mismoImporte =
+                ((BigDecimal) anterior[3])
+                    .compareTo(s.importe()) == 0;
+
+            boolean mismoConcepto =
+                anterior[4].equals(conceptoActual);
+
+            if (!mismoCci || !mismoImporte || !mismoConcepto) {
+                throw new IllegalArgumentException(
+                    "Clave de idempotencia utilizada con otros datos"
+                );
+            }
+
+            return new Resultado(
+                (UUID) anterior[0],
+                (EstadoInterbancario) anterior[1]
+            );
+        }
 
 
         List<UUID> origen = db.query(
@@ -296,106 +299,13 @@ if (!previos.isEmpty()) {
                 filas.get(0)[1]
             );
 
-            resolver(id, respuesta);
+            resolucion.resolver(id, respuesta);
 
         } catch (RuntimeException ex) {
             // Resultado desconocido.
             // No revertir hasta conocer el estado real.
         }
     }
-
-    @Transactional
-    public void resolver(
-        UUID id,
-        EstadoInterbancario estado
-    ) {
-
-        if (estado == EstadoInterbancario.PENDIENTE) {
-            return;
-        }
-
-        var filas = db.query(
-            """
-            SELECT origen_id, importe
-            FROM transferencia_interbancaria
-            WHERE id = ?
-              AND estado = 'PENDIENTE'
-            FOR UPDATE
-            """,
-            (rs, n) -> new Object[] {
-                UUID.fromString(
-                    rs.getString("origen_id")
-                ),
-                rs.getBigDecimal("importe")
-            },
-            id
-        );
-
-        if (filas.isEmpty()) {
-            return;
-        }
-
-        if (estado == EstadoInterbancario.RECHAZADA) {
-
-            UUID origen = (UUID) filas.get(0)[0];
-            BigDecimal importe =
-                (BigDecimal) filas.get(0)[1];
-
-            UUID reversion = UUID.randomUUID();
-
-            db.query(
-                """
-                SELECT id FROM cuenta
-                WHERE id = ? FOR UPDATE
-                """,
-                (rs, n) -> rs.getString("id"),
-                origen
-            );
-
-            asiento(
-                COMPENSACION,
-                reversion,
-                "CARGO",
-                importe,
-                "Reversion compensacion"
-            );
-
-            asiento(
-                origen,
-                reversion,
-                "ABONO",
-                importe,
-                "Reversion interbancaria"
-            );
-
-            db.update(
-                """
-                UPDATE transferencia_interbancaria
-                SET estado = 'RECHAZADA',
-                    movimiento_reversion = ?,
-                    motivo = 'RECHAZO_CAMARA',
-                    actualizado_en = now()
-                WHERE id = ?
-                """,
-                reversion, id
-            );
-
-        } else if (
-            estado == EstadoInterbancario.COMPLETADA
-        ) {
-
-            db.update(
-                """
-                UPDATE transferencia_interbancaria
-                SET estado = 'COMPLETADA',
-                    actualizado_en = now()
-                WHERE id = ?
-                """,
-                id
-            );
-        }
-    }
-
 
     public List<Beneficiario> beneficiarios(
         UUID usuario
