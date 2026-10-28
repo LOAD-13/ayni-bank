@@ -15,6 +15,7 @@ name: ayni-bank
 
 x-java-common: &java-common
   restart: unless-stopped
+  stop_grace_period: 30s
   networks: [ayni]
   logging: &logs
     driver: json-file
@@ -31,9 +32,18 @@ x-java-env: &java-env
   SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:5432/ayni?sslmode=require
   JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70"
 
+# ─────────────────────────── Coexistencia (ISO/IEC 25010) ───────────────────────────
+# Cada contenedor tiene un techo de memoria y de CPU (deploy.resources.limits, que Docker
+# aplica con cgroups). Un servicio con una fuga o un bucle ya no puede consumir la maquina
+# entera y tumbar a sus vecinos: el que pasa su techo de memoria muere solo, y Docker lo
+# reinicia. Los servicios Java ajustan su heap al techo (MaxRAMPercentage=70). Ver ADR-0034.
+
 services:
 
   caddy:
+    deploy:
+      resources:
+        limits: { memory: 128M, cpus: "0.25" }
     image: caddy:2.10-alpine
     container_name: ayni-caddy
     restart: unless-stopped
@@ -51,7 +61,29 @@ services:
     logging: *logs
     networks: [ayni]
 
+  # Contadores del limite de tasa del gateway (AYNI-160, ADR-0035). Sin disco: los
+  # contadores caducan en minutos y perderlos al reiniciar no hace dano. Sin puerto en el
+  # host: solo lo usa el gateway.
+  redis:
+    deploy:
+      resources:
+        limits: { memory: 64M, cpus: "0.25" }
+    image: redis:7-alpine
+    container_name: ayni-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "48mb", "--maxmemory-policy", "volatile-ttl"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logs
+    networks: [ayni]
+
   rabbitmq:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
     image: rabbitmq:3.13-alpine
     container_name: ayni-rabbitmq
     restart: unless-stopped
@@ -69,6 +101,9 @@ services:
     networks: [ayni]
 
   ayni-gateway:
+    deploy:
+      resources:
+        limits: { memory: 640M, cpus: "0.5" }
     <<: *java-common
     image: ${REGISTRO}/ayni/ayni-gateway:${ETIQUETA}
     container_name: ayni-gateway
@@ -76,9 +111,11 @@ services:
       <<: *java-env
       AYNI_ORIGENES_PERMITIDOS: https://${AYNI_DOMINIO}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
+    # Redis con service_started: si cae, el gateway sigue atendiendo sin limite (ADR-0035).
     depends_on:
       ayni-identity-service: { condition: service_healthy }
       ayni-core-banking-service: { condition: service_healthy }
+      redis: { condition: service_started }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 20s
@@ -87,6 +124,9 @@ services:
       start_period: 40s
 
   ayni-identity-service:
+    deploy:
+      resources:
+        limits: { memory: 768M, cpus: "0.75" }
     <<: *java-common
     image: ${REGISTRO}/ayni/ayni-identity-service:${ETIQUETA}
     container_name: ayni-identity-service
@@ -99,8 +139,11 @@ services:
       # Clave del operador que aprueba solicitudes en revision (SSM /ayni/prod/operador-clave).
       # Sin ella, el endpoint del operador no responde.
       AYNI_OPERADOR_CLAVE: ${AYNI_OPERADOR_CLAVE:-}
+      # HU-13: true solo en el despliegue que estrena las notificaciones (RepublicadorDeTitulares).
+      AYNI_REPUBLICAR_TITULARES: ${AYNI_REPUBLICAR_TITULARES:-false}
       AYNI_JWT_CLAVE: ${AYNI_JWT_CLAVE}
       AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE}
+      AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}
       AYNI_COOKIES_SEGURAS: "true"
       MINIO_ENDPOINT: https://s3.us-east-1.amazonaws.com
       MINIO_ENDPOINT_PUBLICO: https://s3.us-east-1.amazonaws.com
@@ -119,10 +162,14 @@ services:
       start_period: 60s
 
   ayni-core-banking-service:
+    deploy:
+      resources:
+        limits: { memory: 768M, cpus: "0.75" }
     <<: *java-common
     image: ${REGISTRO}/ayni/ayni-core-banking-service:${ETIQUETA}
     container_name: ayni-core-banking-service
     environment:
+      AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}
       <<: *java-env
     depends_on:
       rabbitmq: { condition: service_healthy }
@@ -134,15 +181,31 @@ services:
       start_period: 60s
 
   ayni-notification-service:
+    deploy:
+      resources:
+        limits: { memory: 640M, cpus: "0.5" }
     <<: *java-common
     image: ${REGISTRO}/ayni/ayni-notification-service:${ETIQUETA}
     container_name: ayni-notification-service
     environment:
       <<: *java-env
+      # HU-13: el correo de cada movimiento sale por SES con el mismo remitente
+      # verificado que identity y con el rol de la instancia (sin claves).
+      AYNI_CORREO_REMITENTE: Ayni Bank <jloadenegri@gmail.com>
     depends_on:
       rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
 
   ayni-kyc-service:
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { memory: 2560M, cpus: "1.5" }
     image: ${REGISTRO}/ayni/ayni-kyc-service:${ETIQUETA}
     container_name: ayni-kyc-service
     restart: unless-stopped
@@ -164,6 +227,9 @@ services:
     networks: [ayni]
 
   ayni-web:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.5" }
     image: ${REGISTRO}/ayni/ayni-web:${ETIQUETA}
     container_name: ayni-web
     restart: unless-stopped
@@ -177,6 +243,9 @@ services:
   # mismo commit, en ./observabilidad.
 
   ayni-prometheus:
+    deploy:
+      resources:
+        limits: { memory: 512M, cpus: "0.25" }
     image: prom/prometheus:v3.4.0
     container_name: ayni-prometheus
     restart: unless-stopped
@@ -193,6 +262,9 @@ services:
     networks: [ayni]
 
   ayni-grafana:
+    deploy:
+      resources:
+        limits: { memory: 384M, cpus: "0.25" }
     image: grafana/grafana:11.6.0
     container_name: ayni-grafana
     restart: unless-stopped
@@ -216,6 +288,9 @@ services:
     networks: [ayni]
 
   ayni-node-exporter:
+    deploy:
+      resources:
+        limits: { memory: 64M, cpus: "0.1" }
     image: prom/node-exporter:v1.9.1
     container_name: ayni-node-exporter
     restart: unless-stopped

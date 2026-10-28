@@ -7,7 +7,7 @@ import { PasosDelOnboarding } from "@/componentes/onboarding/PasosDelOnboarding"
 import { EstadoDeLaCuenta } from "./EstadoDeLaCuenta";
 
 export const metadata: Metadata = {
-  title: "Tu cuenta está lista · Ayni Bank",
+  title: "Tu cuenta está lista",
   description: "Tu cuenta de ahorro Ayni ya está abierta.",
   robots: { index: false, follow: false },
 };

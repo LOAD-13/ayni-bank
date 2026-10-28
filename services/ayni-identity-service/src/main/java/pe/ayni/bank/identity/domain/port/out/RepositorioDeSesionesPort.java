@@ -31,4 +31,10 @@ public interface RepositorioDeSesionesPort {
      * detectada una copia, se cae la sesion entera y hay que volver a autenticarse.
      */
     void invalidarFamilia(UUID familiaId);
+
+    /**
+     * Invalida todas las familias del usuario: cada sesion abierta, en cada dispositivo. Es
+     * lo que exige HU-21 al cambiar la contrasena.
+     */
+    void invalidarSesionesDe(UUID usuarioId);
 }

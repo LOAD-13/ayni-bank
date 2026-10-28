@@ -11,12 +11,16 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -26,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempotenciaReutilizadaException;
 import pe.ayni.bank.core.domain.model.Asiento;
 import pe.ayni.bank.core.domain.model.Comprobante;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
@@ -51,6 +56,8 @@ public class OperacionesController {
 
     static final String CABECERA_USUARIO = "X-Ayni-Usuario";
     static final String CABECERA_IDEMPOTENCIA = "Idempotency-Key";
+    /** Token de confirmacion con segundo factor que emite identity (HU-07, ADR-0031). */
+    static final String CABECERA_CONFIRMACION = "X-Ayni-Confirmacion";
     private static final int MAXIMO_DE_MOVIMIENTOS = 50;
     private static final String IMPORTE = "^\\d{1,7}(\\.\\d{1,2})?$";
 
@@ -100,10 +107,35 @@ public class OperacionesController {
     public ResponseEntity<ComprobanteDto> transferir(
             @RequestHeader(CABECERA_USUARIO) UUID usuarioId,
             @RequestHeader(CABECERA_IDEMPOTENCIA) UUID clave,
+            @RequestHeader(value = CABECERA_CONFIRMACION, required = false) String confirmacion,
             @Valid @RequestBody SolicitudDeTransferencia solicitud) {
         Comprobante comprobante = operar.transferir(usuarioId, solicitud.cuentaDestino(),
-                soles(solicitud.importe()), solicitud.concepto(), clave);
+                soles(solicitud.importe()), solicitud.concepto(), clave, confirmacion);
         return creado(comprobante);
+    }
+
+    /** HU-07: el comprobante de un movimiento propio. 404 si no existe o no es del titular. */
+    @GetMapping("/api/v1/movimientos/{movimientoId}")
+    public ResponseEntity<ComprobanteDto> comprobante(@RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+                                                      @PathVariable UUID movimientoId) {
+        return operar.comprobante(usuarioId, movimientoId)
+                .map(c -> ResponseEntity.ok(ComprobanteDto.desde(c)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** HU-07: el mismo comprobante en PDF, para descargar o reenviar. */
+    @GetMapping(value = "/api/v1/movimientos/{movimientoId}/comprobante.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> comprobanteEnPdf(@RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+                                                   @PathVariable UUID movimientoId) {
+        return operar.comprobante(usuarioId, movimientoId)
+                .map(c -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                                .filename("comprobante-ayni-" + movimientoId + ".pdf").build().toString())
+                        // Un comprobante bancario no se queda en la cache de un equipo compartido.
+                        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                        .body(ComprobanteEnPdf.generar(c)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // ── Errores ───────────────────────────────────────────────────────────
@@ -125,6 +157,19 @@ public class OperacionesController {
         problema.setTitle(motivo.titulo());
         problema.setProperty("codigo", motivo.name());
         return ResponseEntity.status(estado).body(problema);
+    }
+
+    /**
+     * 403: la sesion es valida, pero esta transferencia no esta confirmada con el segundo
+     * factor. El cliente debe pedir la confirmacion a identity y reintentar con la misma
+     * clave de idempotencia.
+     */
+    @ExceptionHandler(ConfirmacionInvalidaException.class)
+    public ResponseEntity<ProblemDetail> alFaltarConfirmacion(ConfirmacionInvalidaException falta) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, falta.getMessage());
+        problema.setTitle("Confirmacion requerida");
+        problema.setProperty("codigo", "CONFIRMACION_REQUERIDA");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problema);
     }
 
     /** Sin la cabecera de usuario la peticion no paso por el gateway: 401. */

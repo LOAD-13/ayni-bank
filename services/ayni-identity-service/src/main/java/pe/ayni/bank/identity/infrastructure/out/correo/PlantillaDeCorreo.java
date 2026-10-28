@@ -31,7 +31,16 @@ public enum PlantillaDeCorreo {
             "Volver a ingresar", true),
     REVISION_MANUAL("Estamos revisando tu identidad",
             "Tu verificacion de identidad paso a revision manual. Te avisaremos en cuanto termine.",
-            "Ir a Ayni Bank", true);
+            "Ir a Ayni Bank", true),
+    RECUPERACION("Cambia tu contrasena de Ayni",
+            "Pediste cambiar tu contrasena. El enlace vence en 30 minutos y sirve una sola vez. "
+                    + "Si no fuiste tu, ignora este correo: tu contrasena no cambia y nadie entra sin tu "
+                    + "segundo factor.",
+            "Crear una contrasena nueva", true),
+    CONTRASENA_CAMBIADA("Tu contrasena de Ayni cambio",
+            "La contrasena de tu cuenta acaba de cambiar y cerramos todas tus sesiones abiertas. "
+                    + "Si no fuiste tu, pide un enlace nuevo desde la pantalla de ingreso y escribenos.",
+            "Ir a mi banca", true);
 
     private final String asunto;
     private final String cuerpo;

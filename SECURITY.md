@@ -37,7 +37,7 @@ Modelo de amenazas, controles aplicados y procedimiento de reporte.
 
 | Control | Implementación |
 |---|---|
-| Almacenamiento de contraseñas | **Argon2id** — resistente a GPU y ASIC |
+| Almacenamiento de contraseñas | **Argon2id** — resistente a ataques de fuerza bruta: cada intento exige 19 MiB de memoria, y eso encarece probar contraseñas en masa incluso con GPU o ASIC |
 | Política de contraseñas | ≥ 12 caracteres, mayúscula, minúscula, número y símbolo |
 | Token de acceso | JWT de **15 minutos** |
 | Refresh token | **Rotativo**, 7 días, cookie `HttpOnly; Secure; SameSite=Strict` |

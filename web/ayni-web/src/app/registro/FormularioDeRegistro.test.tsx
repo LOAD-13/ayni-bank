@@ -71,7 +71,10 @@ async function avisoQueDice(texto: RegExp) {
   return encontrado as HTMLElement;
 }
 
-describe("Formulario de registro · HU-01", () => {
+// Cada caso teclea el formulario entero carácter a carácter, a propósito, y eso ronda los
+// 5 s que Vitest da por defecto: con la cobertura activa y otros archivos en paralelo se
+// pasaba del límite sin que nada estuviera mal. 15 s es lo que de verdad necesita.
+describe("Formulario de registro · HU-01", { timeout: 15_000 }, () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
   });

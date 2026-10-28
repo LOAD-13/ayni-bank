@@ -34,6 +34,10 @@ tags:
     description: Alta de nuevos clientes
   - name: Sesion
     description: Ingreso, segundo factor y renovacion de la sesion
+  - name: Recuperacion
+    description: Recuperacion de la contrasena por correo (HU-21)
+  - name: Confirmacion
+    description: Confirmacion de operaciones con el segundo factor (HU-07)
 
 paths:
   /registro:
@@ -398,6 +402,185 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/Problema"
+
+  /recuperacion:
+    post:
+      summary: Pide un enlace para recuperar la contrasena (HU-21)
+      description: |
+        Responde **siempre 202 con el mismo cuerpo**, exista o no la cuenta, y
+        nunca antes de una duracion minima (400 ms en produccion): el
+        cronometro no puede delatar lo que el cuerpo oculta. Ver ADR-0008 y
+        ADR-0030. Como maximo se envian tres enlaces por cuenta y hora; los
+        de mas se ignoran en silencio.
+      operationId: solicitarRecuperacion
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo]
+              properties:
+                correo:
+                  type: string
+                  maxLength: 254
+                  example: ana.quispe@example.pe
+      responses:
+        "202":
+          description: Identica para todos los correos bien formados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Si el correo corresponde a una cuenta de Ayni, te enviamos un enlace para cambiar tu contrasena.
+        "400":
+          description: El correo falta o no tiene formato de correo
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+
+  /recuperacion/validacion:
+    post:
+      summary: Comprueba si un enlace de recuperacion sigue sirviendo
+      description: |
+        El token viaja en el cuerpo y no en la URL. En la web llega en el
+        fragmento del enlace (`#t=`), que el navegador no envia al servidor.
+      operationId: validarEnlaceDeRecuperacion
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnlaceDeRecuperacion"
+      responses:
+        "204":
+          description: El enlace sirve
+        "410":
+          description: |
+            El enlace no existe, caduco (30 minutos), ya se uso o lo anulo uno
+            posterior. Los cuatro casos responden igual.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /recuperacion/confirmacion:
+    post:
+      summary: Fija la contrasena nueva con un enlace de recuperacion
+      description: |
+        Gasta el enlace, invalida todas las sesiones del titular, limpia el
+        contador de intentos fallidos, lo anota en la pista de auditoria y
+        avisa al titular por correo. El segundo factor sigue siendo
+        obligatorio para ingresar: recuperar la contrasena no es recuperar la
+        cuenta. Un token de acceso ya emitido vive como mucho 15 minutos mas
+        (ADR-0030).
+      operationId: restablecerContrasena
+      tags: [Recuperacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/EnlaceDeRecuperacion"
+                - type: object
+                  required: [contrasenaNueva]
+                  properties:
+                    contrasenaNueva:
+                      type: string
+                      format: password
+                      description: Misma politica que el registro.
+      responses:
+        "204":
+          description: Contrasena cambiada
+        "400":
+          description: La contrasena nueva incumple la politica; el enlace sigue sirviendo
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemaValidacion"
+        "410":
+          description: El enlace no sirve
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problema"
+
+  /confirmaciones:
+    post:
+      summary: Abre la confirmacion de una transferencia con el segundo factor (HU-07)
+      description: |
+        Ruta protegida: la identidad sale de `X-Ayni-Usuario`. identity guarda solo
+        la huella de la operacion (forma canonica en ADR-0031). Si el titular eligio
+        el correo, le envia un codigo de 6 digitos.
+      operationId: iniciarConfirmacion
+      tags: [Confirmacion]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [destino, importe, moneda, claveIdempotencia]
+              properties:
+                destino: { type: string, maxLength: 32, example: "001-1100000-0-031" }
+                importe: { type: string, pattern: '^\d{1,7}(\.\d{1,2})?$', example: "150.00" }
+                moneda: { type: string, pattern: '^[A-Z]{3}$', example: PEN }
+                claveIdempotencia: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Confirmacion abierta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  confirmacionId: { type: string, format: uuid }
+                  metodo: { $ref: "#/components/schemas/TipoDeSegundoFactor" }
+                  expiraEn: { type: string, format: date-time }
+        "401": { description: Sin sesion }
+        "409": { description: El titular no tiene segundo factor activo }
+        "423": { description: Operaciones pausadas por intentos fallidos }
+
+  /confirmaciones/{confirmacionId}/verificacion:
+    post:
+      summary: Verifica el codigo y emite el token de confirmacion para core-banking
+      description: |
+        Tres intentos por confirmacion; los fallos cuentan para la misma pausa que el
+        ingreso. El token dura 5 minutos y solo sirve para la operacion confirmada: se
+        envia a `POST /api/v1/transferencias` en la cabecera `X-Ayni-Confirmacion`.
+      operationId: verificarConfirmacion
+      tags: [Confirmacion]
+      parameters:
+        - { name: confirmacionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codigo]
+              properties:
+                codigo: { type: string, example: "123456" }
+      responses:
+        "200":
+          description: Codigo correcto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expiraEn: { type: string, format: date-time }
+        "410": { description: La confirmacion no existe, caduco, se uso o agoto sus intentos }
+        "422": { description: Codigo incorrecto; incluye intentosRestantes }
+        "423": { description: Operaciones pausadas por intentos fallidos }
 
   /usuarios/{usuarioId}/segundo-factor/metodo:
     post:
@@ -800,6 +983,15 @@ components:
         fechaEmision:
           type: string
           format: date
+
+    EnlaceDeRecuperacion:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          maxLength: 128
+          description: Token del enlace; 256 bits aleatorios en Base64 URL.
 
     Credenciales:
       type: object

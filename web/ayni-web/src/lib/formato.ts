@@ -39,17 +39,105 @@ export function normalizarImporte(escrito: string): string | null {
   return `${String(Number(entero))}.${(decimales + "00").slice(0, 2)}`;
 }
 
+/** Un decimal exacto: «4.5» es `{ unidades: 45n, escala: 1 }`, es decir 45 × 10⁻¹. */
+interface Decimal {
+  unidades: bigint;
+  escala: number;
+}
+
+/** Lee un decimal escrito como texto («-12.345») sin pasar por `Number`. `null` si no lo es. */
+function leerDecimal(texto: string): Decimal | null {
+  if (!/^-?\d+(\.\d+)?$/.test(texto)) return null;
+  const [entero, decimales = ""] = texto.split(".");
+  return { unidades: BigInt(entero + decimales), escala: decimales.length };
+}
+
+/** 10 elevado a `n`, en `bigint`. El `target` ES2017 no admite `**` con `bigint`. */
+function potenciaDeDiez(n: number): bigint {
+  let resultado = BigInt(1);
+  for (let i = 0; i < n; i++) resultado *= BigInt(10);
+  return resultado;
+}
+
 /**
- * Interés aproximado de un mes con la TREA vigente: saldo × TREA / 12, en céntimos
- * enteros y sin coma flotante. Es una estimación para el panel, no el devengo real.
+ * Divide redondeando **HALF_EVEN**, como `RoundingMode.HALF_EVEN` del backend: la mitad
+ * exacta va al par más cercano (0.125 → 0.12, 0.135 → 0.14). La división de `bigint`
+ * trunca, y truncar siempre hacia abajo le quita céntimos al cliente.
+ */
+export function dividirHalfEven(dividendo: bigint, divisor: bigint): bigint {
+  const cero = BigInt(0);
+  if (divisor <= cero) throw new RangeError("El divisor debe ser positivo");
+  const negativo = dividendo < cero;
+  const absoluto = negativo ? -dividendo : dividendo;
+  let cociente = absoluto / divisor;
+  const dobleDelResto = (absoluto % divisor) * BigInt(2);
+  if (
+    dobleDelResto > divisor ||
+    (dobleDelResto === divisor && cociente % BigInt(2) === BigInt(1))
+  ) {
+    cociente += BigInt(1);
+  }
+  return negativo ? -cociente : cociente;
+}
+
+/** 1250n → «12.50». */
+function deCentimos(centimos: bigint): string {
+  const cien = BigInt(100);
+  const negativo = centimos < BigInt(0);
+  const absoluto = negativo ? -centimos : centimos;
+  const decimales = String(absoluto % cien).padStart(2, "0");
+  return `${negativo ? "-" : ""}${absoluto / cien}.${decimales}`;
+}
+
+/**
+ * Interés aproximado de un mes con la TREA vigente: saldo × TREA / 12, redondeado a
+ * céntimos con HALF_EVEN y sin coma flotante. Usa todos los decimales de la TREA, no solo
+ * dos. Es una estimación para el panel, no el devengo real.
  */
 export function rendimientoMensualEstimado(saldo: string, trea: string): string {
-  const aCentimos = (t: string) => {
-    const [e = "0", d = ""] = t.replace("-", "").split(".");
-    return BigInt(e) * BigInt(100) + BigInt((d + "00").slice(0, 2));
-  };
-  const centimos = (aCentimos(saldo) * aCentimos(trea)) / BigInt(120000);
-  return `${centimos / BigInt(100)}.${String(centimos % BigInt(100)).padStart(2, "0")}`;
+  const s = leerDecimal(saldo);
+  const t = leerDecimal(trea);
+  if (!s || !t) throw new RangeError(`Importe o tasa no válidos: «${saldo}», «${trea}»`);
+  // saldo × (trea / 100) / 12, expresado en céntimos (× 100): saldo × trea / 12.
+  const divisor = potenciaDeDiez(s.escala + t.escala) * BigInt(12);
+  return deCentimos(dividirHalfEven(s.unidades * t.unidades, divisor));
+}
+
+/**
+ * Saldo al cabo de un año con la TREA: capital × (1 + TREA / 100), redondeado a céntimos
+ * con HALF_EVEN y sin coma flotante. `null` si el capital o la TREA no son decimales.
+ *
+ * La TREA ya es una tasa **efectiva anual**: incorpora la capitalización, así que aplicarla
+ * de nuevo día a día contaría el interés compuesto dos veces y prometería de más. Basta
+ * multiplicar una vez, y eso es justamente lo que significa «efectiva».
+ */
+export function proyeccionAUnAno(capital: string, trea: string): string | null {
+  const c = leerDecimal(capital);
+  const t = leerDecimal(trea);
+  if (!c || !t) return null;
+  // capital × (100 + trea) / 100, expresado en céntimos (× 100): capital × (100 + trea).
+  const escalaDeLaTasa = potenciaDeDiez(t.escala);
+  const factor = BigInt(100) * escalaDeLaTasa + t.unidades;
+  return deCentimos(
+    dividirHalfEven(c.unidades * factor, potenciaDeDiez(c.escala) * escalaDeLaTasa),
+  );
+}
+
+/**
+ * Qué parte de un límite ya se usó, en tanto por ciento entero entre 0 y 100, para pintar
+ * la barra del límite diario de la tarjeta (HU-10). Es solo visual, pero se calcula igual
+ * que el resto: sin `parseFloat` ni coma flotante. Un límite cero o un texto que no es un
+ * importe dan 0.
+ */
+export function porcentajeUsado(usado: string, limite: string): number {
+  const u = leerDecimal(usado);
+  const l = leerDecimal(limite);
+  if (!u || !l || l.unidades <= BigInt(0)) return 0;
+  // usado / limite × 100, llevando los dos a la misma escala.
+  const numerador = u.unidades * potenciaDeDiez(l.escala) * BigInt(100);
+  const denominador = l.unidades * potenciaDeDiez(u.escala);
+  const porcentaje = Number(numerador / denominador);
+  return Math.min(100, Math.max(0, porcentaje));
 }
 
 /** Clave de idempotencia nueva: una por intento de operación, no por clic. */

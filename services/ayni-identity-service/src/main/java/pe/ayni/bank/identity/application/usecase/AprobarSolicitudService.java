@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.identity.domain.model.SolicitudNoAprobableException;
+import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.in.AprobarSolicitudUseCase;
 import pe.ayni.bank.identity.domain.port.out.PublicadorDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
@@ -52,9 +53,11 @@ public class AprobarSolicitudService implements AprobarSolicitudUseCase {
                         "La solicitud apunta a un usuario que ya no existe."));
 
         solicitudes.marcarAprobada(solicitudId);
-        usuarios.guardar(usuarios.buscarPorId(usuarioId).orElseThrow().activar());
+        Usuario activo = usuarios.guardar(usuarios.buscarPorId(usuarioId).orElseThrow().activar());
 
         publicador.anunciarAprobacion(solicitudId, usuarioId);
+        publicador.anunciarTitularActivado(usuarioId, activo.correo(),
+                solicitudes.nombreDePilaDe(usuarioId).orElse(""));
 
         log.info("Solicitud aprobada. solicitudId={} usuarioId={}", solicitudId, usuarioId);
     }

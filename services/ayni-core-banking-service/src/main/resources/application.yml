@@ -1,11 +1,12 @@
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   application:
     name: ayni-core-banking-service
 
-  # ─── Base de datos ───────────────────────────────────────────────────────
-  # Los valores por defecto permiten arrancar contra la infraestructura del
-  # docker compose sin exportar nada. En contenedor los sobreescribe el entorno.
+  # Base de datos
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ayni}
     username: ${SPRING_DATASOURCE_USERNAME:ayni_app}
@@ -14,33 +15,25 @@ spring:
       pool-name: ayni-core-banking-service-pool
       maximum-pool-size: 10
 
-  # Cada servicio migra unicamente su propio schema. Ningun servicio lee ni
-  # altera tablas de otro: esa frontera es el limite del bounded context.
+  # Migraciones de base de datos
   flyway:
     enabled: true
     schemas: core
     default-schema: core
     locations: classpath:db/migration
     validate-on-migrate: true
-    # Nunca baseline automatico: si el schema tiene objetos que Flyway no
-    # registro, queremos enterarnos, no que los de por buenos en silencio.
     baseline-on-migrate: false
 
+  # Configuracion JPA
   jpa:
     hibernate:
-      # none explicito. El esquema lo define Flyway y solo Flyway; que un ORM
-      # altere tablas por su cuenta es inaceptable en un sistema financiero.
-      # Ver §4.5 del documento de diseño.
       ddl-auto: none
-    # Sin esto, Hibernate mantiene la sesion abierta durante todo el renderizado
-    # de la respuesta y las consultas perezosas se disparan fuera de la
-    # transaccion. El problema aparece bajo carga, no en desarrollo.
     open-in-view: false
     properties:
       hibernate:
         default_schema: core
 
-  # ─── Mensajeria ──────────────────────────────────────────────────────────
+  # Mensajeria RabbitMQ
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
@@ -48,10 +41,6 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD:cambiar_en_local}
     listener:
       simple:
-        # Si el mensaje falla, se reintenta unas cuantas veces con espera
-        # creciente y despues se descarta en lugar de volver a la cola para
-        # siempre. Un mensaje envenenado en bucle satura el servicio y esconde
-        # todos los demas; lo que queda en el outbox permite reprocesarlo a mano.
         default-requeue-rejected: false
         retry:
           enabled: true
@@ -60,63 +49,71 @@ spring:
           multiplier: 2
 
 ayni:
+  # HU-07: Segundo factor de confirmacion
+  confirmacion:
+    clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
+
   cuentas:
-    # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
-    # migracion V3 con este mismo identificador.
+    # Cuenta tecnica para depositos simulados
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
 
+    # Cuenta tecnica para intereses capitalizados HU-06
+    intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+
+  # Devengo automatico de intereses
+  devengo:
+    cron: "${AYNI_DEVENGO_CRON:0 5 * * * *}"
+
+  # Mantenimiento de particiones y datos
+  mantenimiento:
+    cron: "${AYNI_MANTENIMIENTO_CRON:0 30 3 * * *}"
+    meses-de-antelacion: 3
+    dias-de-outbox: 7
+    dias-de-idempotencia: 30
+    lote: 10000
+
   productos:
-    # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
-    # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
 
-  # ─── AYNI-22: Camara de compensacion interbancaria ──────────────────────
+  # AYNI-22: Camara de compensacion interbancaria
   camara:
-    # URL del simulador de camara de compensacion.
-    # Puede modificarse mediante la variable de entorno AYNI_CAMARA_URL.
     url: ${AYNI_CAMARA_URL:http://localhost:8082/simulador/camara/v1}
 
-    # Tiempo maximo de espera para una transferencia: 5 minutos.
-    # Al vencer se debe iniciar la conciliacion de la operacion.
+    # Tiempo maximo de espera de transferencia
     espera-maxima: ${AYNI_CAMARA_ESPERA:PT5M}
 
-    # Frecuencia de consulta de transferencias pendientes: 15 segundos.
+    # Frecuencia de conciliacion
     conciliacion-ms: ${AYNI_CAMARA_CONCILIACION_MS:15000}
 
-# ─── AYNI-22: Resilience4j ─────────────────────────────────────────────────
+# AYNI-22: Resilience4j
 resilience4j:
   retry:
     instances:
       camara:
-        # Numero maximo de intentos incluyendo el primero.
         maxAttempts: 3
-
-        # Espera entre reintentos.
         waitDuration: 250ms
 
   circuitbreaker:
     instances:
       camara:
-        # Cantidad de llamadas evaluadas.
         slidingWindowSize: 10
-
-        # Minimo de llamadas antes de calcular fallos.
         minimumNumberOfCalls: 5
-
-        # Porcentaje de fallos que abre el circuito.
         failureRateThreshold: 50
-
-        # Tiempo que permanece abierto antes de probar nuevamente.
         waitDurationInOpenState: 15s
-
-        # Llamadas permitidas al pasar a HALF_OPEN.
         permittedNumberOfCallsInHalfOpenState: 3
-
-        # Transicion automatica de OPEN a HALF_OPEN.
         automaticTransitionFromOpenToHalfOpenEnabled: true
+
+# Documentacion OpenAPI
+# Apagada por defecto fuera del entorno habilitado
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+  swagger-ui:
+    enabled: false
 
 server:
   port: 8082
+  shutdown: graceful
 
 management:
   endpoints:
@@ -124,8 +121,6 @@ management:
       exposure:
         include: health,info,prometheus
 
-  # Histograma de latencias para calcular el p95 en Grafana, y el nombre del
-  # servicio como etiqueta comun de todas las metricas (AYNI-159).
   metrics:
     distribution:
       percentiles-histogram:
@@ -145,8 +140,7 @@ management:
       enabled: true
 
 ---
-# El seed solo existe en desarrollo. En staging y produccion los datos de
-# referencia son los de las migraciones versionadas, y nada mas.
+# Datos de desarrollo
 spring:
   config:
     activate:

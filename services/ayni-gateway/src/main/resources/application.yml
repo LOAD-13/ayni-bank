@@ -1,4 +1,8 @@
+
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   application:
     name: ayni-gateway
 
@@ -6,80 +10,182 @@ spring:
     gateway:
       server:
         webflux:
-          # El navegador habla SOLO con el gateway. Ningun servicio publica puerto en el
-          # host, y eso no es una comodidad: es lo que garantiza que la validacion del
-          # JWT, el CORS y la limitacion de tasa no se puedan esquivar llamando
-          # directamente al servicio de detras.
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 30s
+
           routes:
+            # Limite de tasa: inicio de sesion
+            - id: limite-sesion
+              uri: &identity ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 12
+
+            # Limite de tasa: registro
+            - id: limite-registro
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/registro
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 20
+
+            # Limite de tasa: segundo factor
+            - id: limite-segundo-factor
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion/segundo-factor,/api/v1/segundo-factor/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 6
+
+            # Limite de tasa: renovacion de sesion
+            - id: limite-renovacion
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/sesion/renovacion
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 3
+
+            # Limite de tasa: URL de subida
+            - id: limite-url-de-subida
+              uri: *identity
+              order: -1
+              predicates:
+                - Path=/api/v1/solicitudes/*/documentos/url-de-subida
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3600
+                    redis-rate-limiter.requestedTokens: 360
+
+            # Limite de tasa: operaciones monetarias
+            - id: limite-dinero
+              uri: &core ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              order: -1
+              predicates:
+                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados,/api/v1/interbancarias
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porUsuario}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 6
+
+            # Rutas generales de identidad
             - id: identity
-              uri: ${AYNI_IDENTITY_URI:http://ayni-identity-service:8081}
+              uri: *identity
               predicates:
-                # `/api/v1/registro` sin `/**` ademas de con el, porque el comodin de
-                # Spring Cloud Gateway NO casa con la ruta desnuda: sin las dos formas,
-                # un POST a `/api/v1/registro` devuelve 404 y el de
-                # `/api/v1/registro/algo` funciona, que es de las cosas mas
-                # desconcertantes de depurar.
-                # `/api/v1/dev/**` encamina el disparador que aprueba una solicitud a
-                # mano mientras no exista el OCR. El endpoint al que llega lleva
-                # `@Profile("dev")`, asi que fuera de desarrollo esta ruta existe y no
-                # resuelve a nada: el bean ni se crea. Se retira con HU-02.
-                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
+                - Path=/api/v1/registro,/api/v1/registro/**,/api/v1/recuperacion,/api/v1/recuperacion/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/sesion,/api/v1/sesion/**,/api/v1/dev/**,/api/v1/auth/**,/api/v1/usuarios/**,/api/v1/solicitudes/**
 
+            # Core bancario: rutas de develop + AYNI-22
             - id: core-banking
-              uri: ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
+              uri: *core
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
-
-            # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
-            # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
-            # (`/api/v1/kyc/**`) no reescribia el prefijo y no llegaba a ningun endpoint,
-            # pero de haberlo hecho habria expuesto a Internet la lectura de documentos
-            # KYC por clave. Ver ADR-0028.
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
 
           globalcors:
             cors-configurations:
               "[/**]":
-                # Lista explicita de origenes, nunca `*`. Con comodin no se pueden enviar
-                # credenciales, y el refresh token viaja en cookie HttpOnly.
                 allowedOrigins: ${AYNI_ORIGENES_PERMITIDOS:http://localhost:3000,http://localhost:3500}
                 allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
                 allowedHeaders: ["*"]
+                exposedHeaders: [Retry-After]
                 allowCredentials: true
                 maxAge: 3600
 
+  data:
+    redis:
+      host: ${AYNI_REDIS_HOST:redis}
+      port: 6379
+
 ayni:
   jwt:
-    # La misma clave con la que firma identity-service. El valor por defecto es el
-    # de desarrollo de identity; en produccion llega como secreto (AYNI_JWT_CLAVE).
     clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
   seguridad:
-    # Rutas que exigen un token de acceso valido, separadas por comas: todo lo que
-    # muestra o mueve el dinero del titular. `cuentas/titular/**` queda fuera porque
-    # la pantalla final del onboarding la consulta antes de que exista sesion.
+    # Rutas protegidas de develop + interbancarias
     rutas-protegidas: >-
-      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/interbancarias,/api/v1/interbancarias/**
+      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**
+
+# Documentacion OpenAPI del Gateway
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+    path: /api/docs/gateway
+
+  swagger-ui:
+    enabled: ${AYNI_API_DOCS:false}
+    path: /api/docs
+    urls:
+      - name: identity
+        url: /api/docs/identity
+      - name: core-banking
+        url: /api/docs/core-banking
+      - name: kyc
+        url: /api/docs/kyc
 
 server:
   port: 8080
+  shutdown: graceful
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
-  # Histograma de latencias para calcular el p95 en Grafana, y el nombre del
-  # servicio como etiqueta comun de todas las metricas (AYNI-159).
+
   metrics:
     distribution:
       percentiles-histogram:
         http.server.requests: true
     tags:
       application: ${spring.application.name}
+
   endpoint:
     health:
       probes:
         enabled: true
+
   health:
+    redis:
+      enabled: false
     livenessState:
       enabled: true
     readinessState:

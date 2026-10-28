@@ -128,8 +128,12 @@ public class IniciarSesionService implements IniciarSesionUseCase {
 
     // ─── Paso 1 · credenciales ─────────────────────────────────────────────
 
+    // noRollbackFor: el contador de fallos y la auditoria se escriben ANTES de lanzar la
+    // excepcion, y tienen que sobrevivirla. Con el rollback por defecto el ingreso nunca se
+    // pausaba. Lo mismo en el segundo factor y en la renovacion. Ver RollbackDeLasDefensasTest.
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {CredencialesInvalidasException.class,
+            CuentaBloqueadaException.class, CuentaInhabilitadaException.class})
     public DesafioAbierto presentarCredenciales(ComandoDeIngreso comando) {
         Instant momento = reloj.instant();
         CorreoElectronico correo = new CorreoElectronico(comando.correo());
@@ -246,7 +250,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     // ─── Paso 2 · segundo factor ───────────────────────────────────────────
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {SegundoFactorInvalidoException.class,
+            CuentaBloqueadaException.class})
     public SesionIniciada verificarSegundoFactor(ComandoDeSegundoFactor comando) {
         Instant momento = reloj.instant();
 
@@ -301,7 +306,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
     // ─── Renovacion ────────────────────────────────────────────────────────
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = ReutilizacionDeRefreshTokenException.class)
     public SesionIniciada renovar(String tokenDeRenovacion, HuellaDeCliente cliente) {
         Instant momento = reloj.instant();
 

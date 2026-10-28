@@ -4,9 +4,13 @@ import {
   cerrarSesion,
   consultarMiCuenta,
   consultarMovimientos,
+  consultarRendimiento,
   depositarSimulado,
+  descargarComprobante,
   renovarSesion,
+  iniciarConfirmacion,
   transferir,
+  verificarConfirmacion,
 } from "./api";
 import { formatearFecha, formatearImporte, normalizarImporte, nuevaClave } from "./formato";
 import {
@@ -135,13 +139,24 @@ describe("llamadas de la banca", () => {
     expect(vi.mocked(fetch).mock.calls[1][0]).toContain("/api/v1/cuentas/mia/movimientos?limite=5");
   });
 
+  it("el rendimiento se consulta con el token", async () => {
+    vi.mocked(fetch).mockResolvedValue(respuesta(200, { trea: "4.50", devengos: [] }));
+
+    const r = await consultarRendimiento("tk");
+
+    expect(r.trea).toBe("4.50");
+    expect(vi.mocked(fetch).mock.calls[0][0]).toContain("/api/v1/cuentas/mia/rendimiento");
+    expect(cabecerasDe(0).Authorization).toBe("Bearer tk");
+  });
+
   it("transferir y depositar viajan con la clave de idempotencia", async () => {
     vi.mocked(fetch).mockResolvedValue(respuesta(201, { movimientoId: "m" }));
 
-    await transferir("tk", "00111000000031", "150.00", "Cena", "clave-1");
+    await transferir("tk", "00111000000031", "150.00", "Cena", "clave-1", "confirmacion-1");
     await depositarSimulado("tk", "100.00", "clave-2");
 
     expect(cabecerasDe(0)["Idempotency-Key"]).toBe("clave-1");
+    expect(cabecerasDe(0)["X-Ayni-Confirmacion"]).toBe("confirmacion-1");
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({
       cuentaDestino: "00111000000031",
       importe: "150.00",
@@ -166,5 +181,42 @@ describe("llamadas de la banca", () => {
       method: "POST",
       credentials: "include",
     });
+  });
+
+  it("el comprobante en PDF se pide con el token y falla con un ErrorDeApi", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("%PDF-", { status: 200 }));
+    const pdf = await descargarComprobante("tk", "m-1");
+    expect(pdf.size).toBe(5);
+    expect(vi.mocked(fetch).mock.calls.at(-1)![0]).toContain(
+      "/api/v1/movimientos/m-1/comprobante.pdf",
+    );
+
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 404 }));
+    await expect(descargarComprobante("tk", "otro")).rejects.toMatchObject({ estado: 404 });
+
+    vi.mocked(fetch).mockRejectedValue(new TypeError("red"));
+    await expect(descargarComprobante("tk", "m-1")).rejects.toMatchObject({ estado: 0 });
+  });
+
+  it("la confirmacion con segundo factor va a identity con el token de acceso", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      respuesta(201, { confirmacionId: "c-1", metodo: "APP_AUTENTICADORA" }),
+    );
+    await iniciarConfirmacion("tk", {
+      destino: "1",
+      importe: "2",
+      moneda: "PEN",
+      claveIdempotencia: "k",
+    });
+    vi.mocked(fetch).mockResolvedValue(respuesta(200, { token: "t", expiraEn: "x" }));
+    await expect(verificarConfirmacion("tk", "c-1", "123456")).resolves.toEqual({
+      token: "t",
+      expiraEn: "x",
+    });
+
+    const llamadas = vi.mocked(fetch).mock.calls;
+    expect(llamadas.at(-2)![0]).toContain("/api/v1/confirmaciones");
+    expect(llamadas.at(-1)![0]).toContain("/api/v1/confirmaciones/c-1/verificacion");
+    expect(JSON.parse(llamadas.at(-1)![1]!.body as string)).toEqual({ codigo: "123456" });
   });
 });

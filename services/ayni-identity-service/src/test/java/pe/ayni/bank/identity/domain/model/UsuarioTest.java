@@ -54,6 +54,21 @@ class UsuarioTest {
         }
     }
 
+    @Test
+    @DisplayName("HU-21: cambiar la contrasena sustituye la credencial y conserva todo lo demas")
+    void cambiarContrasena() {
+        Usuario activo = unUsuarioRecienRegistrado().activar();
+        ContrasenaCifrada nueva = new ContrasenaCifrada("$argon2id$v=19$m=19456,t=2,p=1$b3RyYXNhbA$nuevahash");
+
+        Usuario cambiado = activo.cambiarContrasena(nueva);
+
+        assertThat(cambiado.contrasena()).isEqualTo(nueva);
+        assertThat(cambiado.estado()).isEqualTo(EstadoUsuario.ACTIVO);
+        assertThat(cambiado.id()).isEqualTo(activo.id());
+        assertThat(cambiado.correo()).isEqualTo(activo.correo());
+        assertThat(cambiado.registradoEn()).isEqualTo(activo.registradoEn());
+    }
+
     @Nested
     @DisplayName("Transiciones de estado")
     class Transiciones {

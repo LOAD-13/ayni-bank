@@ -27,8 +27,10 @@ public class VerificarDesafioCodigoService implements VerificarDesafioCodigoUseC
         this.repositorioDesafio = repositorioDesafio;
     }
 
+    /** El intento fallido se guarda aunque despues se lance la excepcion: si no, el codigo admite intentos ilimitados. */
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {CodigoDesafioInvalidoException.class,
+            MaximoIntentosDesafioExcedidoException.class})
     public boolean verificar(UUID desafioId, String codigoIngresado) {
         DesafioPorCodigo desafio = repositorioDesafio.buscarPorId(desafioId)
                 .orElseThrow(CodigoDesafioInvalidoException::new);

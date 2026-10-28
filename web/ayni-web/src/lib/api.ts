@@ -22,6 +22,8 @@ export interface Problema {
   errores?: ErrorDeCampo[];
   /** Motivo de negocio, p. ej. SIN_CUENTA o SALDO_INSUFICIENTE. */
   codigo?: string;
+  /** Intentos que le quedan a una confirmación con segundo factor (HU-07). */
+  intentosRestantes?: number;
 }
 
 export class ErrorDeApi extends Error {
@@ -146,6 +148,22 @@ export async function presentarCredenciales(
 
 export async function verificarSegundoFactor(desafioId: string, codigo: string): Promise<Sesion> {
   return pedir<Sesion>("/api/v1/sesion/segundo-factor", { desafioId, codigo });
+}
+
+// ─── Recuperación de la contraseña · HU-21 ───────────────────────────────
+
+/** Pide el enlace. La respuesta es la misma exista o no la cuenta (ADR-0008). */
+export async function solicitarRecuperacion(correo: string): Promise<{ mensaje: string }> {
+  return pedir<{ mensaje: string }>("/api/v1/recuperacion", { correo });
+}
+
+/** Resuelve si el enlace sirve; rechaza con un 410 si no. */
+export async function validarEnlaceDeRecuperacion(token: string): Promise<void> {
+  return pedir<void>("/api/v1/recuperacion/validacion", { token });
+}
+
+export async function restablecerContrasena(token: string, contrasenaNueva: string): Promise<void> {
+  return pedir<void>("/api/v1/recuperacion/confirmacion", { token, contrasenaNueva });
 }
 
 /** La cuenta de ahorro tal como la muestra la pantalla final del onboarding. */
@@ -385,11 +403,13 @@ export async function entregarSelfie(
  * exactamente quince minutos sin que nada indique por qué.
  */
 interface Opciones {
-  metodo?: "GET" | "POST" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "DELETE";
   /** Token de acceso para las rutas protegidas. Viaja como `Authorization: Bearer`. */
   token?: string;
   /** Clave de idempotencia de las operaciones monetarias. */
   idempotencia?: string;
+  /** Token de confirmación con segundo factor de una transferencia (HU-07, ADR-0031). */
+  confirmacion?: string;
 }
 
 async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {}): Promise<T> {
@@ -399,6 +419,7 @@ async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {})
   if (cuerpo !== undefined) cabeceras["Content-Type"] = "application/json";
   if (opciones.token) cabeceras.Authorization = `Bearer ${opciones.token}`;
   if (opciones.idempotencia) cabeceras["Idempotency-Key"] = opciones.idempotencia;
+  if (opciones.confirmacion) cabeceras["X-Ayni-Confirmacion"] = opciones.confirmacion;
 
   try {
     // Sin cuerpo es una consulta: GET. Mandar un POST con el cuerpo vacío para leer algo
@@ -476,8 +497,58 @@ export interface Comprobante {
   saldoDisponible: string;
 }
 
+/**
+ * HU-07: el comprobante de un movimiento en PDF. Va con el token de acceso en la cabecera,
+ * así que no puede ser un enlace simple: se descarga como blob.
+ */
+export async function descargarComprobante(token: string, movimientoId: string): Promise<Blob> {
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${BASE}/api/v1/movimientos/${movimientoId}/comprobante.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+  } catch {
+    throw new ErrorDeApi({ title: "No pudimos conectar con Ayni", status: 0 }, 0);
+  }
+  if (!respuesta.ok) {
+    throw new ErrorDeApi(
+      { title: "No pudimos descargar el comprobante", status: respuesta.status },
+      respuesta.status,
+    );
+  }
+  return respuesta.blob();
+}
+
 export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
   return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
+}
+
+/** Un dia de interes: con que saldo y a que tasa se calculo (HU-06, escenario 3). */
+export interface DevengoDiario {
+  fecha: string;
+  saldoBase: string;
+  /** TEA aplicada ese dia, en tanto por ciento. */
+  tea: string;
+  /** Con 8 decimales, como se guarda. */
+  importe: string;
+}
+
+/** HU-06: lo que rinde la cuenta. Todo llega como texto por la misma razon que el saldo. */
+export interface RendimientoDeCuenta {
+  tea: string;
+  trea: string;
+  treaIgualATea: boolean;
+  tasaVigenteDesde: string;
+  moneda: string;
+  devengadoDelMes: string;
+  devengadoDelMesRedondeado: string;
+  abonadoTotal: string;
+  devengos: DevengoDiario[];
+}
+
+export async function consultarRendimiento(token: string): Promise<RendimientoDeCuenta> {
+  return pedir<RendimientoDeCuenta>("/api/v1/cuentas/mia/rendimiento", undefined, { token });
 }
 
 export async function consultarMovimientos(token: string, limite = 10): Promise<Movimiento[]> {
@@ -511,10 +582,94 @@ export async function transferir(
   importe: string,
   concepto: string,
   clave: string,
+  confirmacion: string,
 ): Promise<Comprobante> {
   return pedir<Comprobante>(
     "/api/v1/transferencias",
     { cuentaDestino, importe, concepto },
-    { token, idempotencia: clave },
+    { token, idempotencia: clave, confirmacion },
+  );
+}
+
+// ─── Controles de la tarjeta · HU-10 ─────────────────────────────────────
+// Contrato en contracts/core-banking-controles-de-tarjeta.openapi.yaml.
+
+/** Los controles de la tarjeta de débito virtual. Los importes llegan como texto, como el saldo. */
+export interface ControlesDeTarjeta {
+  estado: "ACTIVA" | "CONGELADA";
+  /** Solo los cuatro últimos dígitos: el número completo nunca viaja en esta respuesta (HU-09). */
+  ultimos4: string;
+  moneda: string;
+  limiteDiario: string;
+  /** Lo consumido hoy, en hora de Lima: es lo que se compara con el límite diario. */
+  consumidoHoy: string;
+  comprasPorInternet: boolean;
+}
+
+/** Lo que el titular puede configurar. Se envía entero: es un PUT, no un parche. */
+export interface ConfiguracionDeTarjeta {
+  limiteDiario: string;
+  comprasPorInternet: boolean;
+}
+
+/** 404 si el titular todavía no tiene tarjeta: se emite al abrirse la cuenta (HU-09). */
+export async function consultarControlesDeTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", undefined, { token });
+}
+
+/** Escenario 1: efecto inmediato; cualquier consumo posterior se rechaza. */
+export async function congelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "POST",
+  });
+}
+
+export async function descongelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "DELETE",
+  });
+}
+
+export async function configurarTarjeta(
+  token: string,
+  configuracion: ConfiguracionDeTarjeta,
+): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", configuracion, {
+    token,
+    metodo: "PUT",
+  });
+}
+
+// ─── Confirmación con segundo factor · HU-07, ADR-0031 ───────────────────
+
+export interface ConfirmacionIniciada {
+  confirmacionId: string;
+  metodo: TipoDeSegundoFactor;
+  expiraEn: string;
+}
+
+/**
+ * Abre la confirmación de una transferencia. identity solo guarda su huella; si el titular
+ * eligió el correo, le envía el código.
+ */
+export async function iniciarConfirmacion(
+  token: string,
+  operacion: { destino: string; importe: string; moneda: string; claveIdempotencia: string },
+): Promise<ConfirmacionIniciada> {
+  return pedir<ConfirmacionIniciada>("/api/v1/confirmaciones", operacion, { token });
+}
+
+/** Comprueba el código y devuelve el token de 5 minutos que exige la transferencia. */
+export async function verificarConfirmacion(
+  token: string,
+  confirmacionId: string,
+  codigo: string,
+): Promise<{ token: string; expiraEn: string }> {
+  return pedir<{ token: string; expiraEn: string }>(
+    `/api/v1/confirmaciones/${confirmacionId}/verificacion`,
+    { codigo },
+    { token },
   );
 }

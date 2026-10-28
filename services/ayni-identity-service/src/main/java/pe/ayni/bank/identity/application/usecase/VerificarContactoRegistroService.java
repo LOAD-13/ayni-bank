@@ -33,8 +33,10 @@ public class VerificarContactoRegistroService implements VerificarContactoRegist
         this.repositorioMetodos = repositorioMetodos;
     }
 
+    /** El intento fallido se guarda aunque despues se lance la excepcion: si no, el codigo admite intentos ilimitados. */
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {CodigoDesafioInvalidoException.class,
+            MaximoIntentosDesafioExcedidoException.class})
     public boolean verificarContacto(SolicitudVerificacionContacto solicitud) {
         DesafioPorCodigo desafio = repositorioDesafio.buscarUltimoPendiente(solicitud.usuarioId(), solicitud.tipoContacto())
                 .filter(d -> !d.estaVerificado())
