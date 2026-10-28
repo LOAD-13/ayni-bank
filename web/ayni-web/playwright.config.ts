@@ -32,6 +32,20 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${PUERTO}`,
     trace: "on-first-retry",
+    // La bienvenida y el logro salen una sola vez y taparían el resto de pruebas: se dan
+    // por vistos. Las pruebas que los miden vacían este estado con `test.use`.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://127.0.0.1:${PUERTO}`,
+          localStorage: [
+            { name: "ayni.bienvenida-vista", value: "1" },
+            { name: "ayni.primera-operacion", value: "1" },
+          ],
+        },
+      ],
+    },
   },
 
   projects: [

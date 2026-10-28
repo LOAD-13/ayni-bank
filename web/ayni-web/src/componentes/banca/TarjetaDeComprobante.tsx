@@ -2,6 +2,7 @@ import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 
 import { DescargarComprobante } from "@/componentes/banca/DescargarComprobante";
+import { LogroDePrimeraOperacion } from "@/componentes/banca/LogroDePrimeraOperacion";
 import type { Comprobante } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
 
@@ -28,6 +29,10 @@ export function TarjetaDeComprobante({ comprobante }: { comprobante: Comprobante
         <h1 id="titulo-comprobante" className="text-h2 font-bold text-azul-800">
           {esDeposito ? "Depósito realizado" : "Transferencia realizada"}
         </h1>
+      </div>
+
+      <div className="mt-5 empty:hidden">
+        <LogroDePrimeraOperacion />
       </div>
 
       <p className="cifra mt-5 text-display text-azul-900" data-testid="importe-comprobante">

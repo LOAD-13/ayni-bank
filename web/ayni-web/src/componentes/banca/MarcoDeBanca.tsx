@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftRight,
+  CircleHelp,
   CreditCard,
   Landmark,
   LayoutGrid,
@@ -31,6 +32,7 @@ const NAVEGACION = [
   { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },
   { href: "/pendiente", texto: "Estados de cuenta", Icono: ReceiptText },
   { href: "/banca/configuracion", texto: "Configuración", Icono: Settings },
+  { href: "/banca/ayuda", texto: "Ayuda", Icono: CircleHelp },
 ];
 
 /**

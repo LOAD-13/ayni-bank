@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import { CampoDeTexto } from "@/componentes/CampoDeTexto";
+import { IndicadorDeProgreso, PASOS_DE_UNA_TRANSFERENCIA } from "@/componentes/IndicadorDeProgreso";
 import { MarcoDeOperacion } from "@/componentes/banca/MarcoDeOperacion";
 import { PasoDeConfirmacion } from "@/componentes/banca/PasoDeConfirmacion";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
@@ -197,8 +198,20 @@ export default function PaginaInterbancaria() {
     }
   }
 
+  const pasos = (
+    <IndicadorDeProgreso
+      pasos={PASOS_DE_UNA_TRANSFERENCIA}
+      pasoActual={resultado ? 4 : confirmacion ? 3 : borrador ? 2 : 1}
+    />
+  );
+
   if (resultado) {
-    return <Resultado resultado={resultado} />;
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="mx-auto w-full max-w-2xl">{pasos}</div>
+        <Resultado resultado={resultado} />
+      </div>
+    );
   }
 
   return (
@@ -207,6 +220,7 @@ export default function PaginaInterbancaria() {
       subtitulo="Con el CCI de 20 dígitos de la cuenta de destino."
       limite="Desde S/ 1.00 hasta S/ 5 000.00 por transferencia."
     >
+      {pasos}
       {error && !confirmacion && (
         <p
           role="alert"
