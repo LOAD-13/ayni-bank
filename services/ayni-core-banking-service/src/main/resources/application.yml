@@ -1,3 +1,4 @@
+
 spring:
   application:
     name: ayni-core-banking-service
@@ -27,7 +28,7 @@ spring:
 
   jpa:
     hibernate:
-      # `none` explicito. El esquema lo define Flyway y solo Flyway; que un ORM
+      # none explicito. El esquema lo define Flyway y solo Flyway; que un ORM
       # altere tablas por su cuenta es inaceptable en un sistema financiero.
       # Ver §4.5 del documento de diseño.
       ddl-auto: none
@@ -63,10 +64,56 @@ ayni:
     # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
     # migracion V3 con este mismo identificador.
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
+
   productos:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
+
+  # ─── AYNI-22: Camara de compensacion interbancaria ──────────────────────
+  camara:
+    # URL del simulador de camara de compensacion.
+    # Puede modificarse mediante la variable de entorno AYNI_CAMARA_URL.
+    url: ${AYNI_CAMARA_URL:http://localhost:8082/simulador/camara/v1}
+
+    # Tiempo maximo de espera para una transferencia: 5 minutos.
+    # Al vencer se debe iniciar la conciliacion de la operacion.
+    espera-maxima: ${AYNI_CAMARA_ESPERA:PT5M}
+
+    # Frecuencia de consulta de transferencias pendientes: 15 segundos.
+    conciliacion-ms: ${AYNI_CAMARA_CONCILIACION_MS:15000}
+
+# ─── AYNI-22: Resilience4j ─────────────────────────────────────────────────
+resilience4j:
+  retry:
+    instances:
+      camara:
+        # Numero maximo de intentos incluyendo el primero.
+        maxAttempts: 3
+
+        # Espera entre reintentos.
+        waitDuration: 250ms
+
+  circuitbreaker:
+    instances:
+      camara:
+        # Cantidad de llamadas evaluadas.
+        slidingWindowSize: 10
+
+        # Minimo de llamadas antes de calcular fallos.
+        minimumNumberOfCalls: 5
+
+        # Porcentaje de fallos que abre el circuito.
+        failureRateThreshold: 50
+
+        # Tiempo que permanece abierto antes de probar nuevamente.
+        waitDurationInOpenState: 15s
+
+        # Llamadas permitidas al pasar a HALF_OPEN.
+        permittedNumberOfCallsInHalfOpenState: 3
+
+        # Transicion automatica de OPEN a HALF_OPEN.
+        automaticTransitionFromOpenToHalfOpenEnabled: true
 
 server:
   port: 8082
@@ -76,6 +123,7 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+
   # Histograma de latencias para calcular el p95 en Grafana, y el nombre del
   # servicio como etiqueta comun de todas las metricas (AYNI-159).
   metrics:
@@ -84,10 +132,12 @@ management:
         http.server.requests: true
     tags:
       application: ${spring.application.name}
+
   endpoint:
     health:
       probes:
         enabled: true
+
   health:
     livenessState:
       enabled: true
