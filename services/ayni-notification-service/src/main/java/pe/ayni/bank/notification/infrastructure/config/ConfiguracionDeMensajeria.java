@@ -28,11 +28,14 @@ public class ConfiguracionDeMensajeria {
     public static final String COLA_DEPOSITOS = "notification.deposito-registrado";
     public static final String COLA_INTERESES = "notification.interes-capitalizado";
     public static final String COLA_SOLICITUDES_RECHAZADAS = "notification.solicitud-rechazada";
+    public static final String COLA_INTERBANCARIAS = "notification.transferencia-interbancaria-resuelta";
 
     static final String CLAVE_TITULAR_ACTIVADO = "identity.titular.activado";
     static final String CLAVE_TRANSFERENCIA = "core.transferencia.realizada";
     static final String CLAVE_DEPOSITO = "core.deposito.simulado.registrado";
     static final String CLAVE_INTERES = "core.interes.capitalizado";
+    /** HU-11: core-banking publica una sola vez el resultado, aceptada o rechazada. */
+    static final String CLAVE_INTERBANCARIA = "core.transferencia.interbancaria.resuelta";
     static final String CLAVE_SOLICITUD_RECHAZADA = "identity.solicitud.rechazada";
 
     @Bean
@@ -89,6 +92,16 @@ public class ConfiguracionDeMensajeria {
     @Bean
     public Binding enlaceDeIntereses() {
         return BindingBuilder.bind(colaDeIntereses()).to(exchangeDeEventos()).with(CLAVE_INTERES);
+    }
+
+    @Bean
+    public Queue colaDeInterbancarias() {
+        return QueueBuilder.durable(COLA_INTERBANCARIAS).build();
+    }
+
+    @Bean
+    public Binding enlaceDeInterbancarias() {
+        return BindingBuilder.bind(colaDeInterbancarias()).to(exchangeDeEventos()).with(CLAVE_INTERBANCARIA);
     }
 
     @Bean

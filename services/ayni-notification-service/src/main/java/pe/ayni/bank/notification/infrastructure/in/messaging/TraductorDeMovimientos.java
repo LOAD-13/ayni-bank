@@ -70,6 +70,26 @@ public final class TraductorDeMovimientos {
     }
 
     /**
+     * HU-11: un solo aviso para el titular, tanto si la camara acepto la transferencia como si
+     * el dinero volvio a su cuenta. El CCI llega ya recortado a sus cuatro ultimos digitos.
+     */
+    public static List<AvisoDeMovimiento> deInterbancaria(UUID eventoId, TransferenciaInterbancariaResuelta e) {
+        if (e.usuarioId() == null) {
+            return List.of();
+        }
+        boolean aceptada = "COMPLETADA".equals(e.estado());
+        Map<String, String> datos = datos(e.movimientoId(), e.importe(), e.moneda(), e.cuenta(), e.saldo(),
+                e.registradoEn(), "CCI terminado en " + e.cciFinal());
+        if (!aceptada) {
+            datos.put("motivo", "SIN_RESPUESTA_EN_PLAZO".equals(e.motivo())
+                    ? "el otro banco no confirmó la operación a tiempo"
+                    : "el otro banco no aceptó la operación");
+        }
+        return List.of(new AvisoDeMovimiento(eventoId, e.usuarioId(),
+                aceptada ? TipoDeAviso.INTERBANCARIA_COMPLETADA : TipoDeAviso.INTERBANCARIA_RECHAZADA, datos));
+    }
+
+    /**
      * El identificador del evento es el {@code messageId} que pone el outbox de core-banking.
      * Si faltara, se usa el del movimiento, que tambien es unico por evento.
      */
@@ -116,6 +136,13 @@ public final class TraductorDeMovimientos {
     /** Lo que publica core-banking al capitalizar (HU-06). {@code periodo} es {@code AAAA-MM}. */
     public record InteresCapitalizado(UUID movimientoId, UUID cuentaId, UUID usuarioId, String cuenta, String importe,
                                       String moneda, String saldo, String periodo, String registradoEn) {
+    }
+
+    /** Lo que publica core-banking al resolver una transferencia interbancaria (HU-11). */
+    public record TransferenciaInterbancariaResuelta(UUID transferenciaId, UUID movimientoId, UUID usuarioId,
+                                                     String estado, String motivo, String cuenta, String cciFinal,
+                                                     String importe, String moneda, String saldo,
+                                                     String registradoEn) {
     }
 
     public record DepositoSimuladoRegistrado(UUID movimientoId, UUID cuentaId, String importe, String moneda,

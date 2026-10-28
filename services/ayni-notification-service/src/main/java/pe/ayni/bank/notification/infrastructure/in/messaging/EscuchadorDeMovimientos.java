@@ -9,6 +9,7 @@ import pe.ayni.bank.notification.domain.port.in.RegistrarAvisosUseCase;
 import pe.ayni.bank.notification.infrastructure.config.ConfiguracionDeMensajeria;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.DepositoSimuladoRegistrado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.InteresCapitalizado;
+import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaInterbancariaResuelta;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaRealizada;
 
 /**
@@ -47,6 +48,14 @@ public class EscuchadorDeMovimientos {
                                            @Header(name = AmqpHeaders.MESSAGE_ID, required = false)
                                            String messageId) {
         registrar.registrar(TraductorDeMovimientos.deInteres(
+                TraductorDeMovimientos.eventoId(messageId, evento.movimientoId()), evento));
+    }
+
+    @RabbitListener(queues = ConfiguracionDeMensajeria.COLA_INTERBANCARIAS)
+    public void alResolverseUnaInterbancaria(TransferenciaInterbancariaResuelta evento,
+                                             @Header(name = AmqpHeaders.MESSAGE_ID, required = false)
+                                             String messageId) {
+        registrar.registrar(TraductorDeMovimientos.deInterbancaria(
                 TraductorDeMovimientos.eventoId(messageId, evento.movimientoId()), evento));
     }
 }
