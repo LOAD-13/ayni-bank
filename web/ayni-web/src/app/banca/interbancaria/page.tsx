@@ -1,393 +1,449 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+
+import { Boton } from "@/componentes/Boton";
+import { CampoDeTexto } from "@/componentes/CampoDeTexto";
+import { MarcoDeOperacion } from "@/componentes/banca/MarcoDeOperacion";
+import { PasoDeConfirmacion } from "@/componentes/banca/PasoDeConfirmacion";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
-import { normalizarImporte } from "@/lib/formato";
+import {
+  ErrorDeApi,
+  beneficiariosFrecuentes,
+  borrarBeneficiario,
+  guardarBeneficiario,
+  iniciarConfirmacion,
+  transferirInterbancaria,
+  validarCci,
+  verificarConfirmacion,
+  type Beneficiario,
+  type ConfirmacionIniciada,
+  type TransferenciaInterbancaria,
+} from "@/lib/api";
+import { formatearImporte, normalizarImporte, nuevaClave } from "@/lib/formato";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
-type Beneficiario = {
-  id: string;
-  alias: string;
+interface Borrador {
   cci: string;
-};
+  importe: string;
+  concepto: string;
+}
 
-type Transferencia = {
-  id: string;
-  estado: "PENDIENTE" | "COMPLETADA" | "RECHAZADA";
-};
+type EstadoDelCci = "vacio" | "incompleto" | "validando" | "valido" | "invalido";
 
+/** Espera desde la última tecla antes de preguntar al servidor si el CCI es válido. */
+const ESPERA_DE_VALIDACION_MS = 400;
+
+/**
+ * Transferencia a otro banco por CCI · HU-11. Los mismos cuatro pasos que la transferencia
+ * entre cuentas Ayni (datos, revisión, segundo factor y resultado), porque mueve dinero igual.
+ *
+ * El CCI se valida mientras se escribe, con una espera de 400 ms para no consultar en cada
+ * tecla; si llega una respuesta de un CCI que ya no es el escrito, se descarta. El servidor lo
+ * vuelve a validar al enviar: la validación del navegador no es un control de seguridad.
+ */
 export default function PaginaInterbancaria() {
-  const { usuarioId, token } = useSesion();
-
+  const { token } = useSesion();
   const [cci, setCci] = useState("");
-  const [importe, setImporte] = useState("");
-  const [concepto, setConcepto] = useState("");
-  const [alias, setAlias] = useState("");
-
-  const [cciValido, setCciValido] = useState(false);
-  const [validando, setValidando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [mensaje, setMensaje] = useState("");
-  const [error, setError] = useState("");
-
+  const [estadoDelCci, setEstadoDelCci] = useState<EstadoDelCci>("vacio");
+  const [borrador, setBorrador] = useState<Borrador | null>(null);
+  const [escrito, setEscrito] = useState<Borrador | null>(null);
+  const [errores, setErrores] = useState<Partial<Record<keyof Borrador, string>>>({});
+  const [clave, setClave] = useState<string | null>(null);
+  const [confirmacion, setConfirmacion] = useState<ConfirmacionIniciada | null>(null);
+  const [resultado, setResultado] = useState<TransferenciaInterbancaria | null>(null);
   const [beneficiarios, setBeneficiarios] = useState<Beneficiario[]>([]);
-
-  const [clave, setClave] = useState("");
+  const [alias, setAlias] = useState("");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const consulta = useRef(0);
 
   useEffect(() => {
-    setClave(crypto.randomUUID());
-  }, []);
+    let vigente = true;
+    void token()
+      .then((t) => beneficiariosFrecuentes(t))
+      .then((lista) => vigente && setBeneficiarios(lista))
+      .catch(() => {
+        // Sin beneficiarios la transferencia sigue disponible.
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [token]);
 
-  // Validar el CCI desde el backend.
   useEffect(() => {
-    setCciValido(false);
-
-    if (!/^\d{20}$/.test(cci)) {
-      setValidando(false);
+    const limpio = cci.replace(/[\s-]/g, "");
+    if (!limpio) {
+      setEstadoDelCci("vacio");
       return;
     }
-
-    const controller = new AbortController();
-
-    async function validar() {
-      setValidando(true);
-
-      try {
-        const jwt = await token();
-
-        const respuesta = await fetch(`${API_URL}/api/v1/interbancarias/validar-cci/${cci}`, {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-          signal: controller.signal,
-        });
-
-        if (!respuesta.ok) {
-          throw new Error("Error al validar");
-        }
-
-        const resultado: boolean = await respuesta.json();
-
-        if (!controller.signal.aborted) {
-          setCciValido(resultado === true);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setCciValido(false);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setValidando(false);
-        }
-      }
+    if (!/^\d{20}$/.test(limpio)) {
+      setEstadoDelCci("incompleto");
+      return;
     }
-
-    void validar();
-
-    return () => controller.abort();
+    setEstadoDelCci("validando");
+    const numero = ++consulta.current;
+    const espera = setTimeout(() => {
+      void token()
+        .then((t) => validarCci(t, limpio))
+        .then((valido) => {
+          if (numero === consulta.current) setEstadoDelCci(valido ? "valido" : "invalido");
+        })
+        .catch(() => {
+          if (numero === consulta.current) setEstadoDelCci("incompleto");
+        });
+    }, ESPERA_DE_VALIDACION_MS);
+    return () => clearTimeout(espera);
   }, [cci, token]);
 
-  // Consultar beneficiarios frecuentes.
-  useEffect(() => {
-    if (!usuarioId) return;
+  function revisar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const datos = new FormData(evento.currentTarget);
+    const tecleado = {
+      cci,
+      importe: String(datos.get("importe") ?? ""),
+      concepto: String(datos.get("concepto") ?? ""),
+    };
+    setEscrito(tecleado);
+    const limpio = cci.replace(/[\s-]/g, "");
+    const importe = normalizarImporte(tecleado.importe);
 
-    const controller = new AbortController();
-
-    async function cargar() {
-      try {
-        const jwt = await token();
-
-        const respuesta = await fetch(
-          `${API_URL}/api/v1/interbancarias/beneficiarios?usuarioId=${usuarioId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${jwt}`,
-            },
-            signal: controller.signal,
-          },
-        );
-
-        if (!respuesta.ok) return;
-
-        const datos: Beneficiario[] = await respuesta.json();
-
-        if (!controller.signal.aborted) {
-          setBeneficiarios(datos);
-        }
-      } catch {
-        // Se mantiene la pantalla disponible.
-      }
+    const encontrados: Partial<Record<keyof Borrador, string>> = {};
+    if (estadoDelCci !== "valido") {
+      encontrados.cci = "Revisa el CCI: son 20 dígitos y los dos últimos lo validan.";
     }
-
-    void cargar();
-
-    return () => controller.abort();
-  }, [usuarioId, token]);
-
-  // Guardar beneficiario frecuente.
-  async function guardarBeneficiario() {
-    if (!usuarioId || !cciValido || !alias.trim()) return;
-
-    setError("");
-
-    try {
-      const jwt = await token();
-
-      const respuesta = await fetch(`${API_URL}/api/v1/interbancarias/beneficiarios`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({
-          usuarioId,
-          alias: alias.trim(),
-          cci,
-        }),
-      });
-
-      if (!respuesta.ok) throw new Error();
-
-      const guardado: Beneficiario = await respuesta.json();
-
-      setBeneficiarios((actuales) => [...actuales.filter((b) => b.cci !== guardado.cci), guardado]);
-
-      setAlias("");
-      setMensaje("Beneficiario guardado correctamente.");
-    } catch {
-      setError("No se pudo guardar el beneficiario.");
+    if (!importe) {
+      encontrados.importe = "Escribe un importe válido, con hasta dos decimales.";
     }
+    setErrores(encontrados);
+    if (Object.keys(encontrados).length > 0 || !importe) return;
+
+    setError(null);
+    setBorrador({ cci: limpio, importe, concepto: tecleado.concepto.trim() });
+    setClave(nuevaClave());
   }
 
-  // Eliminar beneficiario frecuente.
-  async function eliminarBeneficiario(id: string) {
-    if (!usuarioId) return;
-
-    try {
-      const jwt = await token();
-
-      const respuesta = await fetch(
-        `${API_URL}/api/v1/interbancarias/beneficiarios/${id}?usuarioId=${usuarioId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        },
-      );
-
-      if (!respuesta.ok) throw new Error();
-
-      setBeneficiarios((actuales) => actuales.filter((b) => b.id !== id));
-
-      setMensaje("Beneficiario eliminado.");
-    } catch {
-      setError("No se pudo eliminar el beneficiario.");
-    }
-  }
-
-  // Enviar transferencia interbancaria.
-  async function transferir(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-
-    if (!usuarioId || !clave || !cciValido || enviando) {
-      return;
-    }
-
-    const monto = normalizarImporte(importe);
-
-    if (monto === null || Number(monto) < 1 || Number(monto) > 5000) {
-      setError("El importe debe estar entre S/ 1 y S/ 5,000.");
-      return;
-    }
-
+  async function confirmar() {
+    if (!borrador || !clave) return;
     setEnviando(true);
-    setError("");
-    setMensaje("");
-
+    setError(null);
     try {
-      const jwt = await token();
-
-      const respuesta = await fetch(`${API_URL}/api/v1/interbancarias`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({
-          usuarioId,
-          clave,
-          cci,
-          importe: monto,
-          concepto: concepto.trim(),
+      setConfirmacion(
+        await iniciarConfirmacion(await token(), {
+          destino: borrador.cci,
+          importe: borrador.importe,
+          moneda: "PEN",
+          claveIdempotencia: clave,
         }),
-      });
-
-      if (!respuesta.ok) throw new Error();
-
-      const resultado: Transferencia = await respuesta.json();
-
-      setMensaje(`Transferencia ${resultado.estado}. Operacion: ${resultado.id}`);
-
-      setClave(crypto.randomUUID());
-      setImporte("");
-      setConcepto("");
-    } catch {
-      setError("No se pudo confirmar la operacion. " + "Consulta su estado antes de reintentar.");
+      );
+    } catch (fallo) {
+      setError(mensajeDe(fallo));
     } finally {
       setEnviando(false);
     }
   }
 
+  async function verificar(codigo: string) {
+    if (!borrador || !clave || !confirmacion) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      const vigente = await token();
+      const confirmada = await verificarConfirmacion(vigente, confirmacion.confirmacionId, codigo);
+      setResultado(
+        await transferirInterbancaria(
+          vigente,
+          borrador.cci,
+          borrador.importe,
+          borrador.concepto,
+          clave,
+          confirmada.token,
+        ),
+      );
+    } catch (fallo) {
+      // La clave se conserva: reintentar una transferencia ya hecha devuelve su resultado.
+      if (fallo instanceof ErrorDeApi && (fallo.estado === 410 || fallo.estado === 403)) {
+        setConfirmacion(null);
+      }
+      setError(mensajeDe(fallo));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function guardar() {
+    const limpio = cci.replace(/[\s-]/g, "");
+    if (estadoDelCci !== "valido" || !alias.trim()) return;
+    setError(null);
+    try {
+      const guardado = await guardarBeneficiario(await token(), alias.trim(), limpio);
+      setBeneficiarios((lista) => [...lista.filter((b) => b.cci !== guardado.cci), guardado]);
+      setAlias("");
+      setAviso(`Guardamos a ${guardado.alias} entre tus beneficiarios.`);
+    } catch (fallo) {
+      setError(mensajeDe(fallo));
+    }
+  }
+
+  async function borrar(beneficiario: Beneficiario) {
+    setError(null);
+    try {
+      await borrarBeneficiario(await token(), beneficiario.id);
+      setBeneficiarios((lista) => lista.filter((b) => b.id !== beneficiario.id));
+      setAviso(`Quitamos a ${beneficiario.alias} de tus beneficiarios.`);
+    } catch (fallo) {
+      setError(mensajeDe(fallo));
+    }
+  }
+
+  if (resultado) {
+    return <Resultado resultado={resultado} />;
+  }
+
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-2 text-2xl font-bold">Transferencia interbancaria</h1>
-
-      <p className="mb-6 text-gray-600">Envia dinero a otro banco mediante CCI.</p>
-
-      {error && (
-        <p role="alert" className="mb-4 text-red-600">
+    <MarcoDeOperacion
+      titulo="Transferir a otro banco"
+      subtitulo="Con el CCI de 20 dígitos de la cuenta de destino."
+      limite="Desde S/ 1.00 hasta S/ 5 000.00 por transferencia."
+    >
+      {error && !confirmacion && (
+        <p
+          role="alert"
+          className="mt-5 rounded-lg border border-error bg-blanco p-4 text-body text-error"
+        >
           {error}
         </p>
       )}
-
-      {mensaje && (
-        <p role="status" className="mb-4 text-green-700">
-          {mensaje}
+      {aviso && (
+        <p role="status" className="mt-5 text-small text-gris-700">
+          {aviso}
         </p>
       )}
 
-      <form onSubmit={transferir} className="space-y-5 rounded-xl border bg-white p-6">
-        <div>
-          <label htmlFor="cci" className="block font-medium">
-            CCI del destinatario
-          </label>
-
-          <input
-            id="cci"
-            type="text"
-            inputMode="numeric"
-            maxLength={20}
-            required
-            value={cci}
-            onChange={(e) => setCci(e.target.value.replace(/\D/g, ""))}
-            placeholder="20 digitos del CCI"
-            className="w-full rounded-lg border p-3"
-          />
-
-          <p role="status" className="mt-2 text-sm">
-            {validando ? "Validando CCI..." : cciValido ? "CCI valido" : "Ingrese un CCI valido"}
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="beneficiario" className="block font-medium">
-            Beneficiarios frecuentes
-          </label>
-
-          <select
-            id="beneficiario"
-            value=""
-            onChange={(e) => setCci(e.target.value)}
-            className="w-full rounded-lg border p-3"
-          >
-            <option value="">Seleccionar beneficiario</option>
-
-            {beneficiarios.map((b) => (
-              <option key={b.id} value={b.cci}>
-                {b.alias} - {b.cci}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="alias" className="block font-medium">
-            Alias del beneficiario
-          </label>
-
-          <div className="flex gap-2">
-            <input
-              id="alias"
-              type="text"
-              maxLength={80}
-              value={alias}
-              onChange={(e) => setAlias(e.target.value)}
-              placeholder="Nombre o alias"
-              className="min-w-0 flex-1 rounded-lg border p-3"
-            />
-
-            <button
-              type="button"
-              onClick={guardarBeneficiario}
-              disabled={!cciValido || !alias.trim()}
-              className="rounded-lg bg-blue-800 px-4 text-white disabled:opacity-50"
-            >
-              Guardar
-            </button>
-          </div>
-        </div>
-
-        {beneficiarios.map((b) => (
-          <div key={b.id} className="flex justify-between gap-2 rounded border p-2">
-            <span className="text-sm">
-              {b.alias} - {b.cci}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => eliminarBeneficiario(b.id)}
-              className="text-red-600"
-            >
-              Eliminar
-            </button>
-          </div>
-        ))}
-
-        <div>
-          <label htmlFor="importe" className="block font-medium">
-            Importe (S/)
-          </label>
-
-          <input
-            id="importe"
-            type="number"
-            min="1"
-            max="5000"
-            step="0.01"
-            required
-            value={importe}
-            onChange={(e) => setImporte(e.target.value)}
-            placeholder="0.00"
-            className="w-full rounded-lg border p-3"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="concepto" className="block font-medium">
-            Concepto
-          </label>
-
-          <input
-            id="concepto"
-            type="text"
-            maxLength={140}
-            value={concepto}
-            onChange={(e) => setConcepto(e.target.value)}
-            placeholder="Motivo de la transferencia"
-            className="w-full rounded-lg border p-3"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={!cciValido || validando || enviando || !clave}
-          className="w-full rounded-lg bg-blue-800 p-3 font-semibold text-white disabled:opacity-50"
+      {borrador && confirmacion ? (
+        <PasoDeConfirmacion
+          metodo={confirmacion.metodo}
+          onVerificar={verificar}
+          onCancelar={() => {
+            setConfirmacion(null);
+            setError(null);
+          }}
+          enviando={enviando}
+          error={error}
+        />
+      ) : borrador ? (
+        <section
+          aria-labelledby="titulo-confirmar"
+          className="mt-6 rounded-[20px] border border-azul-200 bg-blanco p-7"
         >
-          {enviando ? "Procesando transferencia..." : "Realizar transferencia"}
-        </button>
-      </form>
-    </main>
+          <h2 id="titulo-confirmar" className="text-h3 font-bold text-azul-900">
+            Confirma la transferencia
+          </h2>
+          <dl className="mt-4 divide-y divide-azul-100">
+            <Fila clave="CCI de destino" valor={agrupar(borrador.cci)} />
+            <Fila clave="Importe" valor={formatearImporte(borrador.importe)} />
+            <Fila clave="Concepto" valor={borrador.concepto || "Transferencia interbancaria"} />
+          </dl>
+          <p className="mt-4 text-small text-gris-700">
+            El dinero sale de tu cuenta al confirmar. Si el otro banco no la acepta, te lo
+            devolvemos y te avisamos por correo.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Boton type="button" onClick={confirmar} cargando={enviando}>
+              Confirmar con mi segundo factor
+            </Boton>
+            <Boton
+              type="button"
+              variante="contorno"
+              disabled={enviando}
+              onClick={() => {
+                setBorrador(null);
+                setClave(null);
+                setConfirmacion(null);
+              }}
+            >
+              Corregir
+            </Boton>
+          </div>
+        </section>
+      ) : (
+        <>
+          {beneficiarios.length > 0 && (
+            <section aria-labelledby="titulo-beneficiarios" className="mt-6">
+              <h2 id="titulo-beneficiarios" className="text-small font-semibold text-gris-900">
+                Tus beneficiarios frecuentes
+              </h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                {beneficiarios.map((b) => (
+                  <li
+                    key={b.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-azul-200 bg-blanco px-4 py-3"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setCci(b.cci)}
+                      className="text-left text-small text-azul-900 underline-offset-2 hover:underline"
+                    >
+                      {b.alias} · termina en {b.cci.slice(-4)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => borrar(b)}
+                      className="text-small text-gris-700 hover:text-error"
+                      aria-label={`Quitar a ${b.alias} de tus beneficiarios`}
+                    >
+                      Quitar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <form
+            onSubmit={revisar}
+            noValidate
+            className="mt-6 flex flex-col gap-5 rounded-[20px] border border-azul-200 bg-blanco p-7"
+          >
+            <CampoDeTexto
+              etiqueta="CCI de destino"
+              name="cci"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="002-193-000012345678-86"
+              ayuda={ayudaDelCci(estadoDelCci)}
+              value={cci}
+              onChange={(e) => setCci(e.target.value)}
+              error={
+                errores.cci ?? (estadoDelCci === "invalido" ? ayudaDelCci("invalido") : undefined)
+              }
+            />
+            <CampoDeTexto
+              etiqueta="Importe en soles"
+              name="importe"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.00"
+              defaultValue={escrito?.importe}
+              error={errores.importe}
+            />
+            <CampoDeTexto
+              etiqueta="Concepto (opcional)"
+              name="concepto"
+              maxLength={60}
+              autoComplete="off"
+              defaultValue={escrito?.concepto}
+            />
+            {estadoDelCci === "valido" && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <CampoDeTexto
+                    etiqueta="Guardar como beneficiario (opcional)"
+                    name="alias"
+                    maxLength={80}
+                    autoComplete="off"
+                    placeholder="Mamá, Alquiler…"
+                    value={alias}
+                    onChange={(e) => setAlias(e.target.value)}
+                  />
+                </div>
+                <Boton type="button" variante="contorno" disabled={!alias.trim()} onClick={guardar}>
+                  Guardar
+                </Boton>
+              </div>
+            )}
+            <Boton type="submit">Continuar</Boton>
+          </form>
+        </>
+      )}
+    </MarcoDeOperacion>
   );
+}
+
+function Resultado({ resultado }: { resultado: TransferenciaInterbancaria }) {
+  const textos = {
+    COMPLETADA: {
+      titulo: "Transferencia enviada",
+      cuerpo: "El otro banco ya la aceptó. Te enviamos el detalle por correo.",
+    },
+    PENDIENTE: {
+      titulo: "Transferencia en camino",
+      cuerpo:
+        "El otro banco todavía no la confirma. Te avisaremos por correo; si no la acepta, te devolvemos el dinero.",
+    },
+    RECHAZADA: {
+      titulo: "El otro banco no aceptó la transferencia",
+      cuerpo: "Te devolvimos el dinero a tu cuenta. Revisa el CCI con quien te lo dio.",
+    },
+  }[resultado.estado];
+  return (
+    <section
+      aria-labelledby="titulo-resultado"
+      className="mx-auto mt-10 max-w-xl rounded-[20px] border border-azul-200 bg-blanco p-7"
+    >
+      <h1 id="titulo-resultado" className="text-h3 font-bold text-azul-900">
+        {textos.titulo}
+      </h1>
+      <p className="mt-3 text-body text-gris-700">{textos.cuerpo}</p>
+      <p className="mt-3 text-small text-gris-700">
+        Operación {resultado.id.slice(0, 8).toUpperCase()}
+      </p>
+      <Link
+        href="/banca"
+        className="mt-6 inline-block rounded-lg bg-azul-700 px-5 py-3 text-body font-semibold text-blanco"
+      >
+        Volver a mi banca
+      </Link>
+    </section>
+  );
+}
+
+function Fila({ clave, valor }: { clave: string; valor: string }) {
+  return (
+    <div className="flex justify-between gap-6 py-3">
+      <dt className="text-small text-gris-700">{clave}</dt>
+      <dd className="text-right text-small font-semibold text-gris-900">{valor}</dd>
+    </div>
+  );
+}
+
+function ayudaDelCci(estado: EstadoDelCci): string {
+  switch (estado) {
+    case "validando":
+      return "Comprobando el CCI…";
+    case "valido":
+      return "CCI válido.";
+    case "invalido":
+      return "Este CCI no es válido: revisa los dos últimos dígitos.";
+    default:
+      return "Los 20 dígitos del CCI, con o sin guiones.";
+  }
+}
+
+/** 00219300001234567886 → 002-193-000012345678-86, como lo muestran los bancos. */
+function agrupar(cci: string): string {
+  return cci.replace(/^(\d{3})(\d{3})(\d{12})(\d{2})$/, "$1-$2-$3-$4");
+}
+
+/** Mensajes para el cliente a partir de los códigos de identity y core-banking. */
+function mensajeDe(fallo: unknown): string {
+  if (!(fallo instanceof ErrorDeApi)) {
+    return "No pudimos completar la transferencia. Inténtalo de nuevo.";
+  }
+  const intentos = fallo.problema.intentosRestantes;
+  if (fallo.estado === 422 && typeof intentos === "number") {
+    return intentos > 0
+      ? `El código no es correcto. Te quedan ${intentos} intento${intentos === 1 ? "" : "s"}.`
+      : "El código no es correcto y se agotaron los intentos. Vuelve a confirmar.";
+  }
+  switch (fallo.estado) {
+    case 410:
+      return "La confirmación venció. Vuelve a confirmar la transferencia.";
+    case 403:
+      return "Tu confirmación ya no es válida. Vuelve a confirmar la transferencia.";
+    case 423:
+      return "Pausamos las operaciones unos minutos por varios códigos incorrectos.";
+    default:
+      return fallo.problema.detail ?? fallo.message;
+  }
 }

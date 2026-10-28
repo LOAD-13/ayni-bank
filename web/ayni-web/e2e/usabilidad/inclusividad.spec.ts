@@ -40,7 +40,13 @@ test.describe("Usabilidad · Inclusividad", () => {
 
   // Las páginas públicas las revisa accesibilidad.a11y.spec.ts y la tarjeta, tarjeta.spec.ts.
   // Faltaba la banca con la sesión abierta, que es donde el cliente pasa su tiempo.
-  for (const ruta of ["/banca", "/banca/transferir", "/banca/depositar", "/banca/configuracion"]) {
+  for (const ruta of [
+    "/banca",
+    "/banca/transferir",
+    "/banca/interbancaria",
+    "/banca/depositar",
+    "/banca/configuracion",
+  ]) {
     test(`${ruta} no presenta violaciones de WCAG 2.1 AA con la sesión abierta`, async ({
       page,
     }) => {
