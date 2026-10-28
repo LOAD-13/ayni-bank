@@ -453,7 +453,13 @@ async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {})
   try {
     problema = (await respuesta.json()) as Problema;
   } catch {
-    problema = { title: "No pudimos completar la operación", status: respuesta.status };
+    // Sin cuerpo legible no hay detalle del servidor, y las pantallas muestran el detalle
+    // antes que el título: que diga también qué hacer.
+    problema = {
+      title: "No pudimos completar la operación",
+      detail: "No pudimos completar la operación. Inténtalo de nuevo en unos minutos.",
+      status: respuesta.status,
+    };
   }
 
   throw new ErrorDeApi(problema, respuesta.status);

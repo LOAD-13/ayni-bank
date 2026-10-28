@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 import { conSesion } from "./apoyo";
@@ -36,4 +37,22 @@ test.describe("Usabilidad · Inclusividad", () => {
 
     expect(enMovimiento, "animaciones en marcha pese a «reducir movimiento»").toEqual([]);
   });
+
+  // Las páginas públicas las revisa accesibilidad.a11y.spec.ts y la tarjeta, tarjeta.spec.ts.
+  // Faltaba la banca con la sesión abierta, que es donde el cliente pasa su tiempo.
+  for (const ruta of ["/banca", "/banca/transferir", "/banca/depositar", "/banca/configuracion"]) {
+    test(`${ruta} no presenta violaciones de WCAG 2.1 AA con la sesión abierta`, async ({
+      page,
+    }) => {
+      await conSesion(page);
+      await page.goto(ruta);
+      await page.waitForLoadState("networkidle");
+
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+
+      expect(violations.map((v) => `[${v.id}] ${v.help}`)).toEqual([]);
+    });
+  }
 });
