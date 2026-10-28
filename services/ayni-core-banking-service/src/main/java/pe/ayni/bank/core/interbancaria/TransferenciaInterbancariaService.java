@@ -1,4 +1,3 @@
-
 package pe.ayni.bank.core.interbancaria;
 
 import java.math.BigDecimal;
@@ -11,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import pe.ayni.bank.core.application.interbancaria.ValidadorCci;
 import pe.ayni.bank.core.domain.model.Cci;
 
 @Service
@@ -69,7 +69,7 @@ public class TransferenciaInterbancariaService {
             );
         }
 
-        new Cci(s.cci());
+        ValidadorCci.validar(s.cci());
 
         if (s.importe().scale() > 2 ||
             s.importe().compareTo(BigDecimal.ONE) < 0 ||
@@ -331,7 +331,7 @@ public class TransferenciaInterbancariaService {
         String alias,
         String cci
     ) {
-        new Cci(cci);
+        ValidadorCci.validar(cci);
 
         if (alias == null || alias.isBlank()
             || alias.length() > 80) {
