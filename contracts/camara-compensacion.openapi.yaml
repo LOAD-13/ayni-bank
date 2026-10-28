@@ -14,6 +14,12 @@ paths:
     post:
       summary: Enviar transferencia interbancaria
       operationId: enviarTransferencia
+      description: >-
+        Sin la cabecera X-Escenario-Simulador, el resultado depende del codigo de entidad del
+        CCI (sus tres primeros digitos), como las tarjetas de prueba de una pasarela de pagos:
+        097 rechaza, 098 no decide nunca (sirve para ver la reversion por plazo vencido) y
+        cualquier otra entidad acepta. La decision se recuerda: reenviar el mismo id devuelve
+        la misma respuesta.
       parameters:
         - in: header
           name: X-Escenario-Simulador

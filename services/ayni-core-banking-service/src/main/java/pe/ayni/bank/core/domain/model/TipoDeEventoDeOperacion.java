@@ -18,5 +18,10 @@ public enum TipoDeEventoDeOperacion {
      * HU-08: se pidio el comprobante de un movimiento de otra persona y se denego. Evento de
      * seguridad: guarda el movimiento que se intento leer, nunca su contenido.
      */
-    ACCESO_AJENO_DENEGADO
+    ACCESO_AJENO_DENEGADO,
+    /** HU-11: el cargo de una transferencia a otro banco, a la espera de la camara. */
+    INTERBANCARIA_ENVIADA,
+    INTERBANCARIA_COMPLETADA,
+    /** HU-11: la devolucion del importe porque la camara la rechazo o no respondio a tiempo. */
+    INTERBANCARIA_REVERTIDA
 }

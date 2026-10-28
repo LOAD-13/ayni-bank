@@ -1,5 +1,5 @@
 
-package pe.ayni.bank.core.interbancaria;
+package pe.ayni.bank.core.infrastructure.interbancaria;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -9,9 +9,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Simulador de la camara de compensacion interbancaria (HU-11), conforme a
+ * {@code contracts/camara-compensacion.openapi.yaml}. Hace el papel del sistema externo en el
+ * entorno academico; el gateway no lo publica, solo lo llama {@link CamaraHttpAdapter}.
+ *
+ * <p>La respuesta depende del codigo de entidad del CCI, como las tarjetas de prueba de una
+ * pasarela de pagos: {@value #ENTIDAD_QUE_RECHAZA} rechaza, {@value #ENTIDAD_QUE_NO_RESPONDE}
+ * nunca decide (sirve para ver la reversion por plazo vencido) y cualquier otra acepta. La
+ * cabecera {@code X-Escenario-Simulador} fuerza un resultado concreto en las pruebas.
+ */
 @RestController
 @RequestMapping("/simulador/camara/v1/transferencias")
 public class CamaraSimuladaController {
+
+    static final String ENTIDAD_QUE_RECHAZA = "097";
+    static final String ENTIDAD_QUE_NO_RESPONDE = "098";
 
     private final ConcurrentHashMap<UUID, EstadoInterbancario>
         estados = new ConcurrentHashMap<>();
@@ -33,13 +46,13 @@ public class CamaraSimuladaController {
         @RequestBody Envio envio,
         @RequestHeader(
             value = "X-Escenario-Simulador",
-            defaultValue = "COMPLETADA"
+            required = false
         ) String escenario
     ) {
 
         if (envio == null || envio.id() == null
             || envio.cci() == null
-            || !envio.cci().matches("[0-9]{20}")) {
+            || !envio.cci().matches("\\d{20}")) {
 
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -62,7 +75,9 @@ public class CamaraSimuladaController {
         EstadoInterbancario estado;
 
         try {
-            estado = EstadoInterbancario.valueOf(escenario);
+            estado = escenario == null
+                ? porEntidad(envio.cci())
+                : EstadoInterbancario.valueOf(escenario);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
@@ -92,5 +107,14 @@ public class CamaraSimuladaController {
         }
 
         return new Respuesta(id, estado);
+    }
+
+    private static EstadoInterbancario porEntidad(String cci) {
+        if (cci.startsWith(ENTIDAD_QUE_RECHAZA)) {
+            return EstadoInterbancario.RECHAZADA;
+        }
+        return cci.startsWith(ENTIDAD_QUE_NO_RESPONDE)
+            ? EstadoInterbancario.PENDIENTE
+            : EstadoInterbancario.COMPLETADA;
     }
 }

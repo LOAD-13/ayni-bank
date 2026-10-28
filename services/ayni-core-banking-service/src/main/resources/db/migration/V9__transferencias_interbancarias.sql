@@ -58,3 +58,14 @@ CREATE TABLE beneficiario_interbancario (
     CONSTRAINT ck_beneficiario_cci
         CHECK (cci ~ '^[0-9]{20}$')
 );
+
+-- La transferencia interbancaria queda en la pista de auditoria (criterio «toda la operacion
+-- es auditable»): el envio, la confirmacion de la camara y la devolucion. Los tres llevan su
+-- movimiento y ningun motivo, asi que la regla de coherencia de la V6 ya los admite.
+ALTER TABLE evento_auditoria DROP CONSTRAINT ck_evento_auditoria_tipo;
+ALTER TABLE evento_auditoria ADD CONSTRAINT ck_evento_auditoria_tipo
+    CHECK (tipo IN ('TRANSFERENCIA_REALIZADA', 'DEPOSITO_SIMULADO',
+                    'OPERACION_REPETIDA', 'OPERACION_RECHAZADA', 'INTERES_CAPITALIZADO',
+                    'APERTURA_RECHAZADA', 'ACCESO_AJENO_DENEGADO',
+                    'INTERBANCARIA_ENVIADA', 'INTERBANCARIA_COMPLETADA',
+                    'INTERBANCARIA_REVERTIDA'));

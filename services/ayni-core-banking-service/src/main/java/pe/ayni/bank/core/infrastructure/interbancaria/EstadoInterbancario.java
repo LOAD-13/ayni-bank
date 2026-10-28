@@ -1,5 +1,5 @@
 
-package pe.ayni.bank.core.interbancaria;
+package pe.ayni.bank.core.infrastructure.interbancaria;
 
 public enum EstadoInterbancario {
     PENDIENTE,
