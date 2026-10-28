@@ -46,6 +46,8 @@ test.describe("Usabilidad · Inclusividad", () => {
     "/banca/interbancaria",
     "/banca/depositar",
     "/banca/configuracion",
+    "/banca/ayuda",
+    "/banca/opinion",
   ]) {
     test(`${ruta} no presenta violaciones de WCAG 2.1 AA con la sesión abierta`, async ({
       page,

@@ -199,7 +199,7 @@ compara cada punto con lo que Ayni Bank tiene hoy, sin contar lo que todavía no
 | Lo pedido | Estado | Cómo está en Ayni |
 |---|---|---|
 | **Restricción**: máscaras de entrada y botones deshabilitados en estados no válidos | Parcial | El código del segundo factor solo acepta números y no se envía sin seis dígitos; el DNI admite ocho dígitos como máximo. Los demás campos validan al enviar |
-| **Retroalimentación al escribir** (validación en línea) | Parcial | La política de contraseña se marca requisito a requisito mientras se escribe. El resto de campos valida al enviar, no al escribir |
+| **Retroalimentación al escribir** (validación en línea) | Cumple | La política de contraseña se marca requisito a requisito; la cuenta de destino y el importe de la transferencia, y el CCI de la interbancaria, se validan 400 ms después de dejar de escribir. Un campo vacío no se marca hasta enviar |
 | **Doble paso**: confirmación en acciones críticas | Cumple | La transferencia muestra un resumen y pide el segundo factor antes de mover el dinero |
 | **Reversibilidad**: deshacer | Cumple donde aplica | Congelar la tarjeta, las compras por internet y el límite se revierten al instante. La transferencia no se puede deshacer, y por eso lleva el doble paso |
 | **Prevención del doble envío**: botón bloqueado con indicador y clave de idempotencia en el servidor | Cumple | En la transferencia y, tras la corrección de la sección 3, también en el depósito |
@@ -217,16 +217,16 @@ compara cada punto con lo que Ayni Bank tiene hoy, sin contar lo que todavía no
 | Documentar las **tres violaciones más críticas** y su corrección | Cumple | Orden del foco (WCAG 2.4.3), foco visible (2.4.7) y movimiento reducido (2.3.3), encontradas y corregidas en el capítulo 14 |
 | Probar la aplicación con alguien que solo usa el teclado | Parcial | El ingreso completo solo con teclado es una prueba automatizada; falta hacerlo con una persona |
 | **Personalización** | Cumple | El panel saluda por el nombre: «Hola, Ana» |
-| **Progreso visible** en las tareas de varios pasos | Parcial | El registro y la verificación de identidad muestran el paso actual; la transferencia tiene cuatro pasos y no lo muestra |
-| **Tooltips** de 80 caracteres como máximo en los íconos principales, accesibles con el teclado | Falta | |
-| **Asistente de bienvenida** en el primer ingreso, de 3 a 5 pasos | Falta | |
-| **Reconocimiento de logro** en la primera acción completada | Falta | |
-| **Ayuda contextual**: preguntas frecuentes o tutorial breve | Falta | |
-| **Retroalimentación del usuario** sobre la aplicación | Falta | La medición con usuarios es el cuestionario del anexo A |
+| **Progreso visible** en las tareas de varios pasos | Cumple | El registro, la verificación de identidad y las dos transferencias muestran el paso actual: Datos → Revisión → Código → Comprobante |
+| **Tooltips** de 80 caracteres como máximo en los íconos principales, accesibles con el teclado | Cumple | Cinco en el panel: Transferir, Depositar, Movimientos, ocultar saldos y copiar el número de cuenta. Se ven con el ratón y con el tabulador, se leen con `aria-describedby` y Escape los cierra (WCAG 1.4.13) |
+| **Asistente de bienvenida** en el primer ingreso, de 3 a 5 pasos | Cumple | Cuatro pasos con barra de progreso, una sola vez por navegador. Diálogo modal: el foco entra, no se escapa con el tabulador y Escape lo cierra |
+| **Reconocimiento de logro** en la primera acción completada | Cumple | Insignia «¡Primera operación completada!» junto al primer comprobante, con el enlace a la encuesta de opinión |
+| **Ayuda contextual**: preguntas frecuentes o tutorial breve | Cumple | Página «Ayuda» en el menú con ocho preguntas frecuentes, enlazada desde cada operación |
+| **Retroalimentación del usuario** sobre la aplicación | Cumple | Página «Tu opinión» con el cuestionario SUS del anexo A, que calcula la puntuación al enviar. No se guarda en el servidor: la anota quien conduce la prueba |
 
-Lo marcado como «Falta» o «Parcial» corresponde al taller de la semana 12, que se revisa en el
-laboratorio antes del APF3. No baja las medidas de las secciones 2 a 4: esas miden si lo que existe
-funciona; esta sección dice qué falta añadir.
+Lo que figuraba como «Falta» o «Parcial» se completó en el taller de la semana 12 (AYNI-318),
+que se revisa en el laboratorio antes del APF3. Siguen pendientes la prueba con una persona que
+solo usa el teclado y la aplicación del cuestionario SUS a cinco personas (anexo A).
 
 ---
 
