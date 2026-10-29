@@ -38,4 +38,12 @@ public record Tarjeta(UUID id, UUID cuentaId, UUID usuarioId, Pan pan, YearMonth
     public String vencimiento() {
         return "%02d/%02d".formatted(venceEn.getMonthValue(), venceEn.getYear() % 100);
     }
+
+    public Tarjeta congelar() {
+        return new Tarjeta(id, cuentaId, usuarioId, pan, venceEn, EstadoDeTarjeta.CONGELADA, emitidaEn);
+    }
+
+    public Tarjeta descongelar() {
+        return new Tarjeta(id, cuentaId, usuarioId, pan, venceEn, EstadoDeTarjeta.ACTIVA, emitidaEn);
+    }
 }

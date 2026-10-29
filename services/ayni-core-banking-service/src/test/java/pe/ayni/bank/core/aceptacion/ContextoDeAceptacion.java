@@ -24,6 +24,7 @@ import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.CierreDiarioService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
 import pe.ayni.bank.core.application.usecase.ConsultarTarjetaService;
+import pe.ayni.bank.core.application.usecase.ControlarTarjetaService;
 import pe.ayni.bank.core.application.usecase.EmitirTarjetaService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
@@ -66,6 +67,7 @@ import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
         ObjectMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
         ConciliadorInterbancario.class, EmitirTarjetaService.class, ConsultarTarjetaService.class,
+        ControlarTarjetaService.class,
         AdaptadorRepositorioDeTarjetas.class, CifradorDePan.class, ConfiguracionDeTarjeta.class,
         ContextoDeAceptacion.Infraestructura.class})
 public class ContextoDeAceptacion {

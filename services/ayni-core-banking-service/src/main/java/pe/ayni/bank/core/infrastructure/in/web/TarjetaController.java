@@ -1,31 +1,44 @@
 package pe.ayni.bank.core.infrastructure.in.web;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
+import pe.ayni.bank.core.domain.model.ControlesDeTarjeta;
 import pe.ayni.bank.core.domain.model.CvvDinamico;
+import pe.ayni.bank.core.domain.model.Dinero;
+import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.PanRevelado;
 import pe.ayni.bank.core.domain.model.SinTarjetaException;
 import pe.ayni.bank.core.domain.model.Tarjeta;
 import pe.ayni.bank.core.domain.port.in.ConsultarTarjetaUseCase;
+import pe.ayni.bank.core.domain.port.in.ControlarTarjetaUseCase;
 
 /**
- * La tarjeta de debito virtual del titular · HU-09.
+ * La tarjeta de debito virtual del titular y sus controles · HU-09 y HU-10.
  *
  * <p>Como el resto de la banca, el titular sale de la cabecera {@value #CABECERA_USUARIO} que
  * fija el gateway: no hay ruta con un identificador que cambiar. Por defecto solo viajan los
@@ -40,11 +53,19 @@ public class TarjetaController {
     static final String CABECERA_USUARIO = "X-Ayni-Usuario";
     static final String CABECERA_IDEMPOTENCIA = "Idempotency-Key";
     static final String CABECERA_CONFIRMACION = "X-Ayni-Confirmacion";
+    private static final String PATRON_LIMITE = "^[0-9]{1,7}\\.[0-9]{2}$";
 
     private final ConsultarTarjetaUseCase tarjetas;
+    private final ControlarTarjetaUseCase controles;
 
     public TarjetaController(ConsultarTarjetaUseCase tarjetas) {
+        this(tarjetas, null);
+    }
+
+    @Autowired
+    public TarjetaController(ConsultarTarjetaUseCase tarjetas, ControlarTarjetaUseCase controles) {
         this.tarjetas = tarjetas;
+        this.controles = controles;
     }
 
     @GetMapping
@@ -71,6 +92,37 @@ public class TarjetaController {
                 .body(new PanReveladoDto(pan.numero(), pan.visibleHasta()));
     }
 
+    @GetMapping("/controles")
+    public ResponseEntity<ControlesDeTarjetaDto> consultarControles(
+            @RequestHeader(CABECERA_USUARIO) UUID usuarioId) {
+        return ResponseEntity.ok(ControlesDeTarjetaDto.desde(controles.consultarControles(usuarioId)));
+    }
+
+    @PutMapping("/controles")
+    public ResponseEntity<ControlesDeTarjetaDto> configurar(
+            @RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+            @Valid @RequestBody ConfiguracionDeTarjetaDto solicitud) {
+        Dinero limite = new Dinero(new BigDecimal(solicitud.limiteDiario()), Moneda.PEN);
+        if (!limite.esPositivo()) {
+            throw new IllegalArgumentException("El limite diario debe ser mayor que cero.");
+        }
+        ControlesDeTarjeta actualizado = controles.configurar(
+                usuarioId, limite, solicitud.comprasPorInternet());
+        return ResponseEntity.ok(ControlesDeTarjetaDto.desde(actualizado));
+    }
+
+    @PostMapping("/congelamiento")
+    public ResponseEntity<ControlesDeTarjetaDto> congelar(
+            @RequestHeader(CABECERA_USUARIO) UUID usuarioId) {
+        return ResponseEntity.ok(ControlesDeTarjetaDto.desde(controles.congelar(usuarioId)));
+    }
+
+    @DeleteMapping("/congelamiento")
+    public ResponseEntity<ControlesDeTarjetaDto> descongelar(
+            @RequestHeader(CABECERA_USUARIO) UUID usuarioId) {
+        return ResponseEntity.ok(ControlesDeTarjetaDto.desde(controles.descongelar(usuarioId)));
+    }
+
     /** La IP del cliente: el primer valor de X-Forwarded-For, como en identity. */
     private static String ipDe(HttpServletRequest peticion) {
         String reenviada = peticion.getHeader("X-Forwarded-For");
@@ -81,6 +133,13 @@ public class TarjetaController {
     }
 
     // ── Errores ───────────────────────────────────────────────────────────
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ProblemDetail> argumentoInvalido(IllegalArgumentException error) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, error.getMessage());
+        problema.setTitle("Configuracion no valida");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problema);
+    }
 
     /** 404: la web lo entiende como «tu tarjeta aun no esta lista». */
     @ExceptionHandler(SinTarjetaException.class)
@@ -129,6 +188,31 @@ public class TarjetaController {
         @Override
         public String toString() {
             return "PanReveladoDto[oculto]";
+        }
+    }
+
+    public record ConfiguracionDeTarjetaDto(
+            @NotBlank @Pattern(regexp = PATRON_LIMITE, message = "El limite diario debe tener dos decimales.")
+            String limiteDiario,
+            @NotNull Boolean comprasPorInternet) {
+    }
+
+    public record ControlesDeTarjetaDto(
+            String estado,
+            String ultimos4,
+            String moneda,
+            String limiteDiario,
+            String consumidoHoy,
+            boolean comprasPorInternet) {
+
+        static ControlesDeTarjetaDto desde(ControlesDeTarjeta c) {
+            return new ControlesDeTarjetaDto(
+                    c.estado().name(),
+                    c.ultimos4(),
+                    c.moneda().name(),
+                    c.limiteDiario().importe().toPlainString(),
+                    c.consumidoHoy().importe().toPlainString(),
+                    c.comprasPorInternet());
         }
     }
 }

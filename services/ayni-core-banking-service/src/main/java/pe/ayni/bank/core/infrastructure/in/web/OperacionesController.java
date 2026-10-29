@@ -2,6 +2,7 @@ package pe.ayni.bank.core.infrastructure.in.web;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,13 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempotenciaReutilizadaException;
 import pe.ayni.bank.core.domain.model.Asiento;
+import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Comprobante;
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
+import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
+import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
@@ -85,11 +89,26 @@ public class OperacionesController {
     @GetMapping("/api/v1/cuentas/mia/movimientos")
     public List<MovimientoDto> misMovimientos(
             @RequestHeader(CABECERA_USUARIO) UUID usuarioId,
-            @RequestParam(defaultValue = "20") int limite) {
+            @RequestParam(defaultValue = "20") int limite,
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta,
+            @RequestParam(required = false) TipoDeAsiento tipo,
+            @RequestParam(required = false) BigDecimal importeMinimo,
+            @RequestParam(required = false) BigDecimal importeMaximo,
+            @RequestParam(required = false) Integer pagina) {
         Cuenta cuenta = cuentaDe(usuarioId);
         int acotado = Math.clamp(limite, 1, MAXIMO_DE_MOVIMIENTOS);
-        return libro.ultimosAsientosDe(cuenta.id(), acotado).stream()
-                .map(MovimientoDto::desde)
+        if (desde == null && hasta == null && tipo == null
+                && importeMinimo == null && importeMaximo == null && pagina == null) {
+            return libro.ultimosAsientosDe(cuenta.id(), acotado).stream()
+                    .map(MovimientoDto::desde)
+                    .toList();
+        }
+        FiltroDeMovimientos filtro = new FiltroDeMovimientos(
+                desde, hasta, tipo, importeMinimo, importeMaximo,
+                pagina == null ? 0 : Math.max(0, pagina), acotado);
+        return libro.filtrarAsientosDe(cuenta.id(), filtro).stream()
+                .map(MovimientoDto::desdeConSaldo)
                 .toList();
     }
 
@@ -222,12 +241,20 @@ public class OperacionesController {
     }
 
     public record MovimientoDto(String movimientoId, String tipo, String importe, String moneda,
-                                String concepto, String registradoEn) {
+                                String concepto, String registradoEn, String saldoPosterior) {
 
         static MovimientoDto desde(Asiento asiento) {
             return new MovimientoDto(asiento.movimientoId().toString(), asiento.tipo().name(),
                     asiento.importe().importe().toPlainString(), asiento.importe().moneda().name(),
-                    asiento.concepto(), asiento.registradoEn().toString());
+                    asiento.concepto(), asiento.registradoEn().toString(), null);
+        }
+
+        static MovimientoDto desdeConSaldo(AsientoConSaldo conSaldo) {
+            Asiento asiento = conSaldo.asiento();
+            return new MovimientoDto(asiento.movimientoId().toString(), asiento.tipo().name(),
+                    asiento.importe().importe().toPlainString(), asiento.importe().moneda().name(),
+                    asiento.concepto(), asiento.registradoEn().toString(),
+                    conSaldo.saldoPosterior().importe().toPlainString());
         }
     }
 

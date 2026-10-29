@@ -16,16 +16,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.cucumber.datatable.DataTable;
-import io.cucumber.java.PendingException;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Entonces;
 import io.cucumber.java.es.Y;
 import pe.ayni.bank.core.aceptacion.ContextoDeAceptacion.RelojDePrueba;
 import pe.ayni.bank.core.domain.model.Asiento;
+import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Comprobante;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
+import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
@@ -54,6 +55,7 @@ public class PasosDeSaldoEHistorial {
     private final Map<String, List<UUID>> depositos = new HashMap<>();
     private Dinero saldo;
     private List<Asiento> movimientos;
+    private List<AsientoConSaldo> movimientosFiltrados;
     private UUID movimientoSolicitado;
     private Optional<Comprobante> comprobanteSolicitado;
 
@@ -98,8 +100,9 @@ public class PasosDeSaldoEHistorial {
 
     @Cuando("{word} filtra sus movimientos del {fecha} al {fecha}")
     public void filtra(String nombre, LocalDate desde, LocalDate hasta) {
-        throw new PendingException("AYNI-329 · HU-08 escenario 1: LibroMayorPort solo ofrece ultimosAsientosDe; "
-                + "no hay consulta por rango de fechas, tipo ni importe.");
+        Cuenta cuenta = cuentaDe(nombre);
+        movimientosFiltrados = libro.filtrarAsientosDe(
+                cuenta.id(), FiltroDeMovimientos.porFechas(desde, hasta));
     }
 
     @Cuando("{word} solicita el comprobante del depósito de {word}")
@@ -125,12 +128,18 @@ public class PasosDeSaldoEHistorial {
 
     @Entonces("{word} ve únicamente el depósito de S\\/ {word} del {fecha}")
     public void soloElDelRango(String nombre, String importe, LocalDate dia) {
-        throw new PendingException("AYNI-329 · HU-08 escenario 1: no existe el filtro por rango de fechas.");
+        assertThat(movimientosFiltrados).singleElement().satisfies(item -> {
+            assertThat(item.asiento().cuentaId()).isEqualTo(cuentaDe(nombre).id());
+            assertThat(item.asiento().tipo()).isEqualTo(TipoDeAsiento.ABONO);
+            assertThat(item.asiento().importe()).isEqualTo(Dinero.de(importe, Moneda.PEN));
+            assertThat(item.asiento().registradoEn().atZone(ZoneOffset.UTC).toLocalDate()).isEqualTo(dia);
+        });
     }
 
     @Y("ese movimiento muestra un saldo posterior de S\\/ {word}")
     public void saldoPosterior(String importe) {
-        throw new PendingException("AYNI-329 · HU-08 escenario 1: los movimientos no informan el saldo posterior.");
+        assertThat(movimientosFiltrados).singleElement().satisfies(item ->
+                assertThat(item.saldoPosterior()).isEqualTo(Dinero.de(importe, Moneda.PEN)));
     }
 
     @Entonces("el sistema le deniega el acceso a {word} sin revelar el movimiento")

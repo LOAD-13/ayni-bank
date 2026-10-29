@@ -50,6 +50,7 @@ public class AjustesComunes {
         jdbc.update("DELETE FROM core.evento_auditoria");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
+        jdbc.update("DELETE FROM core.consumo_tarjeta");
         jdbc.update("DELETE FROM core.control_tarjeta");
         jdbc.update("DELETE FROM core.tarjeta");
         jdbc.update("DELETE FROM core.transferencia_interbancaria");

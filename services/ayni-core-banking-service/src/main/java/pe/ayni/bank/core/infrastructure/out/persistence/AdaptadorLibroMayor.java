@@ -1,5 +1,7 @@
 package pe.ayni.bank.core.infrastructure.out.persistence;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,10 +11,12 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
 
 import pe.ayni.bank.core.domain.model.Asiento;
+import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Cci;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.EstadoCuenta;
+import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
@@ -99,6 +103,30 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     public List<Asiento> ultimosAsientosDe(UUID cuentaId, int limite) {
         return asientos.findByCuentaIdOrderByRegistradoEnDesc(cuentaId, Limit.of(limite)).stream()
                 .map(AdaptadorLibroMayor::aDominio)
+                .toList();
+    }
+
+    @Override
+    public List<AsientoConSaldo> filtrarAsientosDe(UUID cuentaId, FiltroDeMovimientos filtro) {
+        List<AsientoEntity> cronologicos = asientos.findByCuentaIdOrderByRegistradoEnAsc(cuentaId);
+        if (cronologicos.isEmpty()) {
+            return List.of();
+        }
+        Moneda moneda = Moneda.valueOf(cronologicos.get(0).getMoneda());
+        Dinero acumulado = Dinero.cero(moneda);
+        List<AsientoConSaldo> filtrados = new ArrayList<>();
+        for (AsientoEntity fila : cronologicos) {
+            Asiento asiento = aDominio(fila);
+            acumulado = acumulado.mas(asiento.efecto());
+            if (filtro.cumple(asiento)) {
+                filtrados.add(new AsientoConSaldo(asiento, acumulado));
+            }
+        }
+        Collections.reverse(filtrados);
+        long salto = (long) filtro.pagina() * filtro.tamano();
+        return filtrados.stream()
+                .skip(salto)
+                .limit(filtro.tamano())
                 .toList();
     }
 
