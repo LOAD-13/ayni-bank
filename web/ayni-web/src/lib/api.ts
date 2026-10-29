@@ -205,16 +205,6 @@ export async function consultarTitular(usuarioId: string): Promise<Titular> {
   return pedir<Titular>(`/api/v1/usuarios/${usuarioId}/resumen`);
 }
 
-/**
- * Consulta la cuenta del titular.
- *
- * Devuelve 404 mientras la cuenta se está abriendo, y eso NO es un error: el evento que la
- * crea viaja por RabbitMQ y tarda unos segundos. Quien llama vuelve a preguntar.
- */
-export async function consultarCuenta(usuarioId: string): Promise<CuentaAbierta> {
-  return pedir<CuentaAbierta>(`/api/v1/cuentas/titular/${usuarioId}`);
-}
-
 export async function registrar(solicitud: SolicitudDeRegistro): Promise<RespuestaDeRegistro> {
   return pedir<RespuestaDeRegistro>("/api/v1/registro", solicitud);
 }
