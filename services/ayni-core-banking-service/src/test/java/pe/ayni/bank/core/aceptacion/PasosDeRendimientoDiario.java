@@ -11,8 +11,6 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.cucumber.java.Before;
-import io.cucumber.java.ParameterType;
 import io.cucumber.java.es.Cuando;
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Entonces;
@@ -50,26 +48,7 @@ public class PasosDeRendimientoDiario {
 
     private Cuenta ana;
 
-    @ParameterType("\\d{4}-\\d{2}-\\d{2}")
-    public LocalDate fecha(String texto) {
-        return LocalDate.parse(texto);
-    }
-
-    /** Cada escenario empieza con la base como la dejan las migraciones. */
-    @Before
-    public void limpiar() {
-        jdbc.update("DELETE FROM core.devengo_interes");
-        jdbc.update("DELETE FROM core.capitalizacion_interes");
-        jdbc.update("DELETE FROM core.cierre_diario");
-        jdbc.update("DELETE FROM core.evento_auditoria");
-        jdbc.update("DELETE FROM core.outbox");
-        jdbc.update("DELETE FROM core.operacion_idempotente");
-        jdbc.update("DELETE FROM core.asiento");
-        jdbc.update("DELETE FROM core.cuenta WHERE NOT tecnica");
-        jdbc.update("DELETE FROM core.tasa_producto WHERE producto_id = ? AND vigencia_desde > DATE '2026-08-17'",
-                AHORRO_PEN);
-        jdbc.update("UPDATE core.tasa_producto SET vigencia_hasta = NULL WHERE producto_id = ?", AHORRO_PEN);
-    }
+    // La limpieza de la base y el tipo {fecha} viven en AjustesComunes: son de todas las features.
 
     private void nuevaTasa(int porcentaje, LocalDate desde) {
         jdbc.update("UPDATE core.tasa_producto SET vigencia_hasta = ? WHERE producto_id = ? AND vigencia_hasta IS NULL",

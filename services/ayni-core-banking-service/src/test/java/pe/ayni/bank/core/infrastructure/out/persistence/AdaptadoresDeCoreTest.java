@@ -228,5 +228,30 @@ class AdaptadoresDeCoreTest {
             assertThat(fila.getValue().getMotivo()).isEqualTo("SALDO_INSUFICIENTE");
             assertThat(fila.getValue().toString()).contains("OPERACION_RECHAZADA");
         }
+
+        @Test
+        @DisplayName("una apertura duplicada queda como rechazo de apertura, no de operacion · AYNI-326")
+        void aperturaDuplicada() {
+            adaptador().registrarAperturaDuplicada(titular);
+
+            var fila = ArgumentCaptor.forClass(EventoAuditoriaEntity.class);
+            verify(repositorio).save(fila.capture());
+            assertThat(fila.getValue().getTipo()).isEqualTo("APERTURA_RECHAZADA");
+            assertThat(fila.getValue().getMovimientoId()).isNull();
+            assertThat(fila.getValue().getMotivo()).isEqualTo("CUENTA_DUPLICADA");
+        }
+
+        @Test
+        @DisplayName("un acceso ajeno queda con el movimiento que se intento leer y sin motivo · AYNI-328")
+        void accesoAjeno() {
+            UUID movimiento = UUID.randomUUID();
+            adaptador().registrarAccesoAjeno(titular, movimiento);
+
+            var fila = ArgumentCaptor.forClass(EventoAuditoriaEntity.class);
+            verify(repositorio).save(fila.capture());
+            assertThat(fila.getValue().getTipo()).isEqualTo("ACCESO_AJENO_DENEGADO");
+            assertThat(fila.getValue().getMovimientoId()).isEqualTo(movimiento);
+            assertThat(fila.getValue().getMotivo()).isNull();
+        }
     }
 }

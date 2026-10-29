@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
+import org.mockito.Mockito;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -21,12 +23,22 @@ import io.cucumber.spring.CucumberContextConfiguration;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.CierreDiarioService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
+import pe.ayni.bank.core.application.usecase.OperarCuentaService;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
+import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
+import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeMensajeria;
+import pe.ayni.bank.core.infrastructure.in.messaging.EscuchadorDeSolicitudAprobada;
+import pe.ayni.bank.core.infrastructure.out.messaging.PublicadorDeOutbox;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPistaDeAuditoria;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPublicadorDeEventos;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIdempotencia;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIntereses;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCuentas;
+import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
+import pe.ayni.bank.core.infrastructure.interbancaria.ConciliadorInterbancario;
+import pe.ayni.bank.core.infrastructure.interbancaria.ResolucionInterbancariaService;
+import pe.ayni.bank.core.infrastructure.interbancaria.TransferenciaInterbancariaService;
 
 /**
  * El contexto de Spring de los escenarios: los casos de uso reales, sus adaptadores y un
@@ -34,16 +46,25 @@ import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCu
  *
  * <p>Sin transaccion de prueba: cada cierre confirma la suya, como en produccion. Los pasos
  * limpian lo que dejo el escenario anterior.
+ *
+ * <p>RabbitMQ es lo unico simulado: los escenarios de HU-05 necesitan que el broker falle y
+ * vuelva a voluntad, y lo que se comprueba es la bandeja de salida, que si es la real.
  */
 @CucumberContextConfiguration
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({CierreDiarioService.class, ConsultarRendimientoService.class, AbrirCuentaDeAhorroService.class,
+        OperarCuentaService.class, EscuchadorDeSolicitudAprobada.class, PublicadorDeOutbox.class,
+        BandejaDeSalida.class, ConfiguracionDeMensajeria.class,
         AdaptadorRegistroDeIntereses.class, AdaptadorLibroMayor.class, AdaptadorRepositorioDeCuentas.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
-        ObjectMapper.class, ContextoDeAceptacion.Infraestructura.class})
+        ObjectMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
+        ConciliadorInterbancario.class, ContextoDeAceptacion.Infraestructura.class})
 public class ContextoDeAceptacion {
+
+    /** El token de confirmacion que el verificador de los escenarios da por bueno. */
+    public static final String CONFIRMACION_VALIDA = "confirmada-con-segundo-factor";
 
     @TestConfiguration(proxyBeanMethods = false)
     static class Infraestructura {
@@ -57,6 +78,31 @@ public class ContextoDeAceptacion {
         @Bean
         RelojDePrueba reloj() {
             return new RelojDePrueba();
+        }
+
+        /** El broker de los escenarios: los pasos lo hacen fallar o responder. */
+        @Bean
+        RabbitTemplate rabbit() {
+            return Mockito.mock(RabbitTemplate.class);
+        }
+
+        /**
+         * El segundo factor de los escenarios: solo {@link #CONFIRMACION_VALIDA} confirma. Como
+         * el verificador real, se niega con {@link ConfirmacionInvalidaException}.
+         */
+        @Bean
+        VerificadorDeConfirmacionPort confirmaciones() {
+            return (confirmacion, usuarioId, operacion) -> {
+                if (!CONFIRMACION_VALIDA.equals(confirmacion)) {
+                    throw new ConfirmacionInvalidaException();
+                }
+            };
+        }
+
+        /** La camara de compensacion de HU-11: los pasos deciden que responde. */
+        @Bean
+        CamaraDePrueba camara() {
+            return new CamaraDePrueba();
         }
     }
 

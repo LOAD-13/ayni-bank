@@ -1,4 +1,5 @@
-import { Clock, ShieldCheck, Wallet } from "lucide-react";
+import { CircleHelp, Clock, ShieldCheck, Wallet } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 /**
@@ -39,6 +40,13 @@ export function MarcoDeOperacion({
             titulo="Sin cobros dobles"
             texto="Si la conexión falla y vuelves a confirmar, la operación no se repite: cada intento lleva su clave única."
           />
+          <Link
+            href="/banca/ayuda"
+            className="flex items-center gap-2 px-1 text-small font-semibold text-azul-700 hover:underline"
+          >
+            <CircleHelp aria-hidden="true" className="h-4 w-4" />
+            ¿Dudas? Lee las preguntas frecuentes
+          </Link>
         </aside>
       </div>
     </div>

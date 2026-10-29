@@ -27,6 +27,7 @@ import pe.ayni.bank.notification.domain.port.in.RegistrarTitularUseCase;
 import pe.ayni.bank.notification.infrastructure.in.messaging.EscuchadorDeTitulares.TitularActivado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.DepositoSimuladoRegistrado;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.InteresCapitalizado;
+import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaInterbancariaResuelta;
 import pe.ayni.bank.notification.infrastructure.in.messaging.TraductorDeMovimientos.TransferenciaRealizada;
 
 /** El contrato con core-banking e identity: lo que llega por RabbitMQ y como se convierte en avisos. */
@@ -75,6 +76,59 @@ class TraductorDeMovimientosTest {
                 .containsEntry("cuenta", "****8765")
                 .containsEntry("contraparte", "****4321")
                 .containsEntry("saldo", "2,234.50");
+    }
+
+    /** El JSON tal cual lo escribe el outbox de core-banking al resolver una interbancaria (HU-11). */
+    private static String interbancariaJson(String estado, String motivo) {
+        return """
+                {"transferenciaId":"%s","movimientoId":"%s","usuarioId":"%s","estado":"%s","motivo":%s,
+                 "cuenta":"****4321","cciFinal":"7886","importe":"120.50","moneda":"PEN","saldo":"379.50",
+                 "registradoEn":"2026-10-28T20:15:00Z"}
+                """.formatted(UUID.randomUUID(), MOVIMIENTO, ANA, estado, motivo == null ? "null" : '"' + motivo + '"');
+    }
+
+    @Test
+    @DisplayName("HU-11: la interbancaria aceptada avisa al titular con el CCI recortado")
+    void interbancariaCompletada() throws Exception {
+        var e = new ObjectMapper().readValue(interbancariaJson("COMPLETADA", null),
+                TransferenciaInterbancariaResuelta.class);
+
+        List<AvisoDeMovimiento> avisos = TraductorDeMovimientos.deInterbancaria(EVENTO, e);
+
+        assertThat(avisos).singleElement().satisfies(aviso -> {
+            assertThat(aviso.usuarioId()).isEqualTo(ANA);
+            assertThat(aviso.tipo()).isEqualTo(TipoDeAviso.INTERBANCARIA_COMPLETADA);
+            assertThat(aviso.datos())
+                    .containsEntry("importe", "120.50")
+                    .containsEntry("contraparte", "CCI terminado en 7886")
+                    .containsEntry("saldo", "379.50")
+                    .containsEntry("fecha", "28/10/2026 a las 15:15")
+                    .doesNotContainKey("motivo");
+        });
+    }
+
+    @Test
+    @DisplayName("HU-11: la interbancaria rechazada explica el motivo en palabras del cliente")
+    void interbancariaRechazada() throws Exception {
+        var rechazo = new ObjectMapper().readValue(interbancariaJson("RECHAZADA", "RECHAZO_CAMARA"),
+                TransferenciaInterbancariaResuelta.class);
+        var vencida = new ObjectMapper().readValue(interbancariaJson("RECHAZADA", "SIN_RESPUESTA_EN_PLAZO"),
+                TransferenciaInterbancariaResuelta.class);
+
+        AvisoDeMovimiento porRechazo = TraductorDeMovimientos.deInterbancaria(EVENTO, rechazo).get(0);
+        AvisoDeMovimiento porPlazo = TraductorDeMovimientos.deInterbancaria(EVENTO, vencida).get(0);
+
+        assertThat(porRechazo.tipo()).isEqualTo(TipoDeAviso.INTERBANCARIA_RECHAZADA);
+        assertThat(porRechazo.datos()).containsEntry("motivo", "el otro banco no aceptó la operación");
+        assertThat(porPlazo.datos()).containsEntry("motivo", "el otro banco no confirmó la operación a tiempo");
+    }
+
+    @Test
+    @DisplayName("una interbancaria sin titular no produce avisos")
+    void interbancariaSinTitular() {
+        var e = new TransferenciaInterbancariaResuelta(UUID.randomUUID(), MOVIMIENTO, null, "COMPLETADA", null,
+                null, null, "1.00", "PEN", "0.00", "2026-10-28T20:15:00Z");
+        assertThat(TraductorDeMovimientos.deInterbancaria(EVENTO, e)).isEmpty();
     }
 
     @Test
@@ -167,11 +221,16 @@ class TraductorDeMovimientosTest {
         escuchador.alRegistrarseUnDeposito(new DepositoSimuladoRegistrado(MOVIMIENTO, UUID.randomUUID(), "1.00",
                 "PEN", ANA, "****4321", "2.00", "2026-10-11T03:30:00Z"), null);
 
+        escuchador.alResolverseUnaInterbancaria(new ObjectMapper().readValue(interbancariaJson("COMPLETADA", null),
+                TransferenciaInterbancariaResuelta.class), EVENTO.toString());
+
         ArgumentCaptor<List<AvisoDeMovimiento>> captor = ArgumentCaptor.forClass(List.class);
-        verify(avisos, times(2)).registrar(captor.capture());
+        verify(avisos, times(3)).registrar(captor.capture());
         assertThat(captor.getAllValues().get(0)).hasSize(2);
         assertThat(captor.getAllValues().get(1)).singleElement()
                 .extracting(AvisoDeMovimiento::eventoId).isEqualTo(MOVIMIENTO);
+        assertThat(captor.getAllValues().get(2)).singleElement()
+                .extracting(AvisoDeMovimiento::tipo).isEqualTo(TipoDeAviso.INTERBANCARIA_COMPLETADA);
 
         RegistrarTitularUseCase titulares = mock(RegistrarTitularUseCase.class);
         var evento = new TitularActivado(ANA, "ana@example.pe", "Ana", "2026-10-11T15:00:00Z");

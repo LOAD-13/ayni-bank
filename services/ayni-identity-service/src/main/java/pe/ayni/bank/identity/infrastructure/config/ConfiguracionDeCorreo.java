@@ -1,5 +1,7 @@
 package pe.ayni.bank.identity.infrastructure.config;
 
+import java.time.Duration;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,6 +9,7 @@ import org.springframework.context.annotation.Profile;
 
 import pe.ayni.bank.identity.infrastructure.out.correo.EnviadorDeCorreo;
 import pe.ayni.bank.identity.infrastructure.out.correo.EnviadorDeCorreoSes;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
@@ -20,7 +23,18 @@ public class ConfiguracionDeCorreo {
     public SesV2Client sesV2Client(@Value("${ayni.correo.region:us-east-1}") String region) {
         return SesV2Client.builder()
                 .region(Region.of(region))
-                .httpClient(UrlConnectionHttpClient.create())
+                // Sin estos limites, una SES que no responde deja el hilo colgado sin fin
+                // (ISO/IEC 25010, interoperabilidad): 3 s para conectar, 5 s por intento y
+                // 12 s en total con los reintentos del SDK. Al vencer, el SDK lanza
+                // ApiCallTimeoutException y el envio se trata como cualquier otro fallo.
+                .httpClient(UrlConnectionHttpClient.builder()
+                        .connectionTimeout(Duration.ofSeconds(3))
+                        .socketTimeout(Duration.ofSeconds(5))
+                        .build())
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .apiCallAttemptTimeout(Duration.ofSeconds(5))
+                        .apiCallTimeout(Duration.ofSeconds(12))
+                        .build())
                 .build();
     }
 

@@ -62,6 +62,11 @@ test.describe("Cuenta lista", () => {
     // en la pantalla: 10 000 al 4.50 % son 10 450 al cabo de un ano.
     await expect(page.getByText(/10.450,00|10,450.00/)).toBeVisible();
     await expect(page.getByText("Lo que sigue")).toBeVisible();
+    // La banca ya existe: el botón principal no puede mandar a «todavía no está lista».
+    await expect(page.getByRole("link", { name: /entrar a mi banca/i })).toHaveAttribute(
+      "href",
+      "/banca",
+    );
   });
 
   test("mientras se abre, avisa en lugar de dar un error", async ({ page }) => {

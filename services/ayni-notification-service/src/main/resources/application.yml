@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   application:
     name: ayni-notification-service
 
@@ -68,6 +70,11 @@ ayni:
 
 server:
   port: 8083
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
+  shutdown: graceful
 
 management:
   endpoints:

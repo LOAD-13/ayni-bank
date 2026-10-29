@@ -140,6 +140,8 @@ describe("FormularioDeContrasenaNueva", () => {
 
     await escribir(BUENA, BUENA);
     expect(await screen.findByRole("alert")).toHaveTextContent("no cumple la política");
+    // Que diga también qué hacer: la lista de requisitos está en la misma pantalla.
+    expect(screen.getByRole("alert")).toHaveTextContent("Revisa los requisitos de la lista");
 
     restablecer.mockRejectedValueOnce(new ErrorDeApi({ title: "x" }, 0));
     await userEvent.setup().click(screen.getByRole("button", { name: "Guardar contraseña" }));

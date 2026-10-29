@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.TipoDocumento;
 import pe.ayni.bank.identity.domain.port.out.CifradorDeDatosPort;
@@ -84,6 +85,21 @@ public class AdaptadorRepositorioDeSolicitudes implements RepositorioDeSolicitud
                 .orElseThrow(() -> new IllegalStateException(
                         "Se intento aprobar una solicitud inexistente."))
                 .aprobar(reloj.instant());
+    }
+
+    @Override
+    @Transactional
+    public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
+        repositorio.findById(solicitudId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Se intento rechazar una solicitud inexistente."))
+                .rechazar(motivo.name(), reloj.instant());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> estadoDe(UUID solicitudId) {
+        return repositorio.findById(solicitudId).map(SolicitudOnboardingEntity::getEstado);
     }
 
     @Override

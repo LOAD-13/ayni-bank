@@ -1,0 +1,64 @@
+# Ayni Bank — laboratorio de alta disponibilidad (AYNI-154, ADR-0037)
+#
+# Un primario y una réplica síncrona de PostgreSQL 16 para demostrar y medir el nivel 1:
+# RPO 0 ante la caída de un nodo y el tiempo de conmutación. Es independiente del entorno
+# local: proyecto, red y volúmenes propios, sin puertos en el host. Matar su primario no
+# toca la base de desarrollo.
+#
+#   docker compose -f infra/docker/ha/docker-compose.yml up -d --wait
+#   infra/scripts/prueba-de-conmutacion.sh
+#   docker compose -f infra/docker/ha/docker-compose.yml down -v
+#
+# En producción este papel lo hace RDS Multi-AZ (parámetro AltaDisponibilidad del
+# CloudFormation): misma garantía, con la detección y la promoción gestionadas por AWS.
+
+name: ayni-ha
+
+x-postgres: &postgres
+  image: postgres:16-alpine
+  restart: "no"
+  environment:
+    POSTGRES_USER: ayni
+    # Laboratorio desechable y sin datos reales: la clave no protege nada.
+    POSTGRES_PASSWORD: laboratorio
+    # Nunca otra base: con la réplica aún sin conectar, el CREATE DATABASE del
+    # arranque esperaría para siempre la confirmación síncrona.
+    POSTGRES_DB: postgres
+  healthcheck:
+    test: ["CMD", "pg_isready", "-U", "ayni", "-d", "postgres"]
+    interval: 2s
+    timeout: 3s
+    retries: 30
+
+services:
+  primario:
+    <<: *postgres
+    container_name: ayni-ha-primario
+    # remote_apply: el COMMIT no vuelve al cliente hasta que la réplica ha aplicado la
+    # transacción y ya es visible en ella. Es lo que hace que el RPO sea 0.
+    command:
+      - postgres
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+      - -c
+      - synchronous_standby_names=FIRST 1 (replica)
+      - -c
+      - synchronous_commit=remote_apply
+    volumes:
+      - primario-datos:/var/lib/postgresql/data
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+
+  replica:
+    <<: *postgres
+    container_name: ayni-ha-replica
+    entrypoint: ["/bin/sh", "/iniciar-replica.sh"]
+    volumes:
+      - replica-datos:/var/lib/postgresql/data
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./iniciar-replica.sh:/iniciar-replica.sh:ro
+    depends_on:
+      primario: { condition: service_healthy }
+
+volumes:
+  primario-datos:
+  replica-datos:

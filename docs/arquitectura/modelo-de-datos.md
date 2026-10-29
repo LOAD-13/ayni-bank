@@ -263,9 +263,20 @@ cargando 500 000 filas, no estimado):
 | Filas al año | 1 596 M |
 | **Crecimiento** | **1,47 GiB/día · 538 GiB/año** |
 
-De ahí salen tres decisiones que veréis aparecer en el Sprint 3: **particionar `core.asiento` por
-mes**, **retener 3 meses en línea** y **archivar el resto en frío**. Y de ahí sale también el dato
-incómodo: el disco de 200 GB que teníamos previsto se llena en unos cuatro meses.
+De ahí salen tres decisiones: **particionar `core.asiento` por mes**, **retener 3 meses en línea** y
+**archivar el resto en frío**. Y de ahí sale también el dato incómodo: el disco de 200 GB que
+teníamos previsto se llena en unos cuatro meses.
+
+Desde la migración V8 ([ADR-0036](adr/0036-particionado-mensual-de-asiento-y-purga.md)),
+`core.asiento` es una tabla particionada: una partición por mes en hora de Lima (`asiento_2026_10`…),
+creadas con tres meses de antelación por el mantenimiento nocturno, más `asiento_default` como red de
+seguridad. La clave primaria pasa a ser `(id, registrado_en)`. Para la aplicación no cambia nada:
+sigue escribiendo y leyendo `core.asiento`. El mismo mantenimiento purga el outbox publicado hace más
+de 7 días y las claves de idempotencia de más de 30.
+
+**El archivado en frío está preparado pero apagado.** Desvincular una partición la saca de la suma que
+da el saldo (apartado 1), así que antes hace falta un asiento de saldo de apertura por cuenta. El
+ADR-0036 explica qué falta exactamente.
 
 Otro detalle que sorprende: **los índices de `asiento` pesan el 84 % de lo que pesan los datos**. Por
 eso no se añaden índices «por si acaso» a esa tabla. Cada índice de más se paga 4,37 millones de

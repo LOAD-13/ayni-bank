@@ -2,7 +2,9 @@
 
 import {
   ArrowLeftRight,
+  CircleHelp,
   CreditCard,
+  Landmark,
   LayoutGrid,
   LogOut,
   PiggyBank,
@@ -24,11 +26,13 @@ import { useSesion } from "./SesionDeBanca";
 const NAVEGACION = [
   { href: "/banca", texto: "Resumen", Icono: LayoutGrid },
   { href: "/banca/transferir", texto: "Transferir", Icono: ArrowLeftRight },
+  { href: "/banca/interbancaria", texto: "A otro banco", Icono: Landmark },
   { href: "/banca/depositar", texto: "Depositar", Icono: PiggyBank },
   { href: "/pendiente", texto: "Cuentas", Icono: Wallet },
-  { href: "/pendiente", texto: "Tarjetas", Icono: CreditCard },
+  { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },
   { href: "/pendiente", texto: "Estados de cuenta", Icono: ReceiptText },
   { href: "/banca/configuracion", texto: "Configuración", Icono: Settings },
+  { href: "/banca/ayuda", texto: "Ayuda", Icono: CircleHelp },
 ];
 
 /**

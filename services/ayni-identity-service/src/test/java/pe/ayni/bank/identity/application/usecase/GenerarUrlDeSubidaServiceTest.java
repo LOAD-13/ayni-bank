@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
@@ -229,6 +230,10 @@ class GenerarUrlDeSubidaServiceTest {
 
         @Override
         public void marcarAprobada(UUID solicitudId) {
+        }
+
+        @Override
+        public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
         }
 
         @Override

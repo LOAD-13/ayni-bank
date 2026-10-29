@@ -1,7 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import { CampoDeTexto } from "@/componentes/CampoDeTexto";
@@ -23,6 +23,10 @@ export default function PaginaDeDeposito() {
   const [errorDeCampo, setErrorDeCampo] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Una clave por operación, no por clic: si la red falla y se vuelve a pulsar con el mismo
+  // importe, viaja la misma clave y el servidor devuelve el depósito ya hecho en lugar de
+  // registrar otro. Es lo que promete el aviso «Sin cobros dobles» de la página.
+  const clave = useRef<{ importe: string; valor: string } | null>(null);
 
   async function depositar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -34,11 +38,14 @@ export default function PaginaDeDeposito() {
       return;
     }
     setErrorDeCampo(undefined);
+    if (clave.current?.importe !== importe) {
+      clave.current = { importe, valor: nuevaClave() };
+    }
     setEnviando(true);
     setError(null);
     try {
       const vigente = await token();
-      setComprobante(await depositarSimulado(vigente, importe, nuevaClave()));
+      setComprobante(await depositarSimulado(vigente, importe, clave.current.valor));
     } catch (fallo) {
       setError(
         fallo instanceof ErrorDeApi

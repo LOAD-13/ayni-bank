@@ -1,0 +1,188 @@
+openapi: 3.0.3
+
+# Contrato de los controles de la tarjeta de debito virtual · HU-10 (AYNI-21).
+#
+# Es una propuesta que nace con la interfaz (AYNI-252), antes que el backend: lo
+# implementan las subtareas AYNI-246 a AYNI-250 en core-banking, sobre la Tarjeta
+# que modela HU-09 (AYNI-20). Se escribe primero para que la web y el servicio
+# se pongan de acuerdo en un PR, no al integrar.
+#
+# Cubre solo los controles. La consulta de la tarjeta y la revelacion del numero
+# completo con segundo factor son de HU-09 y van en su propio contrato.
+#
+# Seguridad: el titular sale del token, nunca de la ruta («mia»). Al implementar
+# el backend hay que anadir /api/v1/tarjetas/mia/** a las rutas protegidas del
+# gateway (ayni.seguridad.rutas-protegidas).
+
+info:
+  title: Ayni Core Banking · Controles de la tarjeta
+  version: 0.1.0
+  description: |
+    Congelar y descongelar la tarjeta con efecto inmediato, habilitar o no las
+    compras por internet y fijar un limite diario de consumo (HU-10).
+
+    Cada cambio queda en la pista de auditoria (AYNI-250) y se notifica por
+    correo al titular (AYNI-251). Toda operacion devuelve los controles
+    vigentes: la interfaz pinta lo que respondio el servidor.
+
+    **Los importes viajan como texto** («300.00»), como el saldo: JSON no
+    distingue decimales exactos y un `number` pasaria por coma flotante.
+    Los errores usan `application/problem+json` (RFC 7807).
+  license:
+    name: Propietario
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo local, a traves del gateway
+
+tags:
+  - name: Tarjeta
+    description: Controles de la tarjeta de debito virtual (HU-10)
+
+security:
+  - bearer: []
+
+paths:
+  /tarjetas/mia/controles:
+    get:
+      tags: [Tarjeta]
+      summary: Los controles vigentes de la tarjeta del titular
+      operationId: consultarControlesDeTarjeta
+      responses:
+        "200":
+          description: Controles vigentes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlesDeTarjeta" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404":
+          description: El titular todavia no tiene tarjeta (se emite al abrirse la cuenta, HU-09)
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problema" }
+    put:
+      tags: [Tarjeta]
+      summary: Fija el limite diario y las compras por internet
+      description: |
+        Reemplaza la configuracion entera (es un PUT, no un parche): quien llama
+        envia el valor vigente del campo que no quiere cambiar. Escenario 2: un
+        consumo que supere el limite diario se rechaza y el saldo no cambia.
+      operationId: configurarTarjeta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConfiguracionDeTarjeta" }
+      responses:
+        "200":
+          description: Configuracion guardada; devuelve los controles vigentes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlesDeTarjeta" }
+        "400":
+          description: Limite con formato invalido, cero o negativo
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problema" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { $ref: "#/components/responses/SinTarjeta" }
+
+  /tarjetas/mia/congelamiento:
+    post:
+      tags: [Tarjeta]
+      summary: Congela la tarjeta con efecto inmediato
+      description: |
+        Escenario 1: la tarjeta pasa a CONGELADA al instante y cualquier consumo
+        posterior se rechaza. Congelar una tarjeta ya congelada no es un error:
+        devuelve los mismos controles.
+      operationId: congelarTarjeta
+      responses:
+        "200":
+          description: Tarjeta congelada; devuelve los controles vigentes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlesDeTarjeta" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { $ref: "#/components/responses/SinTarjeta" }
+    delete:
+      tags: [Tarjeta]
+      summary: Descongela la tarjeta
+      operationId: descongelarTarjeta
+      responses:
+        "200":
+          description: Tarjeta activa de nuevo; devuelve los controles vigentes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ControlesDeTarjeta" }
+        "401": { $ref: "#/components/responses/SinSesion" }
+        "404": { $ref: "#/components/responses/SinTarjeta" }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    SinSesion:
+      description: Sin token de acceso valido (lo responde el gateway)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+    SinTarjeta:
+      description: El titular todavia no tiene tarjeta
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+
+  schemas:
+    ControlesDeTarjeta:
+      type: object
+      required: [estado, ultimos4, moneda, limiteDiario, consumidoHoy, comprasPorInternet]
+      properties:
+        estado:
+          type: string
+          enum: [ACTIVA, CONGELADA]
+        ultimos4:
+          type: string
+          pattern: "^[0-9]{4}$"
+          description: Solo los cuatro ultimos digitos. El numero completo nunca viaja aqui.
+          example: "4821"
+        moneda:
+          type: string
+          example: PEN
+        limiteDiario:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+          example: "300.00"
+        consumidoHoy:
+          type: string
+          pattern: "^[0-9]+\\.[0-9]{2}$"
+          description: Lo consumido hoy en hora de Lima; es lo que se compara con el limite.
+          example: "250.00"
+        comprasPorInternet:
+          type: boolean
+          example: true
+
+    ConfiguracionDeTarjeta:
+      type: object
+      required: [limiteDiario, comprasPorInternet]
+      properties:
+        limiteDiario:
+          type: string
+          pattern: "^[0-9]{1,7}\\.[0-9]{2}$"
+          description: Mayor que cero, con dos decimales.
+          example: "500.00"
+        comprasPorInternet:
+          type: boolean
+
+    Problema:
+      type: object
+      description: RFC 7807
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

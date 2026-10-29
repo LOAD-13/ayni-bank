@@ -406,7 +406,7 @@ export async function entregarSelfie(
  * exactamente quince minutos sin que nada indique por qué.
  */
 interface Opciones {
-  metodo?: "GET" | "POST" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "DELETE";
   /** Token de acceso para las rutas protegidas. Viaja como `Authorization: Bearer`. */
   token?: string;
   /** Clave de idempotencia de las operaciones monetarias. */
@@ -456,7 +456,13 @@ async function pedir<T>(ruta: string, cuerpo?: unknown, opciones: Opciones = {})
   try {
     problema = (await respuesta.json()) as Problema;
   } catch {
-    problema = { title: "No pudimos completar la operación", status: respuesta.status };
+    // Sin cuerpo legible no hay detalle del servidor, y las pantallas muestran el detalle
+    // antes que el título: que diga también qué hacer.
+    problema = {
+      title: "No pudimos completar la operación",
+      detail: "No pudimos completar la operación. Inténtalo de nuevo en unos minutos.",
+      status: respuesta.status,
+    };
   }
 
   throw new ErrorDeApi(problema, respuesta.status);
@@ -592,6 +598,122 @@ export async function transferir(
     { cuentaDestino, importe, concepto },
     { token, idempotencia: clave, confirmacion },
   );
+}
+
+// ─── Transferencia interbancaria · HU-11 ─────────────────────────────────
+
+export type EstadoInterbancario = "PENDIENTE" | "COMPLETADA" | "RECHAZADA";
+
+export interface TransferenciaInterbancaria {
+  id: string;
+  estado: EstadoInterbancario;
+}
+
+export interface Beneficiario {
+  id: string;
+  alias: string;
+  cci: string;
+}
+
+/** Comprueba el dígito de control del CCI mientras se escribe; no toca datos de nadie. */
+export async function validarCci(token: string, cci: string): Promise<boolean> {
+  return pedir<boolean>(`/api/v1/interbancarias/validar-cci/${cci}`, undefined, { token });
+}
+
+/**
+ * Envía dinero a otro banco. La identidad la pone el gateway; aquí solo viajan el CCI, el
+ * importe como texto y, en cabeceras, la clave de idempotencia y la confirmación.
+ */
+export async function transferirInterbancaria(
+  token: string,
+  cci: string,
+  importe: string,
+  concepto: string,
+  clave: string,
+  confirmacion: string,
+): Promise<TransferenciaInterbancaria> {
+  return pedir<TransferenciaInterbancaria>(
+    "/api/v1/interbancarias",
+    { cci, importe, concepto },
+    { token, idempotencia: clave, confirmacion },
+  );
+}
+
+export async function consultarInterbancaria(
+  token: string,
+  id: string,
+): Promise<TransferenciaInterbancaria> {
+  return pedir<TransferenciaInterbancaria>(`/api/v1/interbancarias/${id}`, undefined, { token });
+}
+
+export async function beneficiariosFrecuentes(token: string): Promise<Beneficiario[]> {
+  return pedir<Beneficiario[]>("/api/v1/interbancarias/beneficiarios", undefined, { token });
+}
+
+export async function guardarBeneficiario(
+  token: string,
+  alias: string,
+  cci: string,
+): Promise<Beneficiario> {
+  return pedir<Beneficiario>("/api/v1/interbancarias/beneficiarios", { alias, cci }, { token });
+}
+
+export async function borrarBeneficiario(token: string, id: string): Promise<void> {
+  return pedir<void>(`/api/v1/interbancarias/beneficiarios/${id}`, undefined, {
+    token,
+    metodo: "DELETE",
+  });
+}
+
+// ─── Controles de la tarjeta · HU-10 ─────────────────────────────────────
+// Contrato en contracts/core-banking-controles-de-tarjeta.openapi.yaml.
+
+/** Los controles de la tarjeta de débito virtual. Los importes llegan como texto, como el saldo. */
+export interface ControlesDeTarjeta {
+  estado: "ACTIVA" | "CONGELADA";
+  /** Solo los cuatro últimos dígitos: el número completo nunca viaja en esta respuesta (HU-09). */
+  ultimos4: string;
+  moneda: string;
+  limiteDiario: string;
+  /** Lo consumido hoy, en hora de Lima: es lo que se compara con el límite diario. */
+  consumidoHoy: string;
+  comprasPorInternet: boolean;
+}
+
+/** Lo que el titular puede configurar. Se envía entero: es un PUT, no un parche. */
+export interface ConfiguracionDeTarjeta {
+  limiteDiario: string;
+  comprasPorInternet: boolean;
+}
+
+/** 404 si el titular todavía no tiene tarjeta: se emite al abrirse la cuenta (HU-09). */
+export async function consultarControlesDeTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", undefined, { token });
+}
+
+/** Escenario 1: efecto inmediato; cualquier consumo posterior se rechaza. */
+export async function congelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "POST",
+  });
+}
+
+export async function descongelarTarjeta(token: string): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/congelamiento", undefined, {
+    token,
+    metodo: "DELETE",
+  });
+}
+
+export async function configurarTarjeta(
+  token: string,
+  configuracion: ConfiguracionDeTarjeta,
+): Promise<ControlesDeTarjeta> {
+  return pedir<ControlesDeTarjeta>("/api/v1/tarjetas/mia/controles", configuracion, {
+    token,
+    metodo: "PUT",
+  });
 }
 
 // ─── Confirmación con segundo factor · HU-07, ADR-0031 ───────────────────

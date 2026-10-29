@@ -41,10 +41,28 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
         </dependency>
+        <!-- Contadores del limite de tasa (AYNI-160). Redis y no la memoria del proceso:
+             con dos replicas del gateway, cada una contaria por su lado y el limite real
+             seria el doble. Ver ADR-0035. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Swagger UI en /api/docs con los contratos de los servicios. Apagada salvo con
+             AYNI_API_DOCS=true, que solo pone el compose local. Ver ADR-0033. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
         </dependency>
     </dependencies>
 

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:a11y": "playwright test a11y",
+    "test:usabilidad": "playwright test usabilidad",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
@@ -35,7 +36,7 @@
   "dependencies": {
     "@vladmandic/face-api": "^1.7.15",
     "lucide-react": "^1.37.0",
-    "next": "15.5.24",
+    "next": "15.5.28",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0"
@@ -57,7 +58,7 @@
     "@vitest/coverage-v8": "^3.2.4",
     "axe-core": "^4.13.0",
     "eslint": "^9.33.0",
-    "eslint-config-next": "15.5.24",
+    "eslint-config-next": "15.5.28",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^26.1.0",
     "prettier": "^3.6.2",

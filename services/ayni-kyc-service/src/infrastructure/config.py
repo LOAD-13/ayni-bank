@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     # carguen el modelo real.
     KYC_PRECARGAR_OCR: bool = False
 
+    # Documentacion interactiva (/docs) y contrato (/openapi.json). Apagados por defecto:
+    # solo el compose local los enciende. En produccion no se publican (ADR-0033).
+    KYC_API_DOCS: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()

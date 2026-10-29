@@ -43,6 +43,10 @@ public class SolicitudOnboardingEntity {
     @Column(name = "expira_en", nullable = false)
     private Instant expiraEn;
 
+    /** Solo en las rechazadas: el MotivoDeRechazoDeSolicitud que eligio el operador. */
+    @Column(name = "motivo_rechazo", length = 32)
+    private String motivoRechazo;
+
     // ─── Identidad declarada en el paso 1 ──────────────────────────────────
     // Nula en los senuelos. Es el termino de comparacion del OCR en HU-02: lo que la
     // persona dijo ser, frente a lo que diga el documento.
@@ -121,6 +125,16 @@ public class SolicitudOnboardingEntity {
         }
         this.intentosKycReverso = (short) Math.min(this.intentosKycReverso + 1, maximo);
         return this.intentosKycReverso;
+    }
+
+    void rechazar(String motivo, Instant momento) {
+        this.estado = "RECHAZADA";
+        this.motivoRechazo = motivo;
+        this.actualizadaEn = momento;
+    }
+
+    String getMotivoRechazo() {
+        return motivoRechazo;
     }
 
     void derivarARevisionManual(Instant momento) {

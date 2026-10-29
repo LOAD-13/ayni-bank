@@ -116,7 +116,7 @@ export function PasoDeCredenciales({
               onClick={() => setVisible((v) => !v)}
               aria-label={visible ? "Ocultar la contraseña" : "Mostrar la contraseña"}
               aria-pressed={visible}
-              className="px-4 text-gris-500 hover:text-gris-700"
+              className="self-stretch px-4 text-gris-500 hover:text-gris-700"
             >
               {visible ? (
                 <EyeOff aria-hidden="true" className="h-4 w-4" />

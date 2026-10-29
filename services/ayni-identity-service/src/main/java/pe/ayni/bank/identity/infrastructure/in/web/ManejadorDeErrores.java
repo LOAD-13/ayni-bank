@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -257,6 +258,19 @@ public class ManejadorDeErrores {
                                                   WebRequest peticion) {
         return problema(HttpStatus.BAD_REQUEST, "validacion",
                 "Los datos enviados no son validos", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /**
+     * Un cuerpo que no se puede leer: JSON mal formado o un valor que no existe en una lista
+     * cerrada (un motivo de rechazo inventado, por ejemplo). Es un error de quien llama, 400,
+     * y no un fallo del servidor. El detalle no repite el mensaje de Jackson, que describe
+     * las clases internas.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail alNoPoderLeerElCuerpo(HttpMessageNotReadableException excepcion, WebRequest peticion) {
+        return problema(HttpStatus.BAD_REQUEST, "validacion",
+                "Los datos enviados no son validos",
+                "El cuerpo de la peticion no tiene el formato esperado.", List.of(), peticion);
     }
 
     /**
