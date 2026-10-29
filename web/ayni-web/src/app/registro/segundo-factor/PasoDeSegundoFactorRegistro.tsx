@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, BookmarkCheck, Info, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  BookmarkCheck,
+  Info,
+  RefreshCw,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
