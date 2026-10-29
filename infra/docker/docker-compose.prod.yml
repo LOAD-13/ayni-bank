@@ -170,6 +170,8 @@ services:
     container_name: ayni-core-banking-service
     environment:
       AYNI_CONFIRMACION_CLAVE: ${AYNI_CONFIRMACION_CLAVE}
+      # HU-09: clave maestra del PAN cifrado y del CVV dinamico (la misma variable que identity).
+      AYNI_CIFRADO_CLAVE: ${AYNI_CIFRADO_CLAVE}
       <<: *java-env
     depends_on:
       rabbitmq: { condition: service_healthy }
