@@ -122,6 +122,13 @@ public class ControlarTarjetaService implements ControlarTarjetaUseCase {
             rechazar(usuarioId, MotivoDeRechazo.TARJETA_CONGELADA);
         }
 
+        Cuenta origen = libro.buscarPorId(tarjeta.cuentaId())
+                .orElseThrow(() -> new OperacionRechazadaException(MotivoDeRechazo.SIN_CUENTA));
+        Cuenta contrapartida = libro.cuentaDeFondeo(importe.moneda());
+        // Se bloquea antes de leer lo consumido hoy: dos consumos simultáneos no pueden pasar
+        // los dos el límite diario con la misma lectura.
+        libro.bloquear(List.of(origen.id(), contrapartida.id()));
+
         ControlesDeTarjeta controles = tarjetas.controlesDe(tarjeta, ahora);
         if (porInternet && !controles.comprasPorInternet()) {
             rechazar(usuarioId, MotivoDeRechazo.COMPRAS_POR_INTERNET_DESHABILITADAS);
@@ -131,11 +138,6 @@ public class ControlarTarjetaService implements ControlarTarjetaUseCase {
         if (nuevoAcumulado.importe().compareTo(controles.limiteDiario().importe()) > 0) {
             rechazar(usuarioId, MotivoDeRechazo.LIMITE_DIARIO_TARJETA_EXCEDIDO);
         }
-
-        Cuenta origen = libro.buscarPorId(tarjeta.cuentaId())
-                .orElseThrow(() -> new OperacionRechazadaException(MotivoDeRechazo.SIN_CUENTA));
-        Cuenta contrapartida = libro.cuentaDeFondeo(importe.moneda());
-        libro.bloquear(List.of(origen.id(), contrapartida.id()));
 
         Dinero saldoActual = libro.saldoDe(origen.id(), origen.moneda());
         if (saldoActual.menos(importe).esNegativo()) {
