@@ -16,13 +16,45 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.Pan;
 import pe.ayni.bank.core.domain.model.Tarjeta;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeTarjetasPort;
 import pe.ayni.bank.core.domain.service.GeneradorDePan;
 
 /** HU-09: emision idempotente y PAN unico, con dobles en memoria. */
 class EmitirTarjetaServiceTest {
+
+    /** La pista de la emision: solo se espera el evento TARJETA_EMITIDA. */
+    private static final List<String> PISTA = new ArrayList<>();
+    private static final PistaDeAuditoriaPort AUDITORIA = new PistaDeAuditoriaPort() {
+        @Override
+        public void registrar(TipoDeEventoDeOperacion tipo, UUID usuarioId, UUID recurso) {
+            PISTA.add(tipo.name());
+        }
+
+        @Override
+        public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
+            throw new AssertionError("La emision no registra rechazos.");
+        }
+
+        @Override
+        public void registrarAperturaDuplicada(UUID usuarioId) {
+            throw new AssertionError("La emision no abre cuentas.");
+        }
+
+        @Override
+        public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
+            throw new AssertionError("La emision no consulta movimientos.");
+        }
+
+        @Override
+        public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
+            throw new AssertionError("La emision no revela el PAN.");
+        }
+    };
 
     private static final Clock RELOJ = Clock.fixed(Instant.parse("2026-10-28T15:00:00Z"), ZoneOffset.UTC);
 
@@ -62,7 +94,7 @@ class EmitirTarjetaServiceTest {
     @DisplayName("Emite una tarjeta ACTIVA para la cuenta; un segundo intento devuelve la misma")
     void idempotentePorTitular() {
         var repositorio = new EnMemoria();
-        var servicio = new EmitirTarjetaService(repositorio, new GeneradorDePan(new java.util.Random(7)), RELOJ);
+        var servicio = new EmitirTarjetaService(repositorio, new GeneradorDePan(new java.util.Random(7)), AUDITORIA, RELOJ);
         UUID titular = UUID.randomUUID();
         UUID cuenta = UUID.randomUUID();
 
@@ -73,6 +105,7 @@ class EmitirTarjetaServiceTest {
         assertThat(repositorio.guardadas).hasSize(1);
         assertThat(primera.cuentaId()).isEqualTo(cuenta);
         assertThat(primera.emitidaEn()).isEqualTo(RELOJ.instant());
+        assertThat(PISTA).contains("TARJETA_EMITIDA");
     }
 
     @Test
@@ -81,7 +114,7 @@ class EmitirTarjetaServiceTest {
         var repositorio = new EnMemoria();
         repositorio.ocupados.add("4999990000000007");
         var servicio = new EmitirTarjetaService(repositorio,
-                generadorDe("4999990000000007", "4539578763621486"), RELOJ);
+                generadorDe("4999990000000007", "4539578763621486"), AUDITORIA, RELOJ);
 
         Tarjeta tarjeta = servicio.emitirPara(UUID.randomUUID(), UUID.randomUUID());
 
@@ -95,7 +128,7 @@ class EmitirTarjetaServiceTest {
         repositorio.ocupados.add("4999990000000007");
         String[] siempreElMismo = new String[EmitirTarjetaService.INTENTOS];
         java.util.Arrays.fill(siempreElMismo, "4999990000000007");
-        var servicio = new EmitirTarjetaService(repositorio, generadorDe(siempreElMismo), RELOJ);
+        var servicio = new EmitirTarjetaService(repositorio, generadorDe(siempreElMismo), AUDITORIA, RELOJ);
 
         assertThatThrownBy(() -> servicio.emitirPara(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(IllegalStateException.class);

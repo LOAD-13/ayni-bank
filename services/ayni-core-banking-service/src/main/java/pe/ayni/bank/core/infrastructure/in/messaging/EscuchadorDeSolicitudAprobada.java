@@ -7,9 +7,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.CuentaDuplicadaException;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
+import pe.ayni.bank.core.domain.port.in.EmitirTarjetaUseCase;
 import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeMensajeria;
 
 /**
@@ -29,16 +31,22 @@ public class EscuchadorDeSolicitudAprobada {
     private static final Moneda MONEDA_DE_APERTURA = Moneda.PEN;
 
     private final AbrirCuentaDeAhorroUseCase abrirCuenta;
+    private final EmitirTarjetaUseCase emitirTarjeta;
 
-    public EscuchadorDeSolicitudAprobada(AbrirCuentaDeAhorroUseCase abrirCuenta) {
+    public EscuchadorDeSolicitudAprobada(AbrirCuentaDeAhorroUseCase abrirCuenta, EmitirTarjetaUseCase emitirTarjeta) {
         this.abrirCuenta = abrirCuenta;
+        this.emitirTarjeta = emitirTarjeta;
     }
 
     @RabbitListener(queues = ConfiguracionDeMensajeria.COLA_SOLICITUDES_APROBADAS)
     public void alAprobarseLaSolicitud(SolicitudAprobada evento) {
         try {
-            abrirCuenta.abrirPara(evento.usuarioId(), evento.solicitudId(),
+            Cuenta cuenta = abrirCuenta.abrirPara(evento.usuarioId(), evento.solicitudId(),
                     MONEDA_DE_APERTURA);
+            // HU-09: la tarjeta virtual sale con la cuenta. Va en su propia transaccion: si
+            // fallara, el mensaje vuelve a la cola, la apertura devuelve la cuenta que ya
+            // existe y la emision, idempotente, lo intenta de nuevo.
+            emitirTarjeta.emitirPara(evento.usuarioId(), cuenta.id());
         } catch (CuentaDuplicadaException duplicada) {
             // El titular ya tiene su cuenta. No es un fallo del mensaje: es el mismo hecho
             // llegando otra vez, o un KYC reintentado. Se traga a propósito, porque

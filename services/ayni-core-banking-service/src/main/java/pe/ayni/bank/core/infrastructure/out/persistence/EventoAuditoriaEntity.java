@@ -34,6 +34,10 @@ public class EventoAuditoriaEntity {
     @Column(name = "ocurrido_en", nullable = false)
     private Instant ocurridoEn;
 
+    /** Desde donde se hizo; hoy solo lo lleva la revelacion del PAN (HU-09). */
+    @Column(length = 45)
+    private String ip;
+
     protected EventoAuditoriaEntity() {
         // Exigido por JPA.
     }
@@ -45,6 +49,11 @@ public class EventoAuditoriaEntity {
         this.movimientoId = movimientoId;
         this.motivo = motivo;
         this.ocurridoEn = ocurridoEn;
+    }
+
+    EventoAuditoriaEntity(String tipo, UUID usuarioId, UUID movimientoId, Instant ocurridoEn, String ip) {
+        this(tipo, usuarioId, movimientoId, null, ocurridoEn);
+        this.ip = ip;
     }
 
     String getTipo() {
