@@ -14,9 +14,6 @@ import pe.ayni.bank.identity.domain.model.DatosDelDni;
 import pe.ayni.bank.identity.domain.model.EstadoDelPasoKyc;
 import pe.ayni.bank.identity.domain.model.FuenteDeLectura;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
-import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.port.in.ConfirmarDatosDelDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.GestionarFalloDeVerificacionKycUseCase;
@@ -76,7 +73,7 @@ public class ConfirmarDatosDelDniService implements ConfirmarDatosDelDniUseCase 
         UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
-        exigirSegundoFactorVerificado(titularId);
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         if (solicitudes.estaEnRevisionManual(solicitudId)) {
             return EstadoDelPasoKyc.EN_REVISION_MANUAL;
@@ -102,21 +99,5 @@ public class ConfirmarDatosDelDniService implements ConfirmarDatosDelDniUseCase 
 
         fallos.derivarPorDiscrepancia(solicitudId);
         return EstadoDelPasoKyc.EN_REVISION_MANUAL;
-    }
-
-    private void exigirSegundoFactorVerificado(UUID titularId) {
-        if (metodosSegundoFactor == null && segundosFactores == null) {
-            return;
-        }
-        boolean verificadoPorMetodo = metodosSegundoFactor != null
-                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
-                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
-        boolean verificadoPorTotp = segundosFactores != null
-                && segundosFactores.buscarPorUsuario(titularId)
-                        .filter(SegundoFactor::estaConfirmado)
-                        .isPresent();
-        if (!verificadoPorMetodo && !verificadoPorTotp) {
-            throw new SegundoFactorNoVerificadoException();
-        }
     }
 }

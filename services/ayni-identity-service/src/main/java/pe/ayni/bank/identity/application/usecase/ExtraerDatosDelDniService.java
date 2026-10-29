@@ -12,10 +12,7 @@ import pe.ayni.bank.identity.domain.model.CapturasIncompletasException;
 import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.KycServiceNoDisponibleException;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
-import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.ResultadoDeExtraccion;
-import pe.ayni.bank.identity.domain.model.SegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.port.in.ExtraerDatosDelDniUseCase;
@@ -80,7 +77,7 @@ public class ExtraerDatosDelDniService implements ExtraerDatosDelDniUseCase {
         UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
-        exigirSegundoFactorVerificado(titularId);
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         if (solicitudes.estaEnRevisionManual(solicitudId)) {
             return ResultadoDeExtraccion.enRevisionManual();
@@ -117,22 +114,6 @@ public class ExtraerDatosDelDniService implements ExtraerDatosDelDniUseCase {
     private boolean sigueIntacto(DocumentoKyc documento) {
         return almacen.describir(documento.claveDeObjeto()).isPresent()
                 && almacen.calcularHash(documento.claveDeObjeto()).equals(documento.hashSha256());
-    }
-
-    private void exigirSegundoFactorVerificado(UUID titularId) {
-        if (metodosSegundoFactor == null && segundosFactores == null) {
-            return;
-        }
-        boolean verificadoPorMetodo = metodosSegundoFactor != null
-                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
-                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
-        boolean verificadoPorTotp = segundosFactores != null
-                && segundosFactores.buscarPorUsuario(titularId)
-                        .filter(SegundoFactor::estaConfirmado)
-                        .isPresent();
-        if (!verificadoPorMetodo && !verificadoPorTotp) {
-            throw new SegundoFactorNoVerificadoException();
-        }
     }
 }
 

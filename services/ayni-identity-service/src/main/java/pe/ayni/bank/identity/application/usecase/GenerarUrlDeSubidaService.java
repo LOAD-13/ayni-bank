@@ -8,9 +8,6 @@ import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
@@ -57,7 +54,7 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
         UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
-        exigirSegundoFactorVerificado(titularId);
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         String extensionLimpia = sanitizarExtension(extension);
 
@@ -66,22 +63,6 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
         return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia),
                 TipoDeDocumentoKyc.TAMANO_MAXIMO_BYTES);
-    }
-
-    private void exigirSegundoFactorVerificado(UUID titularId) {
-        if (metodosSegundoFactor == null && segundosFactores == null) {
-            return;
-        }
-        boolean verificadoPorMetodo = metodosSegundoFactor != null
-                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
-                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
-        boolean verificadoPorTotp = segundosFactores != null
-                && segundosFactores.buscarPorUsuario(titularId)
-                        .filter(SegundoFactor::estaConfirmado)
-                        .isPresent();
-        if (!verificadoPorMetodo && !verificadoPorTotp) {
-            throw new SegundoFactorNoVerificadoException();
-        }
     }
 
     /**

@@ -11,11 +11,8 @@ import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.DocumentoNoSubidoException;
 import pe.ayni.bank.identity.domain.model.EvaluacionDeCaptura;
 import pe.ayni.bank.identity.domain.model.KycServiceNoDisponibleException;
-import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
 import pe.ayni.bank.identity.domain.model.ResultadoDeCaptura;
-import pe.ayni.bank.identity.domain.model.SegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.port.in.EvaluarCapturaDeDniUseCase;
@@ -85,7 +82,7 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
         UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
-        exigirSegundoFactorVerificado(titularId);
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         // La clave la firmo GenerarUrlDeSubidaService con este prefijo. Sin esta comprobacion,
         // cualquiera podria hacer pasar como suya la foto subida para otra solicitud.
@@ -135,22 +132,6 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
                 UUID.randomUUID(), solicitudId, lado, claveDeObjeto, hash,
                 Objects.requireNonNullElse(objeto.tipoDeContenido(), TIPO_DESCONOCIDO),
                 objeto.tamanoBytes(), reloj.instant()));
-    }
-
-    private void exigirSegundoFactorVerificado(UUID titularId) {
-        if (metodosSegundoFactor == null && segundosFactores == null) {
-            return;
-        }
-        boolean verificadoPorMetodo = metodosSegundoFactor != null
-                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
-                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
-        boolean verificadoPorTotp = segundosFactores != null
-                && segundosFactores.buscarPorUsuario(titularId)
-                        .filter(SegundoFactor::estaConfirmado)
-                        .isPresent();
-        if (!verificadoPorMetodo && !verificadoPorTotp) {
-            throw new SegundoFactorNoVerificadoException();
-        }
     }
 }
 

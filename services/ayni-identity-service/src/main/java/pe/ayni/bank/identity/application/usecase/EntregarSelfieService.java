@@ -11,10 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.DocumentoNoSubidoException;
 import pe.ayni.bank.identity.domain.model.EstadoDelPasoKyc;
-import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
-import pe.ayni.bank.identity.domain.model.SegundoFactor;
-import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.port.in.EntregarSelfieUseCase;
@@ -80,7 +77,7 @@ public class EntregarSelfieService implements EntregarSelfieUseCase {
         UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
-        exigirSegundoFactorVerificado(titularId);
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         String prefijo = "kyc/" + solicitudId + "/" + TipoDeDocumentoKyc.SELFIE.prefijoDeObjeto();
         if (claveDeObjeto == null || !claveDeObjeto.startsWith(prefijo)) {
@@ -102,21 +99,5 @@ public class EntregarSelfieService implements EntregarSelfieUseCase {
 
         fallos.derivarParaCotejoFacial(solicitudId);
         return EstadoDelPasoKyc.EN_REVISION_MANUAL;
-    }
-
-    private void exigirSegundoFactorVerificado(UUID titularId) {
-        if (metodosSegundoFactor == null && segundosFactores == null) {
-            return;
-        }
-        boolean verificadoPorMetodo = metodosSegundoFactor != null
-                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
-                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
-        boolean verificadoPorTotp = segundosFactores != null
-                && segundosFactores.buscarPorUsuario(titularId)
-                        .filter(SegundoFactor::estaConfirmado)
-                        .isPresent();
-        if (!verificadoPorMetodo && !verificadoPorTotp) {
-            throw new SegundoFactorNoVerificadoException();
-        }
     }
 }

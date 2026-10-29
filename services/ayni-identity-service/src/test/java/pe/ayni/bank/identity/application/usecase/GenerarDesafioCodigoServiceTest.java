@@ -138,4 +138,24 @@ class GenerarDesafioCodigoServiceTest {
 
         verify(repositorioDesafio, org.mockito.Mockito.times(1)).guardar(any(DesafioPorCodigo.class));
     }
+
+    @Test
+    @DisplayName("Antienumeracion: solicitud senuelo devuelve desafio efimero sin persistir ni fallar")
+    void generar_SolicitudSenuelo() {
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort solicitudes = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort.class);
+        GenerarDesafioCodigoService conSolicitudes = new GenerarDesafioCodigoService(
+                repositorioDesafio, repositorioUsuarios, notificador, java.time.Clock.systemUTC(), solicitudes);
+
+        UUID senueloId = UUID.randomUUID();
+        when(solicitudes.titularDe(senueloId)).thenReturn(Optional.empty());
+        when(repositorioUsuarios.buscarPorId(senueloId)).thenReturn(Optional.empty());
+
+        ResultadoGeneracionDesafio resultado = conSolicitudes.generar(senueloId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
+
+        assertThat(resultado.codigo6Digitos()).matches("^\\d{6}$");
+        assertThat(resultado.desafio().usuarioId()).isEqualTo(senueloId);
+        verify(repositorioDesafio, never()).guardar(any());
+        assertThat(GenerarDesafioCodigoService.calcularHashSha256(null, "123456")).hasSize(64);
+    }
 }
