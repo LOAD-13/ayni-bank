@@ -45,7 +45,9 @@ class AlmacenDeDocumentosEnMinioTest {
     private static final long CINCO_MB = 5L * 1024 * 1024;
 
     @Container
-    static final GenericContainer<?> MINIO = new GenericContainer<>("minio/minio:latest")
+    // MinIO dejó de publicar su imagen en Docker Hub (pull denegado desde 2026); la de
+    // Chainguard es el mismo servidor, pública y sin credenciales.
+    static final GenericContainer<?> MINIO = new GenericContainer<>("cgr.dev/chainguard/minio:latest")
             .withEnv("MINIO_ROOT_USER", USUARIO)
             .withEnv("MINIO_ROOT_PASSWORD", CLAVE)
             .withCommand("server", "/data")
