@@ -90,6 +90,11 @@ class OperarCuentaServiceTest {
                 public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
                     pista.add("ACCESO_AJENO:" + movimientoId);
                 }
+
+                @Override
+                public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
+                    pista.add("PAN_REVELADO:" + tarjetaId);
+                }
             },
             (confirmacion, usuario, operacion) -> {
                 confirmacionesVistas.add(confirmacion);

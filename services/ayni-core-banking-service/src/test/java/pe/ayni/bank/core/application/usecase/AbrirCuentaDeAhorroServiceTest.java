@@ -283,5 +283,10 @@ class AbrirCuentaDeAhorroServiceTest {
         public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
             throw new AssertionError("Abrir una cuenta no consulta movimientos.");
         }
+
+        @Override
+        public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
+            throw new AssertionError("Abrir una cuenta no revela tarjetas.");
+        }
     }
 }

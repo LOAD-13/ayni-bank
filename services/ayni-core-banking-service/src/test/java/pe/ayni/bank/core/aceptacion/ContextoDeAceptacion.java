@@ -23,11 +23,18 @@ import io.cucumber.spring.CucumberContextConfiguration;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.CierreDiarioService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
+import pe.ayni.bank.core.application.usecase.ConsultarTarjetaService;
+import pe.ayni.bank.core.application.usecase.EmitirTarjetaService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
 import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeMensajeria;
+import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeTarjeta;
 import pe.ayni.bank.core.infrastructure.in.messaging.EscuchadorDeSolicitudAprobada;
+import pe.ayni.bank.core.infrastructure.interbancaria.ConciliadorInterbancario;
+import pe.ayni.bank.core.infrastructure.interbancaria.ResolucionInterbancariaService;
+import pe.ayni.bank.core.infrastructure.interbancaria.TransferenciaInterbancariaService;
+import pe.ayni.bank.core.infrastructure.out.crypto.CifradorDePan;
 import pe.ayni.bank.core.infrastructure.out.messaging.PublicadorDeOutbox;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPistaDeAuditoria;
@@ -35,10 +42,8 @@ import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPublicadorDeEve
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIdempotencia;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIntereses;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCuentas;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeTarjetas;
 import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
-import pe.ayni.bank.core.infrastructure.interbancaria.ConciliadorInterbancario;
-import pe.ayni.bank.core.infrastructure.interbancaria.ResolucionInterbancariaService;
-import pe.ayni.bank.core.infrastructure.interbancaria.TransferenciaInterbancariaService;
 
 /**
  * El contexto de Spring de los escenarios: los casos de uso reales, sus adaptadores y un
@@ -60,7 +65,9 @@ import pe.ayni.bank.core.infrastructure.interbancaria.TransferenciaInterbancaria
         AdaptadorRegistroDeIntereses.class, AdaptadorLibroMayor.class, AdaptadorRepositorioDeCuentas.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
         ObjectMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
-        ConciliadorInterbancario.class, ContextoDeAceptacion.Infraestructura.class})
+        ConciliadorInterbancario.class, EmitirTarjetaService.class, ConsultarTarjetaService.class,
+        AdaptadorRepositorioDeTarjetas.class, CifradorDePan.class, ConfiguracionDeTarjeta.class,
+        ContextoDeAceptacion.Infraestructura.class})
 public class ContextoDeAceptacion {
 
     /** El token de confirmacion que el verificador de los escenarios da por bueno. */

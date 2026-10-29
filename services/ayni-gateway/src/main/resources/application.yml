@@ -175,7 +175,7 @@ ayni:
     # muestra o mueve el dinero del titular. `cuentas/titular/**` queda fuera porque
     # la pantalla final del onboarding la consulta antes de que exista sesion.
     rutas-protegidas: >-
-      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**
+      /api/v1/cuentas/mia,/api/v1/cuentas/mia/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
 
 # Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
 # defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de

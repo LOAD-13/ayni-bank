@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.core.domain.model.Pan;
 import pe.ayni.bank.core.domain.model.Tarjeta;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 import pe.ayni.bank.core.domain.port.in.EmitirTarjetaUseCase;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeTarjetasPort;
 import pe.ayni.bank.core.domain.service.GeneradorDePan;
 
@@ -27,11 +29,14 @@ public class EmitirTarjetaService implements EmitirTarjetaUseCase {
 
     private final RepositorioDeTarjetasPort tarjetas;
     private final GeneradorDePan generador;
+    private final PistaDeAuditoriaPort auditoria;
     private final Clock reloj;
 
-    public EmitirTarjetaService(RepositorioDeTarjetasPort tarjetas, GeneradorDePan generador, Clock reloj) {
+    public EmitirTarjetaService(RepositorioDeTarjetasPort tarjetas, GeneradorDePan generador,
+                                PistaDeAuditoriaPort auditoria, Clock reloj) {
         this.tarjetas = tarjetas;
         this.generador = generador;
+        this.auditoria = auditoria;
         this.reloj = reloj;
     }
 
@@ -41,6 +46,7 @@ public class EmitirTarjetaService implements EmitirTarjetaUseCase {
         return tarjetas.deTitular(usuarioId).orElseGet(() -> {
             Tarjeta nueva = Tarjeta.emitir(cuentaId, usuarioId, panUnico(), reloj.instant());
             tarjetas.guardar(nueva);
+            auditoria.registrar(TipoDeEventoDeOperacion.TARJETA_EMITIDA, usuarioId, nueva.id());
             return nueva;
         });
     }

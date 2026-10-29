@@ -56,4 +56,10 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
         repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.ACCESO_AJENO_DENEGADO.name(),
                 usuarioId, movimientoId, null, reloj.instant()));
     }
+
+    @Override
+    public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
+        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.PAN_REVELADO.name(), usuarioId, tarjetaId,
+                reloj.instant(), ip));
+    }
 }
