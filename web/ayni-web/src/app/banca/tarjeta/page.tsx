@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from "reac
 
 import { Boton } from "@/componentes/Boton";
 import { CampoDeTexto } from "@/componentes/CampoDeTexto";
+import { TarjetaVirtual } from "@/componentes/banca/TarjetaVirtual";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import {
   configurarTarjeta,
@@ -31,6 +32,8 @@ export default function PaginaDeLaTarjeta() {
   const { token } = useSesion();
   const [controles, setControles] = useState<ControlesDeTarjeta | null>(null);
   const [sinTarjeta, setSinTarjeta] = useState(false);
+  // HU-09: si ya hay tarjeta emitida, la falta de controles no es «tu tarjeta no está lista».
+  const [tieneTarjeta, setTieneTarjeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [enCurso, setEnCurso] = useState<Accion | null>(null);
@@ -114,7 +117,17 @@ export default function PaginaDeLaTarjeta() {
         </p>
       )}
 
-      {sinTarjeta && (
+      <TarjetaVirtual alCargar={setTieneTarjeta} />
+
+      {sinTarjeta && tieneTarjeta && (
+        <Seccion Icono={CreditCard} titulo="Los controles de tu tarjeta llegan pronto">
+          <p className="text-body text-gris-700">
+            Muy pronto podrás congelarla y fijar su límite diario desde aquí.
+          </p>
+        </Seccion>
+      )}
+
+      {sinTarjeta && !tieneTarjeta && (
         <Seccion Icono={CreditCard} titulo="Tu tarjeta aún no está lista">
           <p className="text-body text-gris-700">
             Tu tarjeta de débito virtual se emite al abrirse tu cuenta. Cuando esté lista, aquí
