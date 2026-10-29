@@ -1,5 +1,6 @@
 package pe.ayni.bank.core.domain.port.in;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import pe.ayni.bank.core.domain.model.Comprobante;
@@ -13,8 +14,20 @@ import pe.ayni.bank.core.domain.model.Dinero;
  */
 public interface OperarCuentaUseCase {
 
+    /**
+     * @param confirmacion comprobante de que el titular confirmo esta transferencia con su
+     *                     segundo factor (ADR-0031). Un reintento con la misma clave devuelve
+     *                     el comprobante original aunque la confirmacion ya haya caducado:
+     *                     repetir no mueve dinero.
+     */
     Comprobante transferir(UUID usuarioId, String numeroDestino, Dinero importe,
-                           String concepto, UUID claveDeIdempotencia);
+                           String concepto, UUID claveDeIdempotencia, String confirmacion);
 
     Comprobante depositarSimulado(UUID usuarioId, Dinero importe, UUID claveDeIdempotencia);
+
+    /**
+     * HU-07: el comprobante de un movimiento visto desde la cuenta del titular. Vacio si el
+     * movimiento no existe o no toca su cuenta: un identificador ajeno no sirve para leerlo.
+     */
+    Optional<Comprobante> comprobante(UUID usuarioId, UUID movimientoId);
 }

@@ -27,6 +27,7 @@ import pe.ayni.bank.identity.domain.model.CorreoElectronico;
 import pe.ayni.bank.identity.domain.model.DatosDeclarados;
 import pe.ayni.bank.identity.domain.model.EstadoUsuario;
 import pe.ayni.bank.identity.domain.model.IdentidadDeclarada;
+import pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud;
 import pe.ayni.bank.identity.domain.model.RequisitoDeContrasena;
 import pe.ayni.bank.identity.domain.model.ResultadoDeRegistro;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
@@ -410,6 +411,11 @@ class RegistrarVisitanteServiceTest {
         @Override
         public void marcarAprobada(UUID solicitudId) {
             aprobadas.add(solicitudId);
+        }
+
+        @Override
+        public void marcarRechazada(UUID solicitudId, MotivoDeRechazoDeSolicitud motivo) {
+            // Sin efecto: esta prueba no rechaza nada.
         }
 
         @Override

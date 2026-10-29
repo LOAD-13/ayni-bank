@@ -5,8 +5,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import pe.ayni.bank.core.domain.model.Asiento;
+import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
+import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
@@ -27,6 +29,9 @@ public interface LibroMayorPort {
     /** La cuenta tecnica del banco que hace de contrapartida de los depositos simulados. */
     Cuenta cuentaDeFondeo(Moneda moneda);
 
+    /** La cuenta tecnica que paga los intereses capitalizados (HU-06). Sembrada por V5. */
+    Cuenta cuentaDeIntereses(Moneda moneda);
+
     /**
      * Bloquea las cuentas hasta el final de la transaccion ({@code SELECT ... FOR UPDATE}).
      *
@@ -43,6 +48,14 @@ public interface LibroMayorPort {
 
     /** Los ultimos asientos de la cuenta, del mas reciente al mas antiguo. */
     List<Asiento> ultimosAsientosDe(UUID cuentaId, int limite);
+
+    /**
+     * Movimientos filtrados de la cuenta junto con el saldo posterior de cada asiento,
+     * ordenados del mas reciente al mas antiguo · HU-08.
+     */
+    default List<AsientoConSaldo> filtrarAsientosDe(UUID cuentaId, FiltroDeMovimientos filtro) {
+        return List.of();
+    }
 
     List<Asiento> asientosDelMovimiento(UUID movimientoId);
 }

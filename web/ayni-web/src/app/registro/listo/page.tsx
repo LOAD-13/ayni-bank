@@ -7,13 +7,13 @@ import { PasosDelOnboarding } from "@/componentes/onboarding/PasosDelOnboarding"
 import { EstadoDeLaCuenta } from "./EstadoDeLaCuenta";
 
 export const metadata: Metadata = {
-  title: "Tu cuenta está lista · Ayni Bank",
+  title: "Tu cuenta está lista",
   description: "Tu cuenta de ahorro Ayni ya está abierta.",
   robots: { index: false, follow: false },
 };
 
 /**
- * Paso 5 de 5 del onboarding, según el diseño aprobado en pen.dev.
+ * Paso 6 de 6 del onboarding, según el diseño aprobado en pen.dev.
  *
  * **El titular llega por la URL y eso es provisional.** Lo correcto es sacarlo del token de
  * acceso, pero la validación del JWT vive en el gateway y llega con HU-07. Queda anotado
@@ -39,7 +39,7 @@ export default async function PaginaDeCuentaLista({
       </header>
 
       <div className="mx-auto w-full max-w-[1440px] px-6 pt-9 lg:px-16">
-        <PasosDelOnboarding actual={5} completado />
+        <PasosDelOnboarding actual={6} completado />
       </div>
 
       <main className="mx-auto w-full max-w-[920px] px-5 py-9 sm:px-6">

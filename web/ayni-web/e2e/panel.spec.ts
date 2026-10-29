@@ -12,7 +12,7 @@ const TOKEN = [
   "firma",
 ].join(".");
 
-async function conSesion(page: Page, cuenta: "abierta" | "pendiente") {
+async function conSesion(page: Page, cuenta: "abierta" | "abriendose" | "pendiente" | "rechazada") {
   await page.route("**/api/v1/sesion/renovacion", (ruta) =>
     ruta.fulfill({
       json: { tokenDeAcceso: TOKEN, expiraEn: new Date(Date.now() + 15 * 60_000).toISOString() },
@@ -23,12 +23,14 @@ async function conSesion(page: Page, cuenta: "abierta" | "pendiente") {
       json: {
         nombreDePila: "Ana",
         correo: "a***@example.pe",
-        estado: cuenta === "abierta" ? "ACTIVO" : "PENDIENTE_VERIFICACION",
-        solicitudPendiente: cuenta === "abierta" ? null : "eff2c2e3-8c0e-4e71-aadc-1f6426b518a7",
+        estado:
+          cuenta === "abierta" || cuenta === "abriendose" ? "ACTIVO" : "PENDIENTE_VERIFICACION",
+        solicitudPendiente: cuenta === "pendiente" ? "eff2c2e3-8c0e-4e71-aadc-1f6426b518a7" : null,
+        estadoSolicitud: cuenta === "rechazada" ? "RECHAZADA" : null,
       },
     }),
   );
-  if (cuenta === "pendiente") {
+  if (cuenta !== "abierta") {
     await page.route("**/api/v1/cuentas/mia**", (ruta) =>
       ruta.fulfill({
         status: 404,
@@ -86,7 +88,8 @@ test.describe("Panel de la banca", () => {
     await expect(page.getByRole("heading", { name: "Hola, Ana" })).toBeVisible();
     await expect(page.getByTestId("saldo-total")).toHaveText("S/ 850.00");
     await expect(page.getByText("TREA 4.50 %").first()).toBeVisible();
-    await expect(page.getByText(/unos S\/ 3\.18 al mes/)).toBeVisible();
+    // 850 × 4.50 % / 12 = 3.1875, que con HALF_EVEN son 3.19 (truncando salía 3.18).
+    await expect(page.getByText(/unos S\/ 3\.19 al mes/)).toBeVisible();
     await expect(page.getByRole("cell", { name: "Depósito" })).toBeVisible();
 
     await expect(page.getByTestId("version-de-la-aplicacion")).toContainText("Ayni Bank · versión");
@@ -106,5 +109,33 @@ test.describe("Panel de la banca", () => {
       "href",
       "/registro/dni-anverso?solicitudId=eff2c2e3-8c0e-4e71-aadc-1f6426b518a7",
     );
+  });
+
+  test("con la solicitud rechazada lo dice, sin mandarle a registrarse otra vez", async ({
+    page,
+  }) => {
+    // HU-05 escenario 3 · AYNI-327: el motivo le llega por correo.
+    await conSesion(page, "rechazada");
+    await page.goto("/banca");
+
+    await expect(
+      page.getByText(
+        "No pudimos aprobar tu solicitud de apertura. Te escribimos por correo con el motivo.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByText(/venció|vuelve a registrarte/i)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /continuar la verificación/i })).toHaveCount(0);
+  });
+
+  test("verificada pero con la cuenta todavía abriéndose, pide esperar unos segundos", async ({
+    page,
+  }) => {
+    // ADR-0038: la pantalla final del registro lleva a ingresar, y se puede llegar antes de que
+    // core-banking termine de abrir la cuenta. No es una solicitud vencida.
+    await conSesion(page, "abriendose");
+    await page.goto("/banca");
+
+    await expect(page.getByText(/terminando de abrir tu cuenta/i)).toBeVisible();
+    await expect(page.getByText(/venció|vuelve a registrarte/i)).toHaveCount(0);
   });
 });

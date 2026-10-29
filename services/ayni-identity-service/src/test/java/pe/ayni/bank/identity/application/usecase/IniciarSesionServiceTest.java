@@ -619,6 +619,12 @@ class IniciarSesionServiceTest {
             familiasInvalidadas.add(familiaId);
         }
 
+        @Override
+        public void invalidarSesionesDe(UUID usuarioId) {
+            tokens.stream().filter(t -> t.usuarioId().equals(usuarioId))
+                    .forEach(t -> familiasInvalidadas.add(t.familiaId()));
+        }
+
         /** Caduca todos los desafíos abiertos, para la prueba de la ventana de dos minutos. */
         void envejecerDesafios() {
             desafios.replaceAll((id, desafio) -> new DesafioDeSegundoFactor(
@@ -848,15 +854,17 @@ class IniciarSesionServiceTest {
     class SegundoFactorAEleccionEnElLogin {
 
         @Test
-        @DisplayName("con Correo Electrónico elegido, el primer paso abre un desafío OTP y lo despacha")
+        @DisplayName("con Correo Electrónico elegido y confirmado, el primer paso abre un desafío OTP y lo despacha")
         void loginConCorreoElegidoAbreDesafioOtp() {
             metodosSegundoFactor.guardar(MetodoDeSegundoFactor.inscribir(
-                    UUID.randomUUID(), ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA));
+                    UUID.randomUUID(), ana.id(), TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA)
+                    .confirmar(AHORA));
 
             DesafioAbierto desafio = ingresar();
 
             assertThat(desafio.requiereInscripcion()).isFalse();
             assertThat(desafio.uriDeAprovisionamiento()).isNull();
+            assertThat(desafio.tipoMetodo()).isEqualTo(TipoDeSegundoFactor.CORREO_ELECTRONICO);
             assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId())).isPresent();
             assertThat(desafiosPorCodigo.buscarPorId(desafio.desafioId()).orElseThrow().tipoFactor())
                     .isEqualTo(TipoDeSegundoFactor.CORREO_ELECTRONICO);

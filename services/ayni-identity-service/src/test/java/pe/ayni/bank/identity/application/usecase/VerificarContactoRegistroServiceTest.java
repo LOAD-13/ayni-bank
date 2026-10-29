@@ -154,4 +154,52 @@ class VerificarContactoRegistroServiceTest {
         assertThatThrownBy(() -> service.verificarContacto(solicitud))
                 .isInstanceOf(CodigoDesafioInvalidoException.class);
     }
+
+    @Test
+    @DisplayName("Verifica TOTP en el registro y sincroniza segundo_factor, rechazando codigos invalidos")
+    void verificarTotpEnRegistro_ExitoYFallos() {
+        pe.ayni.bank.identity.domain.port.out.GeneradorDeTotpPort generadorTotp = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.GeneradorDeTotpPort.class);
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort segundosFactores = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort.class);
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort solicitudes = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort.class);
+
+        VerificarContactoRegistroService completo = new VerificarContactoRegistroService(
+                repositorioDesafio, repositorioMetodos, java.time.Clock.systemUTC(),
+                generadorTotp, segundosFactores, solicitudes);
+
+        UUID solicitudId = UUID.randomUUID();
+        when(solicitudes.titularDe(solicitudId)).thenReturn(Optional.of(usuarioId));
+
+        // 1. Codigo con formato invalido (no 6 digitos)
+        assertThatThrownBy(() -> completo.verificarContacto(
+                new SolicitudVerificacionContacto(solicitudId, TipoDeSegundoFactor.APP_AUTENTICADORA, "abc")))
+                .isInstanceOf(CodigoDesafioInvalidoException.class);
+
+        // 2. Sin metodo inscrito en repositorio
+        when(repositorioMetodos.buscarPorUsuarioYTipo(usuarioId, TipoDeSegundoFactor.APP_AUTENTICADORA))
+                .thenReturn(Optional.empty());
+        assertThatThrownBy(() -> completo.verificarContacto(
+                new SolicitudVerificacionContacto(solicitudId, TipoDeSegundoFactor.APP_AUTENTICADORA, "123456")))
+                .isInstanceOf(CodigoDesafioInvalidoException.class);
+
+        // 3. Metodo inscrito: fallo de verificacion TOTP y luego exito
+        MetodoDeSegundoFactor inscrito = MetodoDeSegundoFactor.inscribir(
+                UUID.randomUUID(), usuarioId, TipoDeSegundoFactor.APP_AUTENTICADORA,
+                "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", Instant.now());
+        when(repositorioMetodos.buscarPorUsuarioYTipo(usuarioId, TipoDeSegundoFactor.APP_AUTENTICADORA))
+                .thenReturn(Optional.of(inscrito));
+        when(generadorTotp.verificar(any(), any(), any())).thenReturn(false, true);
+        when(segundosFactores.buscarPorUsuario(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> completo.verificarContacto(
+                new SolicitudVerificacionContacto(solicitudId, TipoDeSegundoFactor.APP_AUTENTICADORA, "123456")))
+                .isInstanceOf(CodigoDesafioInvalidoException.class);
+
+        assertThat(completo.verificarContacto(
+                new SolicitudVerificacionContacto(solicitudId, TipoDeSegundoFactor.APP_AUTENTICADORA, "123456")))
+                .isTrue();
+        verify(segundosFactores).guardar(any());
+    }
 }

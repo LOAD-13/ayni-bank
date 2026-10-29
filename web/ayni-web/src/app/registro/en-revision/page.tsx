@@ -39,7 +39,7 @@ export default async function EnRevision({
       </header>
 
       <div className="mx-auto w-full max-w-[1440px] px-6 pt-9 lg:px-16">
-        <PasosDelOnboarding actual={5} />
+        <PasosDelOnboarding actual={6} />
       </div>
 
       <main className="mx-auto w-full max-w-[920px] px-5 py-9 sm:px-6">

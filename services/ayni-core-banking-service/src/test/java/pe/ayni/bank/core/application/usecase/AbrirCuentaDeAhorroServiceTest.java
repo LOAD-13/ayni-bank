@@ -23,6 +23,9 @@ import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.CuentaDuplicadaException;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
+import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
+import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 import pe.ayni.bank.core.domain.port.out.PublicadorDeEventosPort;
 import pe.ayni.bank.core.domain.port.out.RegistroDeIdempotenciaPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -39,6 +42,7 @@ class AbrirCuentaDeAhorroServiceTest {
     private CuentasFalsas cuentas;
     private EventosFalsos eventos;
     private IdempotenciaFalsa idempotencia;
+    private AuditoriaFalsa auditoria;
     private AbrirCuentaDeAhorroService servicio;
 
     @BeforeEach
@@ -46,7 +50,8 @@ class AbrirCuentaDeAhorroServiceTest {
         cuentas = new CuentasFalsas();
         eventos = new EventosFalsos();
         idempotencia = new IdempotenciaFalsa();
-        servicio = new AbrirCuentaDeAhorroService(cuentas, eventos, idempotencia,
+        auditoria = new AuditoriaFalsa();
+        servicio = new AbrirCuentaDeAhorroService(cuentas, eventos, idempotencia, auditoria,
                 PRODUCTO_AHORRO_PEN, Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
@@ -123,6 +128,26 @@ class AbrirCuentaDeAhorroServiceTest {
 
             assertThat(eventos.registrados).isEmpty();
         }
+
+        @Test
+        @DisplayName("registra el intento en la pista de auditoría · AYNI-326")
+        void auditaElIntento() {
+            servicio.abrirPara(titular, solicitud, Moneda.PEN);
+
+            assertThatThrownBy(() -> servicio.abrirPara(titular, UUID.randomUUID(),
+                    Moneda.PEN))
+                    .isInstanceOf(CuentaDuplicadaException.class);
+
+            assertThat(auditoria.aperturasDuplicadas).containsExactly(titular);
+        }
+
+        @Test
+        @DisplayName("una apertura que sale bien no deja ningún rechazo en la pista")
+        void laAperturaNormalNoSeAudita() {
+            servicio.abrirPara(titular, solicitud, Moneda.PEN);
+
+            assertThat(auditoria.aperturasDuplicadas).isEmpty();
+        }
     }
 
     @Nested
@@ -149,6 +174,15 @@ class AbrirCuentaDeAhorroServiceTest {
             servicio.abrirPara(titular, solicitud, Moneda.PEN);
 
             assertThat(eventos.registrados).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("una reentrega no es un intento de duplicar: no se audita como rechazo")
+        void laReentregaNoSeAudita() {
+            servicio.abrirPara(titular, solicitud, Moneda.PEN);
+            servicio.abrirPara(titular, solicitud, Moneda.PEN);
+
+            assertThat(auditoria.aperturasDuplicadas).isEmpty();
         }
 
         @Test
@@ -224,6 +258,35 @@ class AbrirCuentaDeAhorroServiceTest {
         @Override
         public void recordar(UUID claveDeIdempotencia, UUID resultado) {
             hechas.put(claveDeIdempotencia, resultado);
+        }
+    }
+
+    private static final class AuditoriaFalsa implements PistaDeAuditoriaPort {
+        private final List<UUID> aperturasDuplicadas = new ArrayList<>();
+
+        @Override
+        public void registrar(TipoDeEventoDeOperacion tipo, UUID usuarioId, UUID movimientoId) {
+            throw new AssertionError("Abrir una cuenta no registra operaciones monetarias.");
+        }
+
+        @Override
+        public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
+            throw new AssertionError("Una apertura duplicada no es un rechazo de operacion monetaria.");
+        }
+
+        @Override
+        public void registrarAperturaDuplicada(UUID usuarioId) {
+            aperturasDuplicadas.add(usuarioId);
+        }
+
+        @Override
+        public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
+            throw new AssertionError("Abrir una cuenta no consulta movimientos.");
+        }
+
+        @Override
+        public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
+            throw new AssertionError("Abrir una cuenta no revela tarjetas.");
         }
     }
 }

@@ -21,4 +21,20 @@ public interface PistaDeAuditoriaPort {
      * deshaga: la implementacion la confirma en una transaccion propia.
      */
     void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo);
+
+    /**
+     * HU-05: se intento abrir una segunda cuenta activa en la misma moneda. Como
+     * {@link #registrarRechazo}, se confirma en una transaccion propia: el rechazo deshace la
+     * de la apertura, pero no su rastro.
+     */
+    void registrarAperturaDuplicada(UUID usuarioId);
+
+    /**
+     * HU-08: el usuario pidio un movimiento que no es suyo y se le denego. Se confirma en una
+     * transaccion propia porque la consulta que lo detecta es de solo lectura.
+     */
+    void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId);
+
+    /** HU-09: revelar el PAN completo queda registrado con la tarjeta, la hora y la IP. */
+    void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip);
 }

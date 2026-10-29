@@ -1,6 +1,13 @@
 import { Check } from "lucide-react";
 
-const PASOS = ["Tus datos", "DNI anverso", "DNI reverso", "Prueba de vida", "Listo"] as const;
+const PASOS = [
+  "Tus datos",
+  "Segundo factor",
+  "DNI anverso",
+  "DNI reverso",
+  "Prueba de vida",
+  "Listo",
+] as const;
 
 interface Props {
   /** Paso en curso, empezando en 1. Todos los anteriores se marcan como cumplidos. */

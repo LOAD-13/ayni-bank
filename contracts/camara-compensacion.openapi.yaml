@@ -1,0 +1,95 @@
+
+openapi: 3.0.3
+
+info:
+  title: Ayni Bank - Camara de Compensacion
+  version: 1.0.0
+  description: API simulada para transferencias interbancarias.
+
+servers:
+  - url: http://localhost:8082/simulador/camara/v1
+
+paths:
+  /transferencias:
+    post:
+      summary: Enviar transferencia interbancaria
+      operationId: enviarTransferencia
+      description: >-
+        Sin la cabecera X-Escenario-Simulador, el resultado depende del codigo de entidad del
+        CCI (sus tres primeros digitos), como las tarjetas de prueba de una pasarela de pagos:
+        097 rechaza, 098 no decide nunca (sirve para ver la reversion por plazo vencido) y
+        cualquier otra entidad acepta. La decision se recuerda: reenviar el mismo id devuelve
+        la misma respuesta.
+      parameters:
+        - in: header
+          name: X-Escenario-Simulador
+          required: false
+          schema:
+            type: string
+            enum: [PENDIENTE, COMPLETADA, RECHAZADA]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Envio'
+      responses:
+        '202':
+          description: Transferencia recibida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Respuesta'
+        '400':
+          description: Solicitud invalida
+
+  /transferencias/{id}:
+    get:
+      summary: Consultar estado de transferencia
+      operationId: consultarTransferencia
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Respuesta'
+        '404':
+          description: Transferencia no encontrada
+
+components:
+  schemas:
+    Envio:
+      type: object
+      required: [id, cci, importe]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cci:
+          type: string
+          pattern: '^[0-9]{20}$'
+        importe:
+          type: string
+          pattern: '^\d+\.\d{1,2}$'
+
+    Respuesta:
+      type: object
+      required: [id, estado]
+      properties:
+        id:
+          type: string
+          format: uuid
+        estado:
+          type: string
+          enum:
+            - PENDIENTE
+            - COMPLETADA
+            - RECHAZADA

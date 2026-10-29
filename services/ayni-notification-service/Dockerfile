@@ -30,6 +30,12 @@ FROM eclipse-temurin:21-jre-alpine
 #
 # Ninguna de estas vulnerabilidades es de la aplicacion: Trivy informa cero
 # hallazgos en app.jar.
+#
+# La CI pasa aqui un valor distinto en cada ejecucion. Sin el, la cache de
+# GitHub Actions reutiliza esta capa y `apk upgrade` no vuelve a correr: la
+# imagen se queda con los paquetes del dia en que se construyo por primera vez
+# aunque Alpine ya haya publicado la version corregida (CVE-2026-77214).
+ARG ACTUALIZACION_DE_PAQUETES
 RUN apk upgrade --no-cache \
     && addgroup -S ayni && adduser -S ayni -G ayni
 WORKDIR /app

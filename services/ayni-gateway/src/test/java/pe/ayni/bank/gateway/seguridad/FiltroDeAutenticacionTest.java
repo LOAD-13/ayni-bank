@@ -110,6 +110,12 @@ class FiltroDeAutenticacionTest {
 
         assertThat(reenviada.get()).isNotNull();
         assertThat(intercambio.getResponse().getStatusCode()).isNull();
+        assertThat(intercambio.getResponse().getHeaders().getFirst("X-Content-Type-Options"))
+                .isEqualTo("nosniff");
+        assertThat(intercambio.getResponse().getHeaders().getFirst("X-Frame-Options"))
+                .isEqualTo("DENY");
+        assertThat(intercambio.getResponse().getHeaders().getFirst("Referrer-Policy"))
+                .isEqualTo("strict-origin-when-cross-origin");
     }
 
     @Test

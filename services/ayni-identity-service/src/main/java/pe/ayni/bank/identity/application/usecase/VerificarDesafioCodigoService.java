@@ -2,9 +2,11 @@ package pe.ayni.bank.identity.application.usecase;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,18 +24,27 @@ import pe.ayni.bank.identity.domain.port.out.RepositorioDeDesafioPorCodigoPort;
 public class VerificarDesafioCodigoService implements VerificarDesafioCodigoUseCase {
 
     private final RepositorioDeDesafioPorCodigoPort repositorioDesafio;
+    private final Clock reloj;
 
     public VerificarDesafioCodigoService(RepositorioDeDesafioPorCodigoPort repositorioDesafio) {
-        this.repositorioDesafio = repositorioDesafio;
+        this(repositorioDesafio, Clock.systemUTC());
     }
 
+    @Autowired
+    public VerificarDesafioCodigoService(RepositorioDeDesafioPorCodigoPort repositorioDesafio, Clock reloj) {
+        this.repositorioDesafio = repositorioDesafio;
+        this.reloj = reloj;
+    }
+
+    /** El intento fallido se guarda aunque despues se lance la excepcion: si no, el codigo admite intentos ilimitados. */
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = {CodigoDesafioInvalidoException.class,
+            MaximoIntentosDesafioExcedidoException.class})
     public boolean verificar(UUID desafioId, String codigoIngresado) {
         DesafioPorCodigo desafio = repositorioDesafio.buscarPorId(desafioId)
                 .orElseThrow(CodigoDesafioInvalidoException::new);
 
-        Instant ahora = Instant.now();
+        Instant ahora = reloj.instant();
 
         if (desafio.estaVerificado()) {
             throw new CodigoDesafioInvalidoException();

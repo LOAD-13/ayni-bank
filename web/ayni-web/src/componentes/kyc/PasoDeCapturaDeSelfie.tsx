@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { IndicadorDeProgreso } from "@/componentes/IndicadorDeProgreso";
+import { IndicadorDeProgreso, PASOS_DEL_ONBOARDING } from "@/componentes/IndicadorDeProgreso";
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
 
 import { ConsentimientoBiometrico } from "./ConsentimientoBiometrico";
@@ -40,7 +40,8 @@ export function PasoDeCapturaDeSelfie({ solicitudId, pasoActual, siguienteHref }
           </Link>
           <div className="flex items-center gap-4">
             <span className="hidden text-[13.5px] text-gris-500 sm:inline">
-              Paso <strong className="font-bold text-azul-700">{pasoActual}</strong> de 5
+              Paso <strong className="font-bold text-azul-700">{pasoActual}</strong> de{" "}
+              {PASOS_DEL_ONBOARDING.length}
             </span>
             <Link
               href="/"

@@ -36,3 +36,9 @@ ae57cd11aa5c2bb656807c6f21bbc264930c7ed2:contracts/identity-service.openapi.yaml
 #    por una cadena de entropia cero que sigue siendo Base32 valido y por tanto sirve
 #    igual como fixture.
 8b01d93f2d9351d718a6c23cbf336d164ebe5271:services/ayni-identity-service/src/test/java/pe/ayni/bank/identity/infrastructure/in/web/SesionControllerTest.java:generic-api-key:226
+
+# 4. Dos pruebas de la web (HU-21) usaban como token de recuperacion de ejemplo una cadena
+#    Base64 inventada y de alta entropia. No era una credencial: el token real lo genera
+#    identity y nunca se escribe. Ya sustituida por una cadena legible de baja entropia.
+0acc7f9bd537958e78f92f277507992c9c1b41f5:web/ayni-web/src/lib/recuperacion.test.ts:generic-api-key:5
+0acc7f9bd537958e78f92f277507992c9c1b41f5:web/ayni-web/src/componentes/ingreso/FormularioDeContrasenaNueva.test.tsx:generic-api-key:18

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** HU-02 · paso 2 de 5 del onboarding: anverso del DNI (AYNI-13 subtarea 12). */
+/** HU-02 · paso 3 de 6 del onboarding: anverso del DNI (AYNI-13 subtarea 12). */
 export default async function DniAnverso({
   searchParams,
 }: {
@@ -19,7 +19,7 @@ export default async function DniAnverso({
   return (
     <PasoDeCapturaDeDni
       solicitudId={solicitudId}
-      pasoActual={2}
+      pasoActual={3}
       tipoDocumento="ANVERSO"
       cara="Anverso"
       siguienteHref={`/registro/dni-reverso?solicitudId=${solicitudId ?? ""}`}

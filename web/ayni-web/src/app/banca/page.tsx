@@ -10,29 +10,39 @@ import {
   ReceiptText,
   RefreshCw,
   ShieldCheck,
-  TrendingUp,
   Wallet,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { Pista } from "@/componentes/Pista";
+import { AsistenteDeBienvenida } from "@/componentes/banca/AsistenteDeBienvenida";
+import { PanelDeRendimiento } from "@/componentes/banca/PanelDeRendimiento";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
+import { PISTAS_DEL_PANEL } from "@/componentes/banca/pistas";
 import { TablaDeMovimientos } from "@/componentes/banca/TablaDeMovimientos";
 import {
   consultarMiCuenta,
   consultarMovimientos,
+  consultarRendimiento,
   consultarTitular,
   ErrorDeApi,
   type CuentaAbierta,
   type Movimiento,
+  type RendimientoDeCuenta,
   type Titular,
 } from "@/lib/api";
-import { formatearImporte, rendimientoMensualEstimado } from "@/lib/formato";
+import { formatearImporte } from "@/lib/formato";
 
 type Estado =
   | { tipo: "cargando" }
-  | { tipo: "lista"; cuenta: CuentaAbierta; movimientos: Movimiento[] }
+  | {
+      tipo: "lista";
+      cuenta: CuentaAbierta;
+      movimientos: Movimiento[];
+      rendimiento: RendimientoDeCuenta | null;
+    }
   | { tipo: "sin-cuenta" }
   | { tipo: "error"; mensaje: string };
 
@@ -56,11 +66,13 @@ export default function PanelDeBanca() {
     setEstado({ tipo: "cargando" });
     try {
       const vigente = await token();
-      const [cuenta, movimientos] = await Promise.all([
+      // El rendimiento no bloquea el panel: si su consulta falla, se muestra la estimacion.
+      const [cuenta, movimientos, rendimiento] = await Promise.all([
         consultarMiCuenta(vigente),
         consultarMovimientos(vigente, 10),
+        consultarRendimiento(vigente).catch(() => null),
       ]);
-      setEstado({ tipo: "lista", cuenta, movimientos });
+      setEstado({ tipo: "lista", cuenta, movimientos, rendimiento });
       setActualizado(new Date());
     } catch (fallo) {
       if (fallo instanceof ErrorDeApi && fallo.problema.codigo === "SIN_CUENTA") {
@@ -89,6 +101,7 @@ export default function PanelDeBanca() {
 
   return (
     <div className="flex flex-col gap-6">
+      <AsistenteDeBienvenida />
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-h1 font-bold text-azul-800">{nombre ? `Hola, ${nombre}` : "Hola"}</h1>
@@ -134,7 +147,11 @@ export default function PanelDeBanca() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <Rendimiento cuenta={estado.tipo === "lista" ? estado.cuenta : null} oculto={oculto} />
+            <PanelDeRendimiento
+              cuenta={estado.tipo === "lista" ? estado.cuenta : null}
+              rendimiento={estado.tipo === "lista" ? estado.rendimiento : null}
+              oculto={oculto}
+            />
             <DatosDeLaCuenta cuenta={estado.tipo === "lista" ? estado.cuenta : null} />
           </div>
 
@@ -142,18 +159,21 @@ export default function PanelDeBanca() {
             <AccesoRapido
               href="/banca/transferir"
               titulo="Transferir"
+              pista={PISTAS_DEL_PANEL.transferir}
               detalle="A otra cuenta Ayni, al instante"
               Icono={ArrowLeftRight}
             />
             <AccesoRapido
               href="/banca/depositar"
               titulo="Depositar"
+              pista={PISTAS_DEL_PANEL.depositar}
               detalle="Depósito simulado (entorno académico)"
               Icono={PiggyBank}
             />
             <AccesoRapido
               href="#movimientos"
               titulo="Movimientos"
+              pista={PISTAS_DEL_PANEL.movimientos}
               detalle="Cargos y abonos de tu cuenta"
               Icono={ReceiptText}
             />
@@ -173,7 +193,9 @@ export default function PanelDeBanca() {
               <TablaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
             ) : (
               <p role="status" className="px-6 pb-6 text-body text-gris-700">
-                {estado.tipo === "error" ? "No se pudieron cargar los movimientos." : "Cargando…"}
+                {estado.tipo === "error"
+                  ? "No pudimos cargar tus movimientos. Inténtalo de nuevo en unos minutos."
+                  : "Cargando…"}
               </p>
             )}
           </section>
@@ -212,18 +234,20 @@ function SaldoTotal({
             con el servicio
           </span>
         ) : (
-          <button
-            type="button"
-            onClick={alternar}
-            className="flex items-center gap-2 rounded-full border border-gris-300 px-3 py-1 text-small text-gris-700 hover:border-azul-400"
-          >
-            {oculto ? (
-              <Eye aria-hidden="true" className="h-4 w-4" />
-            ) : (
-              <EyeOff aria-hidden="true" className="h-4 w-4" />
-            )}
-            {oculto ? "Mostrar saldos" : "Ocultar saldos"}
-          </button>
+          <Pista texto={PISTAS_DEL_PANEL.saldos}>
+            <button
+              type="button"
+              onClick={alternar}
+              className="flex items-center gap-2 rounded-full border border-gris-300 px-3 py-1 text-small text-gris-700 hover:border-azul-400"
+            >
+              {oculto ? (
+                <Eye aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <EyeOff aria-hidden="true" className="h-4 w-4" />
+              )}
+              {oculto ? "Mostrar saldos" : "Ocultar saldos"}
+            </button>
+          </Pista>
         )}
       </div>
 
@@ -329,47 +353,6 @@ function TarjetaDeDebito({ titular }: { titular: string | null }) {
   );
 }
 
-function Rendimiento({ cuenta, oculto }: { cuenta: CuentaAbierta | null; oculto: boolean }) {
-  const mensual = cuenta?.trea ? rendimientoMensualEstimado(cuenta.saldo, cuenta.trea) : null;
-  return (
-    <section
-      aria-labelledby="titulo-rendimiento"
-      className="rounded-[20px] border border-exito/30 bg-[#EAF4EF] p-7"
-    >
-      <p id="titulo-rendimiento" className="flex items-center gap-3 text-body font-bold text-exito">
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-exito text-blanco"
-        >
-          <TrendingUp className="h-5 w-5" />
-        </span>
-        Rendimiento estimado del mes
-      </p>
-      <p className="mt-4 text-h2 font-bold text-azul-900">
-        {mensual === null
-          ? "Tu dinero empieza a rendir con tu primer depósito"
-          : oculto
-            ? "Tu dinero gana S/ •••• al mes"
-            : `Tu dinero gana unos ${formatearImporte(mensual, "PEN")} al mes`}
-      </p>
-      <p className="mt-2 text-small text-gris-800">
-        {cuenta?.trea
-          ? `Calculado con tu saldo actual y la TREA vigente de ${cuenta.trea} %. El interés se devenga cada día y se abona a fin de mes.`
-          : "El interés se devenga cada día sobre tu saldo y se abona a fin de mes."}
-      </p>
-      <div aria-hidden="true" className="mt-5 flex h-16 items-end gap-1">
-        {Array.from({ length: 24 }, (_, i) => (
-          <span
-            key={i}
-            className={`flex-1 rounded-sm ${i >= 20 ? "bg-exito" : "bg-exito/35"}`}
-            style={{ height: `${30 + (i * 70) / 23}%` }}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function DatosDeLaCuenta({ cuenta }: { cuenta: CuentaAbierta | null }) {
   const [copiado, setCopiado] = useState(false);
   return (
@@ -397,18 +380,20 @@ function DatosDeLaCuenta({ cuenta }: { cuenta: CuentaAbierta | null }) {
           </dd>
         </div>
       </dl>
-      <button
-        type="button"
-        disabled={!cuenta}
-        onClick={() => {
-          if (!cuenta) return;
-          void navigator.clipboard?.writeText(cuenta.numero).then(() => setCopiado(true));
-        }}
-        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-azul-800 py-3 text-body font-semibold text-blanco hover:bg-azul-900 disabled:opacity-50"
-      >
-        <Copy aria-hidden="true" className="h-4 w-4" />
-        {copiado ? "Número copiado" : "Copiar número de cuenta"}
-      </button>
+      <Pista texto={PISTAS_DEL_PANEL.copiar} className="relative mt-5 flex">
+        <button
+          type="button"
+          disabled={!cuenta}
+          onClick={() => {
+            if (!cuenta) return;
+            void navigator.clipboard?.writeText(cuenta.numero).then(() => setCopiado(true));
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-azul-800 py-3 text-body font-semibold text-blanco hover:bg-azul-900 disabled:opacity-50"
+        >
+          <Copy aria-hidden="true" className="h-4 w-4" />
+          {copiado ? "Número copiado" : "Copiar número de cuenta"}
+        </button>
+      </Pista>
     </section>
   );
 }
@@ -416,6 +401,9 @@ function DatosDeLaCuenta({ cuenta }: { cuenta: CuentaAbierta | null }) {
 /** Quien entra sin cuenta abierta: se le dice por qué y se le lleva a terminar la apertura. */
 function CuentaPendiente({ titular }: { titular: Titular | null }) {
   const solicitud = titular?.solicitudPendiente;
+  // HU-05 escenario 3 (AYNI-327): una solicitud rechazada no venció, y volver a registrarse
+  // con el mismo correo no es posible, así que no se le ofrece.
+  const rechazada = titular?.estadoSolicitud === "RECHAZADA";
   return (
     <section
       aria-labelledby="titulo-pendiente"
@@ -427,9 +415,13 @@ function CuentaPendiente({ titular }: { titular: Titular | null }) {
       <p className="mt-2 max-w-2xl text-body text-gris-800">
         {solicitud
           ? "Falta verificar tu identidad: una foto de cada lado de tu DNI y una selfie. Toma unos tres minutos y tu cuenta se abre al terminar."
-          : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
-            ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
-            : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
+          : rechazada
+            ? "No pudimos aprobar tu solicitud de apertura. Te escribimos por correo con el motivo."
+            : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
+              ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
+              : titular?.estado === "ACTIVO"
+                ? "Tu identidad ya está verificada y estamos terminando de abrir tu cuenta. Tarda unos segundos: vuelve a cargar esta página."
+                : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
       </p>
       {solicitud && (
         <Link
@@ -448,28 +440,32 @@ function AccesoRapido({
   titulo,
   detalle,
   Icono,
+  pista,
 }: {
   href: string;
   titulo: string;
   detalle: string;
   Icono: typeof Wallet;
+  pista: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="flex items-center gap-4 rounded-[16px] border border-azul-200 bg-blanco p-5 hover:border-azul-400"
-    >
-      <span
-        aria-hidden="true"
-        className="flex h-11 w-11 items-center justify-center rounded-xl bg-azul-100 text-azul-700"
+    <Pista texto={pista}>
+      <Link
+        href={href}
+        className="flex w-full items-center gap-4 rounded-[16px] border border-azul-200 bg-blanco p-5 hover:border-azul-400"
       >
-        <Icono className="h-5 w-5" />
-      </span>
-      <span className="flex-1">
-        <span className="block text-body font-semibold text-gris-900">{titulo}</span>
-        <span className="block text-small text-gris-700">{detalle}</span>
-      </span>
-      <ChevronRight aria-hidden="true" className="h-5 w-5 text-gris-500" />
-    </Link>
+        <span
+          aria-hidden="true"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-azul-100 text-azul-700"
+        >
+          <Icono className="h-5 w-5" />
+        </span>
+        <span className="flex-1">
+          <span className="block text-body font-semibold text-gris-900">{titulo}</span>
+          <span className="block text-small text-gris-700">{detalle}</span>
+        </span>
+        <ChevronRight aria-hidden="true" className="h-5 w-5 text-gris-500" />
+      </Link>
+    </Pista>
   );
 }

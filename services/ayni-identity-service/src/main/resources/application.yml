@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   application:
     name: ayni-identity-service
 
@@ -66,6 +68,17 @@ ayni:
   # para las dos obliga a rotarlas juntas aunque solo se comprometa una.
   jwt:
     clave: ${AYNI_JWT_CLAVE:YXluaS1maXJtYS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
+
+  # Clave HS256 del token de confirmacion de operaciones (HU-07, ADR-0031). Distinta de la
+  # del token de acceso a proposito. La comparte solo core-banking, que lo verifica. En
+  # produccion llega de SSM (AYNI_CONFIRMACION_CLAVE).
+  # HU-13: republicar una vez los titulares activos para notification-service (ver
+  # RepublicadorDeTitulares). Apagado salvo en el despliegue que estrena las notificaciones.
+  notificaciones:
+    republicar-titulares: ${AYNI_REPUBLICAR_TITULARES:false}
+
+  confirmacion:
+    clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
 
   cookies:
     # En local la aplicación se sirve por HTTP, y una cookie `Secure` sencillamente
@@ -154,8 +167,22 @@ resilience4j:
         # formada no la arregla. ADR-0028.
         retry-exception-predicate: pe.ayni.bank.identity.infrastructure.config.ReintentoAnteKycNoDisponible
 
+# Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
+# compose local pone AYNI_API_DOCS=true. En produccion la ruta no existe (ADR-0033), y
+# DocumentacionDeLaApiTest comprueba que sin la variable sigue apagado.
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+  swagger-ui:
+    enabled: false
+
 server:
   port: 8081
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
+  shutdown: graceful
 
 management:
   endpoints:

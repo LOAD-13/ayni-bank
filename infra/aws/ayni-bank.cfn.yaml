@@ -33,9 +33,18 @@ Parameters:
     Default: "true"
     AllowedValues: ["true", "false"]
     Description: El proveedor OIDC de GitHub es unico por cuenta; "false" si ya existe.
+  AltaDisponibilidad:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >-
+      Nivel 1 de disponibilidad de la base (ADR-0037). "true" = RDS Multi-AZ (replica
+      sincrona en otra zona y conmutacion automatica) y 7 dias de copias y PITR. Duplica
+      el coste de la instancia y del almacenamiento de RDS y sale del plan gratuito.
 
 Conditions:
   ConProveedorOidc: !Equals [!Ref CrearProveedorOidc, "true"]
+  ConAltaDisponibilidad: !Equals [!Ref AltaDisponibilidad, "true"]
 
 Resources:
 
@@ -222,11 +231,16 @@ Resources:
       ManageMasterUserPassword: true
       VPCSecurityGroups: [!GetAtt GrupoBaseDeDatos.GroupId]
       PubliclyAccessible: false
-      MultiAZ: false
-      # El plan gratuito de AWS limita la retencion de copias automaticas a 1 dia
-      # (PITR dentro de ese dia). Se complementa con instantaneas manuales antes de
-      # cada cambio de esquema; ver el manual de despliegue.
-      BackupRetentionPeriod: 1
+      # Con AltaDisponibilidad, RDS mantiene una replica sincrona en otra zona de
+      # disponibilidad: ninguna transaccion confirmada se pierde si cae la principal
+      # (RPO 0) y RDS promueve la replica y mueve el DNS del endpoint sola, sin tocar
+      # la aplicacion. Es el Patroni gestionado del nivel 1 (ADR-0037).
+      MultiAZ: !If [ConAltaDisponibilidad, true, false]
+      # El plan gratuito limita las copias automaticas a 1 dia (PITR dentro de ese
+      # dia); se complementa con instantaneas manuales antes de cada cambio de
+      # esquema. Con AltaDisponibilidad, 7 dias: el WAL archivado que cubre el error
+      # humano, que la replica sincrona copia con la misma fidelidad que un dato bueno.
+      BackupRetentionPeriod: !If [ConAltaDisponibilidad, 7, 1]
       PreferredBackupWindow: "08:00-08:30"          # 03:00 hora de Lima
       PreferredMaintenanceWindow: "sun:09:00-sun:09:30"
       CopyTagsToSnapshot: true
@@ -398,12 +412,13 @@ Resources:
       ComparisonOperator: GreaterThanThreshold
       AlarmActions: [!Ref TemaAlertas]
 
-  # ─── Apagado diario ───────────────────────────────────────────────────────
+  # ─── Horario de la instancia ──────────────────────────────────────────────
   # La cuenta esta en el plan gratuito: todo se descuenta de los creditos y el
-  # computo es lo que mas consume. Por eso la instancia NO se enciende sola:
-  # la enciende el pipeline cuando hay algo que desplegar, o el equipo antes de
-  # una demo. Y se apaga sola cada noche a las 23:00 (Lima) por si alguien la
-  # deja encendida. La base de datos sigue activa para no perder sus copias.
+  # computo es lo que mas consume. La instancia se apaga sola cada noche a las
+  # 23:00 (hora de Lima). Para la sustentacion del APF2 se enciende sola a las
+  # 16:00 hasta el lunes 5 de octubre de 2026; despues ya no se enciende sola y
+  # la enciende el equipo cuando la necesita. La base de datos sigue activa para
+  # no perder sus copias.
   RolProgramador:
     Type: AWS::IAM::Role
     Properties:
@@ -415,13 +430,27 @@ Resources:
             Principal: { Service: scheduler.amazonaws.com }
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: apagar
+        - PolicyName: encender-y-apagar
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: [ec2:StopInstances]
+                Action: [ec2:StartInstances, ec2:StopInstances]
                 Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instancia}"
+
+  Encender:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: ayni-encender-1600
+      ScheduleExpression: cron(0 16 * * ? *)
+      ScheduleExpressionTimezone: America/Lima
+      # Hasta el final del lunes 5-oct-2026 en Lima (00:00 del martes = 05:00 UTC).
+      EndDate: "2026-10-06T05:00:00.000Z"
+      FlexibleTimeWindow: { Mode: "OFF" }
+      Target:
+        Arn: arn:aws:scheduler:::aws-sdk:ec2:startInstances
+        RoleArn: !GetAtt RolProgramador.Arn
+        Input: !Sub '{"InstanceIds":["${Instancia}"]}'
 
   Apagar:
     Type: AWS::Scheduler::Schedule

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Abre tu cuenta Ayni en minutos, sin acudir a una agencia.",
 };
 
-/** HU-01 · paso 1 de 5 del onboarding, según el diseño aprobado en pen.dev. */
+/** HU-01 · paso 1 de 6 del onboarding, según el diseño aprobado en pen.dev. */
 export default function Registro() {
   return (
     <div className="min-h-screen bg-azul-050">
@@ -25,7 +25,7 @@ export default function Registro() {
 
           <div className="flex items-center gap-4">
             <span className="hidden text-[13.5px] text-gris-500 sm:inline">
-              Paso <strong className="font-bold text-azul-700">1</strong> de 5
+              Paso <strong className="font-bold text-azul-700">1</strong> de 6
             </span>
             {/* «Guardar y salir» del diseño. Hasta que exista el guardado parcial del
                 expediente, solo sale: un botón que dice guardar y no guarda es peor que

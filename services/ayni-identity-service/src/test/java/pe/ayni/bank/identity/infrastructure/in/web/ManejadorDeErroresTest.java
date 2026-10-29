@@ -10,6 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
@@ -200,6 +202,16 @@ class ManejadorDeErroresTest {
     }
 
     @Test
+    @DisplayName("avanzar al KYC sin segundo factor verificado devuelve 409 Conflict")
+    void excepcionDeSegundoFactorNoVerificadoDevuelve409() {
+        ProblemDetail problema = manejador.alNoHaberVerificadoSegundoFactor(
+                new pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException(), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(String.valueOf(problema.getType())).contains("segundo-factor-no-verificado");
+    }
+
+    @Test
     @DisplayName("un fallo no previsto no filtra el mensaje de la excepcion")
     void elErrorInternoEsDeliberadamenteVago() {
         // Un mensaje real filtra nombres de tablas, versiones de bibliotecas y rutas del
@@ -213,6 +225,17 @@ class ManejadorDeErroresTest {
         assertThat(problema.getDetail())
                 .doesNotContain("identity.usuario")
                 .doesNotContain("relation");
+    }
+
+    @Test
+    @DisplayName("un cuerpo ilegible es 400, no 500, y no repite el mensaje interno de Jackson")
+    void cuerpoIlegible() {
+        ProblemDetail problema = manejador.alNoPoderLeerElCuerpo(new HttpMessageNotReadableException(
+                "Cannot deserialize value of type `pe.ayni.bank.identity.domain.model.MotivoDeRechazoDeSolicitud`"
+                        + " from String \"PORQUE_SI\"", new MockHttpInputMessage(new byte[0])), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(problema.getDetail()).doesNotContain("pe.ayni").doesNotContain("deserialize");
     }
 
     @Test

@@ -71,6 +71,9 @@ DB_USUARIO=ayni_app
 DB_CONTRASENA=$(param db-app-contrasena)
 RABBITMQ_PASSWORD=$(param rabbitmq-contrasena)
 AYNI_JWT_CLAVE=$(param jwt-clave)
+# HU-07 (ADR-0031): firma del token de confirmacion con segundo factor. Obligatoria:
+# sin ella identity y core-banking no arrancan.
+AYNI_CONFIRMACION_CLAVE=$(param confirmacion-clave)
 AYNI_CIFRADO_CLAVE=$(param cifrado-clave)
 GRAFANA_CONTRASENA=$(param grafana-contrasena)
 AYNI_BUCKET_KYC=$(param bucket-kyc)

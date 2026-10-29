@@ -30,6 +30,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService.ClaveDeIdempotenciaReutilizadaException;
 import pe.ayni.bank.core.domain.model.Asiento;
 import pe.ayni.bank.core.domain.model.Comprobante;
+import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
@@ -116,14 +117,94 @@ class OperacionesControllerTest {
     }
 
     @Test
+    @DisplayName("GET /movimientos con filtros y paginacion: devuelve el saldoPosterior de cada asiento")
+    void movimientosFiltradosYPaginados() throws Exception {
+        when(cuentas.buscarActivaDe(titular, Moneda.PEN)).thenReturn(Optional.of(cuenta));
+        Asiento asiento = new Asiento(UUID.randomUUID(), cuenta.id(), UUID.randomUUID(), TipoDeAsiento.ABONO,
+                Dinero.de("50.00", Moneda.PEN), "Deposito", AHORA);
+        when(libro.filtrarAsientosDe(eq(cuenta.id()), any())).thenReturn(List.of(
+                new pe.ayni.bank.core.domain.model.AsientoConSaldo(asiento, Dinero.de("150.00", Moneda.PEN))));
+
+        mvc.perform(get("/api/v1/cuentas/mia/movimientos")
+                        .param("desde", "2026-10-01")
+                        .param("hasta", "2026-10-15")
+                        .param("tipo", "ABONO")
+                        .param("importeMinimo", "10.00")
+                        .param("importeMaximo", "100.00")
+                        .param("pagina", "0")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].importe").value("50.00"))
+                .andExpect(jsonPath("$[0].saldoPosterior").value("150.00"));
+
+        mvc.perform(get("/api/v1/cuentas/mia/movimientos")
+                        .param("desde", "2026-10-01")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].saldoPosterior").value("150.00"));
+    }
+
+    @Test
+    @DisplayName("GET /movimientos/{id}: 200 con el comprobante propio; 404 si no existe o es ajeno")
+    void consultarComprobante() throws Exception {
+        Comprobante c = comprobante();
+        when(operar.comprobante(titular, c.movimientoId())).thenReturn(Optional.of(c));
+        when(operar.comprobante(eq(titular), eq(UUID.fromString("00000000-0000-4000-8000-000000000000"))))
+                .thenReturn(Optional.empty());
+
+        mvc.perform(get("/api/v1/movimientos/" + c.movimientoId()).header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.movimientoId").value(c.movimientoId().toString()))
+                .andExpect(jsonPath("$.cuentaDestino").value("**********0031"));
+        mvc.perform(get("/api/v1/movimientos/00000000-0000-4000-8000-000000000000").header(USUARIO, titular))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/movimientos/00000000-0000-4000-8000-000000000000/comprobante.pdf")
+                        .header(USUARIO, titular))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /movimientos/{id}/comprobante.pdf: un PDF real, descargable y sin cache")
+    void comprobanteEnPdf() throws Exception {
+        Comprobante c = comprobante();
+        when(operar.comprobante(titular, c.movimientoId())).thenReturn(Optional.of(c));
+
+        byte[] pdf = mvc.perform(get("/api/v1/movimientos/" + c.movimientoId() + "/comprobante.pdf")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("attachment; filename=\"comprobante-ayni-")))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        assertThat(pdf.length).isGreaterThan(800);
+    }
+
+    @Test
+    @DisplayName("POST /transferencias sin confirmacion valida: 403 CONFIRMACION_REQUERIDA")
+    void sinConfirmacion() throws Exception {
+        UUID clave = UUID.randomUUID();
+        when(operar.transferir(any(), any(), any(), any(), any(), any()))
+                .thenThrow(new ConfirmacionInvalidaException());
+
+        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cuentaDestino\":\"00111000000031\",\"importe\":\"150.00\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("CONFIRMACION_REQUERIDA"));
+    }
+
+    @Test
     @DisplayName("POST /transferencias: 201 con el comprobante y su ubicacion")
     void transferir() throws Exception {
         Comprobante c = comprobante();
         UUID clave = UUID.randomUUID();
-        when(operar.transferir(eq(titular), eq("00111000000031"), any(), eq("Cena"), eq(clave)))
+        when(operar.transferir(eq(titular), eq("00111000000031"), any(), eq("Cena"), eq(clave), eq("tok")))
                 .thenReturn(c);
 
-        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave)
+        mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, clave).header("X-Ayni-Confirmacion", "tok")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"cuentaDestino\":\"00111000000031\",\"importe\":\"150.00\",\"concepto\":\"Cena\"}"))
                 .andExpect(status().isCreated())
@@ -175,7 +256,7 @@ class OperacionesControllerTest {
     @Test
     @DisplayName("una regla de negocio rota es 422 con el codigo del motivo")
     void rechazoDeNegocio() throws Exception {
-        when(operar.transferir(any(), any(), any(), any(), any()))
+        when(operar.transferir(any(), any(), any(), any(), any(), any()))
                 .thenThrow(new OperacionRechazadaException(MotivoDeRechazo.SALDO_INSUFICIENTE));
 
         mvc.perform(post("/api/v1/transferencias").header(USUARIO, titular).header(CLAVE, UUID.randomUUID())

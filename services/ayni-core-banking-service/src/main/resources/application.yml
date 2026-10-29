@@ -1,4 +1,6 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   application:
     name: ayni-core-banking-service
 
@@ -59,17 +61,84 @@ spring:
           multiplier: 2
 
 ayni:
+  # Clave HS256 del token de confirmacion con segundo factor que emite identity (HU-07,
+  # ADR-0031). Es propia y distinta de la del token de acceso: un token de acceso no
+  # puede pasar por confirmacion ni al reves. En produccion llega de SSM
+  # (AYNI_CONFIRMACION_CLAVE). Generar una nueva:  openssl rand -base64 32
+  confirmacion:
+    clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
+  # Clave maestra AES-256 en Base64 (32 bytes). De ella se derivan la de cifrado del PAN, la de su
+  # huella y la del CVV dinamico (HU-09). En produccion llega de SSM (AYNI_CIFRADO_CLAVE).
+  cifrado:
+    clave: ${AYNI_CIFRADO_CLAVE:YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
   cuentas:
     # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
     # migracion V3 con este mismo identificador.
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
+    # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
+    intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+  devengo:
+    # Cada hora, a los 5 minutos, en hora de Lima. Solo trabaja si hay dias sin cerrar:
+    # si el servicio estuvo caido a medianoche, el siguiente disparo recupera lo pendiente.
+    cron: ${AYNI_DEVENGO_CRON:0 5 * * * *}
+  mantenimiento:
+    # Particiones de asiento y purga del outbox y de la idempotencia (AYNI-155, ADR-0036).
+    # A las 03:30 de Lima, lejos del cierre diario de medianoche y del trafico del dia.
+    cron: ${AYNI_MANTENIMIENTO_CRON:0 30 3 * * *}
+    meses-de-antelacion: 3
+    dias-de-outbox: 7
+    dias-de-idempotencia: 30
+    # Filas por DELETE: lotes cortos para no retener bloqueos ni llenar el WAL de golpe.
+    lote: 10000
   productos:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
+  camara:
+    # Camara de compensacion interbancaria (HU-11). En el entorno academico es el simulador
+    # que vive en este mismo servicio (CamaraSimuladaController) y cumple el contrato
+    # contracts/camara-compensacion.openapi.yaml; en un banco real apuntaria a la camara.
+    url: ${AYNI_CAMARA_URL:http://localhost:8082/simulador/camara/v1}
+    # Plazo para que la camara confirme. Pasado, si sigue sin respuesta, se revierte el cargo.
+    espera-maxima: ${AYNI_CAMARA_ESPERA:PT5M}
+    # Cada cuanto se pregunta a la camara por las transferencias que siguen pendientes.
+    conciliacion-ms: ${AYNI_CAMARA_CONCILIACION_MS:15000}
+
+# Llamadas a la camara (HU-11): tres intentos con 250 ms de espera, y si la mitad de las
+# ultimas diez fallan, el circuito se abre 15 s para no colgar cada transferencia esperando
+# a una camara caida. Lo que no se pudo enviar lo recoge la conciliacion.
+resilience4j:
+  retry:
+    instances:
+      camara:
+        maxAttempts: 3
+        waitDuration: 250ms
+  circuitbreaker:
+    instances:
+      camara:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+# Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
+# compose local pone AYNI_API_DOCS=true. En produccion la ruta no existe (ADR-0033), y
+# DocumentacionDeLaApiTest comprueba que sin la variable sigue apagado.
+springdoc:
+  api-docs:
+    enabled: ${AYNI_API_DOCS:false}
+  swagger-ui:
+    enabled: false
 
 server:
   port: 8082
+  # Apagado ordenado (ISO/IEC 25010, coexistencia). Ante SIGTERM el servidor deja de
+  # aceptar peticiones nuevas y espera a que terminen las que estan en curso; despues se
+  # cierran el pool de conexiones y los consumidores de RabbitMQ. Docker espera 30 s
+  # (stop_grace_period) antes de matar el proceso, mas que los 20 s de abajo.
+  shutdown: graceful
 
 management:
   endpoints:

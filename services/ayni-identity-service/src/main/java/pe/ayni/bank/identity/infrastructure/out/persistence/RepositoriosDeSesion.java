@@ -50,6 +50,36 @@ interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEntity, UU
             + "where t.familiaId = :familiaId and t.invalidadoEn is null")
     void invalidarFamilia(@Param("familiaId") UUID familiaId,
                           @Param("momento") Instant momento);
+
+    /** Todas las familias del usuario de una sola sentencia, por el mismo motivo (HU-21). */
+    @Modifying
+    @Query("update RefreshTokenEntity t set t.invalidadoEn = :momento "
+            + "where t.usuarioId = :usuarioId and t.invalidadoEn is null")
+    void invalidarDelUsuario(@Param("usuarioId") UUID usuarioId,
+                             @Param("momento") Instant momento);
+}
+
+interface TokenDeRecuperacionJpaRepository extends JpaRepository<TokenDeRecuperacionEntity, UUID> {
+
+    Optional<TokenDeRecuperacionEntity> findByHuellaAndAnuladoEnIsNull(String huella);
+
+    long countByUsuarioIdAndEmitidoEnGreaterThanEqual(UUID usuarioId, Instant desde);
+
+    @Modifying
+    @Query("update TokenDeRecuperacionEntity t set t.anuladoEn = :momento "
+            + "where t.usuarioId = :usuarioId and t.usadoEn is null and t.anuladoEn is null")
+    void anularPendientesDe(@Param("usuarioId") UUID usuarioId,
+                            @Param("momento") Instant momento);
+
+    /**
+     * Gasta el token solo si sigue libre. Es un UPDATE condicional y no leer, comprobar y
+     * guardar: entre la lectura y la escritura cabe otra peticion con el mismo enlace, y
+     * la base es el unico sitio donde las dos se ven.
+     */
+    @Modifying
+    @Query("update TokenDeRecuperacionEntity t set t.usadoEn = :momento "
+            + "where t.id = :id and t.usadoEn is null and t.anuladoEn is null")
+    int marcarUsado(@Param("id") UUID id, @Param("momento") Instant momento);
 }
 
 interface EventoAuditoriaJpaRepository extends JpaRepository<EventoAuditoriaEntity, Long> {

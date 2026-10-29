@@ -1,6 +1,8 @@
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 
+import { DescargarComprobante } from "@/componentes/banca/DescargarComprobante";
+import { LogroDePrimeraOperacion } from "@/componentes/banca/LogroDePrimeraOperacion";
 import type { Comprobante } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
 
@@ -29,6 +31,10 @@ export function TarjetaDeComprobante({ comprobante }: { comprobante: Comprobante
         </h1>
       </div>
 
+      <div className="mt-5 empty:hidden">
+        <LogroDePrimeraOperacion />
+      </div>
+
       <p className="cifra mt-5 text-display text-azul-900" data-testid="importe-comprobante">
         {formatearImporte(comprobante.importe, comprobante.moneda)}
       </p>
@@ -49,6 +55,7 @@ export function TarjetaDeComprobante({ comprobante }: { comprobante: Comprobante
         >
           Volver al resumen
         </Link>
+        <DescargarComprobante movimientoId={comprobante.movimientoId} />
       </div>
     </section>
   );

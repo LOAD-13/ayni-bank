@@ -44,12 +44,53 @@ public record Cci(String valor) {
     private static final int[] PESOS = {3, 2, 9, 8, 7, 6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
 
     public Cci {
-        if (valor == null || !valor.matches("^[0-9]{" + LONGITUD + "}$")) {
-            throw new IllegalArgumentException("El CCI debe tener " + LONGITUD + " digitos.");
+        if (!tieneFormatoValido(valor)) {
+            throw new IllegalArgumentException(
+                    "El CCI debe tener " + LONGITUD + " digitos numericos.");
         }
         if (!controlCorrecto(valor)) {
             throw new IllegalArgumentException("El CCI no supera la comprobacion de control.");
         }
+    }
+
+    /**
+     * Dice si un texto es un CCI valido, sin lanzar excepciones.
+     *
+     * <p>Es lo que necesita quien recibe un CCI tecleado por el cliente (por ejemplo una
+     * transferencia interbancaria, HU-11): preguntar «¿es valido?» y responder con un error
+     * de formulario, en lugar de capturar una excepcion. Comprueba los dos requisitos: que
+     * sean exactamente veinte digitos y que los dos ultimos sean los de control.
+     *
+     * <p>Se toleran espacios y guiones de agrupacion, que es como el cliente los copia de su
+     * app; no se toleran otros caracteres.
+     *
+     * @param texto lo que el cliente escribio; puede ser {@code null}
+     */
+    public static boolean esValido(String texto) {
+        if (texto == null) {
+            return false;
+        }
+        String limpio = texto.replaceAll("[\\s-]", "");
+        return tieneFormatoValido(limpio) && controlCorrecto(limpio);
+    }
+
+    /**
+     * Interpreta un CCI tal como lo escribio el cliente, quitando espacios y guiones.
+     *
+     * @throws IllegalArgumentException si no son veinte digitos o el control no cuadra
+     */
+    public static Cci desde(String texto) {
+        if (texto == null) {
+            throw new IllegalArgumentException(
+                    "El CCI debe tener " + LONGITUD + " digitos numericos.");
+        }
+        return new Cci(texto.replaceAll("[\\s-]", ""));
+    }
+
+    private static boolean tieneFormatoValido(String candidato) {
+        // ASCII explicito: `\d` y Character.getNumericValue aceptarian digitos de otros
+        // alfabetos (arabes, devanagari) que parecen digitos y no lo son para el banco.
+        return candidato != null && candidato.matches("^[0-9]{" + LONGITUD + "}$");
     }
 
     /**

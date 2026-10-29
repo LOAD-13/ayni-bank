@@ -40,3 +40,26 @@ body {
 .campo :focus-visible {
   outline: none;
 }
+
+/* Un botón dentro del campo (mostrar la contraseña) necesita su propio indicador: el
+ * marco se ilumina igual con el foco en el texto que en el botón, y quien usa teclado
+ * no sabría cuál de los dos va a responder a la siguiente tecla. */
+.campo button:focus-visible {
+  outline: 2px solid var(--azul-600);
+  outline-offset: -4px;
+  border-radius: 10px;
+}
+
+/* Quien pide menos movimiento en su sistema no tiene por qué ver nada girando ni
+ * parpadeando: puede marearle (WCAG 2.3.3). Las animaciones terminan al instante y
+ * dejan su estado final. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

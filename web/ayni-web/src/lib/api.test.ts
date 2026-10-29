@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   confirmarDatosDelDni,
-  consultarCuenta,
   consultarTitular,
   ErrorDeApi,
   evaluarCaptura,
@@ -11,9 +10,12 @@ import {
   presentarCredenciales,
   reenviarCodigoRegistro,
   registrar,
+  restablecerContrasena,
   seleccionarMetodoSegundoFactor,
+  solicitarRecuperacion,
   solicitarUrlDeSubida,
   subirDocumento,
+  validarEnlaceDeRecuperacion,
   verificarCodigoRegistro,
   verificarDesafioCodigo,
   verificarSegundoFactor,
@@ -49,6 +51,23 @@ describe("api client", () => {
       correo: "Correo inválido",
       celular: "Celular inválido",
     });
+  });
+
+  it("una respuesta de error sin cuerpo legible trae un detalle que dice qué hacer", async () => {
+    // Las pantallas muestran el detalle antes que el título; sin él, el cliente leía solo
+    // «No pudimos completar la operación» y no sabía qué hacer.
+    vi.mocked(globalThis.fetch).mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new SyntaxError("Unexpected token <");
+      },
+    } as unknown as Response);
+
+    const error = await consultarTitular("usuario").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ErrorDeApi);
+    expect((error as ErrorDeApi).problema.detail).toMatch(/inténtalo de nuevo/i);
   });
 
   it("seleccionarMetodoSegundoFactor hace un POST al endpoint de método de 2FA", async () => {
@@ -137,7 +156,7 @@ describe("api client", () => {
     );
   });
 
-  it("consultarTitular y consultarCuenta hacen GET requests", async () => {
+  it("consultarTitular hace un GET", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({}),
@@ -146,12 +165,6 @@ describe("api client", () => {
     await consultarTitular("u-123");
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/v1/usuarios/u-123/resumen"),
-      expect.objectContaining({ method: "GET" }),
-    );
-
-    await consultarCuenta("u-123");
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/cuentas/titular/u-123"),
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -266,6 +279,38 @@ describe("api client", () => {
     expect(llamadas[1][1].method).toBe("POST");
     expect(llamadas[2][0]).toMatch(/\/identidad\/confirmacion$/);
     expect(JSON.parse(llamadas[2][1].body)).not.toHaveProperty("numero");
+  });
+
+  it("la recuperacion de contrasena manda el token en el cuerpo, nunca en la URL", async () => {
+    const fetchFalso = globalThis.fetch as ReturnType<typeof vi.fn>;
+    fetchFalso.mockResolvedValueOnce({
+      ok: true,
+      status: 202,
+      json: async () => ({ mensaje: "m" }),
+    });
+    await expect(solicitarRecuperacion("ana@example.com")).resolves.toEqual({ mensaje: "m" });
+    expect(fetchFalso).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/api\/v1\/recuperacion$/),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ correo: "ana@example.com" }),
+      }),
+    );
+
+    fetchFalso.mockResolvedValue({ ok: true, status: 204, json: async () => ({}) });
+    await validarEnlaceDeRecuperacion("tok");
+    expect(fetchFalso).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/api\/v1\/recuperacion\/validacion$/),
+      expect.objectContaining({ body: JSON.stringify({ token: "tok" }) }),
+    );
+
+    await restablecerContrasena("tok", "Nueva!Clave2026#");
+    expect(fetchFalso).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/api\/v1\/recuperacion\/confirmacion$/),
+      expect.objectContaining({
+        body: JSON.stringify({ token: "tok", contrasenaNueva: "Nueva!Clave2026#" }),
+      }),
+    );
   });
 
   it("lanza ErrorDeApi cuando la respuesta HTTP no es ok", async () => {

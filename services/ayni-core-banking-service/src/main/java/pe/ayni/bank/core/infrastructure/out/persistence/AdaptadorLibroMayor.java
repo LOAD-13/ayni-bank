@@ -1,5 +1,7 @@
 package pe.ayni.bank.core.infrastructure.out.persistence;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,10 +11,12 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
 
 import pe.ayni.bank.core.domain.model.Asiento;
+import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Cci;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.EstadoCuenta;
+import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
@@ -26,12 +30,15 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     private final CuentaJpaRepository cuentas;
     private final AsientoJpaRepository asientos;
     private final UUID fondeoPen;
+    private final UUID interesesPen;
 
     AdaptadorLibroMayor(CuentaJpaRepository cuentas, AsientoJpaRepository asientos,
-                        @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen) {
+                        @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen,
+                        @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen) {
         this.cuentas = cuentas;
         this.asientos = asientos;
         this.fondeoPen = fondeoPen;
+        this.interesesPen = interesesPen;
     }
 
     @Override
@@ -65,6 +72,15 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     }
 
     @Override
+    public Cuenta cuentaDeIntereses(Moneda moneda) {
+        if (moneda != Moneda.PEN) {
+            throw new IllegalStateException("No hay cuenta de intereses para " + moneda);
+        }
+        return buscarPorId(interesesPen).orElseThrow(() -> new IllegalStateException(
+                "Falta la cuenta tecnica de intereses: la siembra la migracion V5."));
+    }
+
+    @Override
     public void bloquear(List<UUID> cuentaIds) {
         cuentas.bloquearPorId(cuentaIds);
     }
@@ -91,6 +107,30 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     }
 
     @Override
+    public List<AsientoConSaldo> filtrarAsientosDe(UUID cuentaId, FiltroDeMovimientos filtro) {
+        List<AsientoEntity> cronologicos = asientos.findByCuentaIdOrderByRegistradoEnAsc(cuentaId);
+        if (cronologicos.isEmpty()) {
+            return List.of();
+        }
+        Moneda moneda = Moneda.valueOf(cronologicos.get(0).getMoneda());
+        Dinero acumulado = Dinero.cero(moneda);
+        List<AsientoConSaldo> filtrados = new ArrayList<>();
+        for (AsientoEntity fila : cronologicos) {
+            Asiento asiento = aDominio(fila);
+            acumulado = acumulado.mas(asiento.efecto());
+            if (filtro.cumple(asiento)) {
+                filtrados.add(new AsientoConSaldo(asiento, acumulado));
+            }
+        }
+        Collections.reverse(filtrados);
+        long salto = (long) filtro.pagina() * filtro.tamano();
+        return filtrados.stream()
+                .skip(salto)
+                .limit(filtro.tamano())
+                .toList();
+    }
+
+    @Override
     public List<Asiento> asientosDelMovimiento(UUID movimientoId) {
         return asientos.findByMovimientoId(movimientoId).stream()
                 .map(AdaptadorLibroMayor::aDominio)
@@ -104,7 +144,7 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
                 fila.getConcepto(), fila.getRegistradoEn());
     }
 
-    private static Cuenta aDominio(CuentaEntity fila) {
+    static Cuenta aDominio(CuentaEntity fila) {
         return Cuenta.reconstituir(
                 fila.getId(), fila.getUsuarioId(), fila.getProductoId(),
                 new NumeroDeCuenta(fila.getNumero()), new Cci(fila.getCci()),

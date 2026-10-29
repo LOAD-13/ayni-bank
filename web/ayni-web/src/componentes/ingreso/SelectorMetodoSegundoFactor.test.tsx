@@ -16,9 +16,13 @@ describe("SelectorMetodoSegundoFactor", () => {
     expect(screen.getByText("App Autenticadora")).toBeInTheDocument();
     expect(screen.getByText("Correo Electrónico")).toBeInTheDocument();
     expect(screen.getByText("Mensaje SMS")).toBeInTheDocument();
+    expect(screen.getByText("Próximamente")).toBeInTheDocument();
+    expect(
+      screen.getByText(/el envío por sms no está habilitado en esta versión/i),
+    ).toBeInTheDocument();
   });
 
-  it("llama a onSeleccionarMetodo al hacer clic en una opción", async () => {
+  it("llama a onSeleccionarMetodo en opciones activas y mantiene SMS deshabilitado", async () => {
     const user = userEvent.setup();
     const onSeleccionarMetodo = vi.fn();
 
@@ -32,8 +36,10 @@ describe("SelectorMetodoSegundoFactor", () => {
     await user.click(screen.getByText("Correo Electrónico"));
     expect(onSeleccionarMetodo).toHaveBeenCalledWith("CORREO_ELECTRONICO");
 
-    await user.click(screen.getByText("Mensaje SMS"));
-    expect(onSeleccionarMetodo).toHaveBeenCalledWith("SMS");
+    const botonSms = screen.getByRole("button", { name: /mensaje sms/i });
+    expect(botonSms).toBeDisabled();
+    await user.click(botonSms);
+    expect(onSeleccionarMetodo).not.toHaveBeenCalledWith("SMS");
   });
 
   it("deshabilita los botones cuando deshabilitado es true", () => {

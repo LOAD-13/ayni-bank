@@ -148,6 +148,14 @@ export function FormularioDeRegistro() {
           Referencia de tu solicitud:{" "}
           <span className="cifra text-gris-700">{resultado.solicitudId}</span>
         </p>
+        <div className="mt-6">
+          <Link
+            href={`/registro/segundo-factor?solicitudId=${resultado.solicitudId}`}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-azul-700 px-7 text-[15px] font-bold text-blanco hover:bg-azul-800"
+          >
+            Elegir mi segundo factor <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -195,7 +203,7 @@ export function FormularioDeRegistro() {
           placeholder="••••••78"
           inputMode="numeric"
           maxLength={8}
-          ayuda="Se guarda cifrado y se muestra siempre enmascarado"
+          ayuda="Los 8 dígitos de tu DNI. Se guarda cifrado y se muestra siempre enmascarado."
           value={numeroDocumento}
           onChange={setNumeroDocumento}
           error={errores.numeroDocumento}
@@ -334,11 +342,12 @@ export function FormularioDeRegistro() {
         )}
       </div>
 
-      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:justify-between">
-        <Link href="/pendiente" className="text-[14px] font-semibold text-azul-600 hover:underline">
-          Ya tengo cuenta · Iniciar sesión
-        </Link>
-
+      {/* El botón va primero en el código y el enlace después, que es el orden del Tab.
+          En el celular se ven así, uno debajo del otro; en pantallas anchas
+          `flex-row-reverse` deja el enlace a la izquierda, como en el diseño aprobado. Con
+          el orden al revés en el código, el foco bajaba al enlace y volvía a subir al
+          botón (WCAG 2.4.3). */}
+      <div className="flex flex-col items-center gap-4 sm:flex-row-reverse sm:justify-between">
         <button
           type="submit"
           disabled={enviando}
@@ -348,6 +357,10 @@ export function FormularioDeRegistro() {
           {enviando ? "Un momento…" : "Continuar con mi DNI"}
           {!enviando && <span aria-hidden="true">→</span>}
         </button>
+
+        <Link href="/ingresar" className="text-[14px] font-semibold text-azul-600 hover:underline">
+          Ya tengo cuenta · Iniciar sesión
+        </Link>
       </div>
     </form>
   );

@@ -18,10 +18,9 @@ interface Props {
 /**
  * Pantalla «Entra a tu banca», según el diseño aprobado en pen.dev.
  *
- * **Dos elementos del prototipo quedan fuera del Sprint 1 y llevan a la página de
- * pendientes**, en lugar de fingir que funcionan: «¿Olvidaste tu contraseña?», que es
- * HU-06, y «Entrar con la biometría del dispositivo», que exige WebAuthn y no está en
- * ninguna historia de este sprint.
+ * «¿Olvidaste tu contraseña?» lleva a la recuperación por correo (HU-21). «Entrar con la
+ * biometría del dispositivo» sigue llevando a la página de pendientes en lugar de fingir
+ * que funciona: exige WebAuthn y no está en ninguna historia todavía.
  */
 export function PasoDeCredenciales({
   onEnviar,
@@ -117,7 +116,7 @@ export function PasoDeCredenciales({
               onClick={() => setVisible((v) => !v)}
               aria-label={visible ? "Ocultar la contraseña" : "Mostrar la contraseña"}
               aria-pressed={visible}
-              className="px-4 text-gris-500 hover:text-gris-700"
+              className="self-stretch px-4 text-gris-500 hover:text-gris-700"
             >
               {visible ? (
                 <EyeOff aria-hidden="true" className="h-4 w-4" />
@@ -144,7 +143,7 @@ export function PasoDeCredenciales({
             Recordar este dispositivo
           </label>
           <Link
-            href="/pendiente"
+            href="/recuperar"
             className="text-[13.5px] font-semibold text-azul-600 hover:underline"
           >
             ¿Olvidaste tu contraseña?
