@@ -70,6 +70,61 @@ class SeleccionarSegundoFactorServiceTest {
         assertEquals(1, repositorio.metodos.size());
     }
 
+    @Test
+    @DisplayName("Seleccionar metodo SMS se rechaza porque no esta habilitado en esta version")
+    void testSeleccionarMetodoSmsRechazado() {
+        UUID usuarioId = UUID.randomUUID();
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.seleccionarMetodo(usuarioId, TipoDeSegundoFactor.SMS));
+        assertTrue(ex.getMessage().contains("SMS"));
+    }
+
+    @Test
+    @DisplayName("Antienumeracion: solicitud senuelo devuelve metodo efimero y sincroniza TOTP / desafio correo cuando existe titular")
+    void testSolicitudSenueloYSincronizacionCompleta() {
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort solicitudes = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort.class);
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort segundosFactores = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort.class);
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort usuarios = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.out.RepositorioDeUsuariosPort.class);
+        pe.ayni.bank.identity.domain.port.in.GenerarDesafioCodigoUseCase generarDesafio = org.mockito.Mockito.mock(
+                pe.ayni.bank.identity.domain.port.in.GenerarDesafioCodigoUseCase.class);
+
+        SeleccionarSegundoFactorService completo = new SeleccionarSegundoFactorService(
+                repositorio, generadorTotp, java.time.Clock.systemUTC(),
+                solicitudes, segundosFactores, usuarios, generarDesafio);
+
+        // 1. Solicitud senuelo (sin titular ni usuario en BD)
+        UUID senueloId = UUID.randomUUID();
+        org.mockito.Mockito.when(solicitudes.titularDe(senueloId)).thenReturn(Optional.empty());
+        org.mockito.Mockito.when(usuarios.buscarPorId(senueloId)).thenReturn(Optional.empty());
+
+        MetodoDeSegundoFactor senueloTotp = completo.seleccionarMetodo(senueloId, TipoDeSegundoFactor.APP_AUTENTICADORA);
+        MetodoDeSegundoFactor senueloCorreo = completo.seleccionarMetodo(senueloId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
+        assertNotNull(senueloTotp.secreto());
+        assertNull(senueloCorreo.secreto());
+        assertTrue(repositorio.metodos.isEmpty());
+
+        // 2. Solicitud real con titular: sincroniza SegundoFactor TOTP y dispara desafio por correo
+        UUID solicitudId = UUID.randomUUID();
+        UUID titularId = UUID.randomUUID();
+        org.mockito.Mockito.when(solicitudes.titularDe(solicitudId)).thenReturn(Optional.of(titularId));
+        org.mockito.Mockito.when(segundosFactores.buscarPorUsuario(titularId)).thenReturn(Optional.empty());
+        org.mockito.Mockito.when(usuarios.buscarPorId(titularId)).thenReturn(Optional.of(
+                org.mockito.Mockito.mock(pe.ayni.bank.identity.domain.model.Usuario.class)));
+
+        MetodoDeSegundoFactor realTotp = completo.seleccionarMetodo(solicitudId, TipoDeSegundoFactor.APP_AUTENTICADORA);
+        assertEquals(titularId, realTotp.usuarioId());
+        org.mockito.Mockito.verify(segundosFactores).guardar(org.mockito.Mockito.any());
+
+        MetodoDeSegundoFactor realCorreo = completo.seleccionarMetodo(solicitudId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
+        assertEquals(titularId, realCorreo.usuarioId());
+        org.mockito.Mockito.verify(generarDesafio).generar(titularId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
+    }
+
     private static class RepositorioEnMemoria implements RepositorioDeMetodoSegundoFactorPort {
         final List<MetodoDeSegundoFactor> metodos = new ArrayList<>();
 
@@ -106,7 +161,8 @@ class SeleccionarSegundoFactorServiceTest {
 
         @Override
         public String uriDeAprovisionamiento(SecretoTotp secreto, CorreoElectronico correo) {
-            return "otpauth://totp/Ayni:" + correo.valor() + "?secret=" + secreto.valor() + "&issuer=Ayni";
+            return "otpauth://totp/Ayni:" + correo.valor() + "&secret=" + secreto.valor() + "&issuer=Ayni";
         }
     }
 }
+

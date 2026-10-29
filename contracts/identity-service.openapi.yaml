@@ -1034,6 +1034,8 @@ components:
             este confirmada y nunca se registra en un log. Nulo en cuanto el
             segundo factor queda confirmado.
           example: otpauth://totp/Ayni%20Bank%3Aana%40example.pe?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=Ayni%20Bank&algorithm=SHA1&digits=6&period=30
+        tipoMetodo:
+          $ref: "#/components/schemas/TipoDeSegundoFactor"
 
     SolicitudDeSegundoFactor:
       type: object
@@ -1191,6 +1193,9 @@ components:
         tipo:
           $ref: "#/components/schemas/TipoDeSegundoFactor"
         secreto:
+          type: string
+          nullable: true
+        uriDeAprovisionamiento:
           type: string
           nullable: true
         confirmado:

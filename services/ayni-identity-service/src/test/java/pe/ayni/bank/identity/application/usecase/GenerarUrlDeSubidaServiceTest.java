@@ -128,6 +128,82 @@ class GenerarUrlDeSubidaServiceTest {
         assertThat(almacen.ultimaClaveDeObjeto).isNull();
     }
 
+    @Test
+    @DisplayName("rechaza generar URL de subida si el titular no ha verificado su segundo factor")
+    void rechazaSiElSegundoFactorNoEstaVerificado() {
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort metodos =
+                new pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort() {
+                    @Override
+                    public pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor guardar(
+                            pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor metodo) {
+                        return metodo;
+                    }
+
+                    @Override
+                    public Optional<pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor> buscarPorUsuarioYTipo(
+                            UUID u, pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor t) {
+                        return Optional.empty();
+                    }
+
+                    @Override
+                    public java.util.List<pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor> listarPorUsuario(
+                            UUID u) {
+                        return java.util.List.of(
+                                pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor.inscribir(
+                                        UUID.randomUUID(),
+                                        u,
+                                        pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor.CORREO_ELECTRONICO,
+                                        null,
+                                        Instant.now()));
+                    }
+                };
+        GenerarUrlDeSubidaService conFiltro =
+                new GenerarUrlDeSubidaService(solicitudes, almacen, metodos, null);
+
+        assertThatThrownBy(() -> conFiltro.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, "jpg"))
+                .isInstanceOf(pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException.class);
+    }
+
+    @Test
+    @DisplayName("permite generar URL de subida cuando el metodo de segundo factor esta confirmado")
+    void permiteGenerarUrlCuandoSegundoFactorConfirmado() {
+        UUID titularId = solicitudes.titulares.get(solicitudId);
+        pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor confirmado =
+                pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor
+                        .inscribir(
+                                UUID.randomUUID(),
+                                titularId,
+                                pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor.CORREO_ELECTRONICO,
+                                null,
+                                Instant.now())
+                        .confirmar(Instant.now());
+        pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort metodos =
+                new pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort() {
+                    @Override
+                    public pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor guardar(
+                            pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor metodo) {
+                        return metodo;
+                    }
+
+                    @Override
+                    public Optional<pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor> buscarPorUsuarioYTipo(
+                            UUID u, pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor t) {
+                        return Optional.of(confirmado);
+                    }
+
+                    @Override
+                    public java.util.List<pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor> listarPorUsuario(
+                            UUID u) {
+                        return java.util.List.of(confirmado);
+                    }
+                };
+        GenerarUrlDeSubidaService conFiltro =
+                new GenerarUrlDeSubidaService(solicitudes, almacen, metodos, null);
+
+        UrlDeSubida url = conFiltro.generar(solicitudId, TipoDeDocumentoKyc.ANVERSO, "jpg");
+        assertThat(url).isSameAs(almacen.urlDevuelta);
+    }
+
     // ─── Dobles ────────────────────────────────────────────────────────────
 
     private static final class SolicitudesFalsas implements RepositorioDeSolicitudesPort {

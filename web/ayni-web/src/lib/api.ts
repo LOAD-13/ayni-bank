@@ -69,13 +69,15 @@ export interface RespuestaDeRegistro {
   mensaje: string;
 }
 
-/** Respuesta del primer paso del ingreso · HU-04. */
+/** Respuesta del primer paso del ingreso · HU-04 / HU-22. */
 export interface DesafioDeSegundoFactor {
   desafioId: string;
   /** `true` la primera vez: hay que dar de alta el segundo factor antes de continuar. */
   requiereInscripcion: boolean;
   /** URI `otpauth://` con el que se pinta el QR. Solo viene si hay que inscribirse. */
   uriDeAprovisionamiento: string | null;
+  /** Método de segundo factor activo del titular (`APP_AUTENTICADORA` | `CORREO_ELECTRONICO` | `SMS`). */
+  tipoMetodo?: TipoDeSegundoFactor;
 }
 
 export interface Sesion {
@@ -90,6 +92,7 @@ export interface MetodoSegundoFactor {
   usuarioId: string;
   tipo: TipoDeSegundoFactor;
   secreto: string | null;
+  uriDeAprovisionamiento?: string | null;
   confirmado: boolean;
 }
 

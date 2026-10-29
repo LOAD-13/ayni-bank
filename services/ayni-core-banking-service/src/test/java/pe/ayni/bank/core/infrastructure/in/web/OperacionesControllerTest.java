@@ -117,6 +117,34 @@ class OperacionesControllerTest {
     }
 
     @Test
+    @DisplayName("GET /movimientos con filtros y paginacion: devuelve el saldoPosterior de cada asiento")
+    void movimientosFiltradosYPaginados() throws Exception {
+        when(cuentas.buscarActivaDe(titular, Moneda.PEN)).thenReturn(Optional.of(cuenta));
+        Asiento asiento = new Asiento(UUID.randomUUID(), cuenta.id(), UUID.randomUUID(), TipoDeAsiento.ABONO,
+                Dinero.de("50.00", Moneda.PEN), "Deposito", AHORA);
+        when(libro.filtrarAsientosDe(eq(cuenta.id()), any())).thenReturn(List.of(
+                new pe.ayni.bank.core.domain.model.AsientoConSaldo(asiento, Dinero.de("150.00", Moneda.PEN))));
+
+        mvc.perform(get("/api/v1/cuentas/mia/movimientos")
+                        .param("desde", "2026-10-01")
+                        .param("hasta", "2026-10-15")
+                        .param("tipo", "ABONO")
+                        .param("importeMinimo", "10.00")
+                        .param("importeMaximo", "100.00")
+                        .param("pagina", "0")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].importe").value("50.00"))
+                .andExpect(jsonPath("$[0].saldoPosterior").value("150.00"));
+
+        mvc.perform(get("/api/v1/cuentas/mia/movimientos")
+                        .param("desde", "2026-10-01")
+                        .header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].saldoPosterior").value("150.00"));
+    }
+
+    @Test
     @DisplayName("GET /movimientos/{id}: 200 con el comprobante propio; 404 si no existe o es ajeno")
     void consultarComprobante() throws Exception {
         Comprobante c = comprobante();

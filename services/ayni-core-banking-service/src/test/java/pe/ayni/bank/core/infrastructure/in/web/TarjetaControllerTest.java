@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,18 +19,24 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
+import pe.ayni.bank.core.domain.model.ControlesDeTarjeta;
 import pe.ayni.bank.core.domain.model.CvvDinamico;
+import pe.ayni.bank.core.domain.model.Dinero;
+import pe.ayni.bank.core.domain.model.EstadoDeTarjeta;
+import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.Pan;
 import pe.ayni.bank.core.domain.model.PanRevelado;
 import pe.ayni.bank.core.domain.model.SinTarjetaException;
 import pe.ayni.bank.core.domain.model.Tarjeta;
 import pe.ayni.bank.core.domain.port.in.ConsultarTarjetaUseCase;
+import pe.ayni.bank.core.domain.port.in.ControlarTarjetaUseCase;
 
-/** El contrato HTTP de HU-09: que viaja de la tarjeta y que responde cada error. */
+/** El contrato HTTP de HU-09 y HU-10: que viaja de la tarjeta y que responde cada error. */
 class TarjetaControllerTest {
 
     private static final UUID ROSA = UUID.randomUUID();
@@ -36,7 +44,8 @@ class TarjetaControllerTest {
             Instant.parse("2026-10-28T15:00:00Z"));
 
     private final ConsultarTarjetaUseCase tarjetas = mock(ConsultarTarjetaUseCase.class);
-    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new TarjetaController(tarjetas)).build();
+    private final ControlarTarjetaUseCase controles = mock(ControlarTarjetaUseCase.class);
+    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new TarjetaController(tarjetas, controles)).build();
 
     @Test
     @DisplayName("La tarjeta viaja solo con los ultimos 4 digitos: el PAN completo no aparece")
@@ -105,5 +114,50 @@ class TarjetaControllerTest {
         when(tarjetas.cvv(ROSA)).thenThrow(new SinTarjetaException());
         mvc.perform(get("/api/v1/tarjetas/mia/cvv").header(TarjetaController.CABECERA_USUARIO, ROSA))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("HU-10: consultar, configurar, congelar y descongelar los controles de la tarjeta")
+    void controlesYCongelamiento() throws Exception {
+        ControlesDeTarjeta activos = new ControlesDeTarjeta(
+                EstadoDeTarjeta.ACTIVA, "0007", Moneda.PEN,
+                Dinero.de("300.00", Moneda.PEN), Dinero.de("50.00", Moneda.PEN), false);
+        ControlesDeTarjeta congelados = new ControlesDeTarjeta(
+                EstadoDeTarjeta.CONGELADA, "0007", Moneda.PEN,
+                Dinero.de("300.00", Moneda.PEN), Dinero.de("50.00", Moneda.PEN), false);
+
+        when(controles.consultarControles(ROSA)).thenReturn(activos);
+        when(controles.configurar(ROSA, Dinero.de("300.00", Moneda.PEN), false)).thenReturn(activos);
+        when(controles.congelar(ROSA)).thenReturn(congelados);
+        when(controles.descongelar(ROSA)).thenReturn(activos);
+
+        mvc.perform(get("/api/v1/tarjetas/mia/controles").header(TarjetaController.CABECERA_USUARIO, ROSA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ACTIVA"))
+                .andExpect(jsonPath("$.ultimos4").value("0007"))
+                .andExpect(jsonPath("$.limiteDiario").value("300.00"))
+                .andExpect(jsonPath("$.consumidoHoy").value("50.00"))
+                .andExpect(jsonPath("$.comprasPorInternet").value(false));
+
+        mvc.perform(put("/api/v1/tarjetas/mia/controles")
+                        .header(TarjetaController.CABECERA_USUARIO, ROSA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"limiteDiario\":\"300.00\",\"comprasPorInternet\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.limiteDiario").value("300.00"));
+
+        mvc.perform(put("/api/v1/tarjetas/mia/controles")
+                        .header(TarjetaController.CABECERA_USUARIO, ROSA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"limiteDiario\":\"0.00\",\"comprasPorInternet\":true}"))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(post("/api/v1/tarjetas/mia/congelamiento").header(TarjetaController.CABECERA_USUARIO, ROSA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CONGELADA"));
+
+        mvc.perform(delete("/api/v1/tarjetas/mia/congelamiento").header(TarjetaController.CABECERA_USUARIO, ROSA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ACTIVA"));
     }
 }

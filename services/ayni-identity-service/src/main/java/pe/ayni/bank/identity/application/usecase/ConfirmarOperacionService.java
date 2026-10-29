@@ -97,6 +97,7 @@ public class ConfirmarOperacionService implements ConfirmarOperacionUseCase {
         exigirNoBloqueado(usuarioId, momento);
 
         Optional<TipoDeSegundoFactor> porCodigo = metodos.listarPorUsuario(usuarioId).stream()
+                .filter(MetodoDeSegundoFactor::estaConfirmado)
                 .filter(m -> m.tipo() == TipoDeSegundoFactor.CORREO_ELECTRONICO || m.tipo() == TipoDeSegundoFactor.SMS)
                 .max(Comparator.comparing(MetodoDeSegundoFactor::creadoEn))
                 .map(MetodoDeSegundoFactor::tipo);

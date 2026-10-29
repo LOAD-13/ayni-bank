@@ -1,5 +1,6 @@
 export const PASOS_DEL_ONBOARDING = [
   "Tus datos",
+  "Segundo factor",
   "DNI anverso",
   "DNI reverso",
   "Prueba de vida",
@@ -10,12 +11,12 @@ export const PASOS_DEL_ONBOARDING = [
 export const PASOS_DE_UNA_TRANSFERENCIA = ["Datos", "Revisión", "Código", "Comprobante"] as const;
 
 /**
- * Indicador de pasos: los cinco del onboarding por omisión, o los que se le pasen.
+ * Indicador de pasos: los seis del onboarding por omisión, o los que se le pasen.
  *
- * En movil se reduce a «Paso N de 5» con una barra: cinco circulos con etiqueta en 360 px
+ * En movil se reduce a «Paso N de 6» con una barra: seis circulos con etiqueta en 360 px
  * quedan ilegibles, y un indicador que no se lee no indica nada.
  *
- * `aria-label` describe el estado completo en una frase, porque recorrer cinco circulos
+ * `aria-label` describe el estado completo en una frase, porque recorrer seis circulos
  * con lector de pantalla para deducir en cual se esta es trabajo que la interfaz puede
  * ahorrar.
  */

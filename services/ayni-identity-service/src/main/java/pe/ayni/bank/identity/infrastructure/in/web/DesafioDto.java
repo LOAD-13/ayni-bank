@@ -10,18 +10,28 @@ import pe.ayni.bank.identity.domain.model.DesafioAbierto;
  * segundo factor queda confirmado, este campo es nulo para siempre.
  */
 public record DesafioDto(String desafioId, boolean requiereInscripcion,
-                         String uriDeAprovisionamiento) {
+                         String uriDeAprovisionamiento, String tipoMetodo) {
+
+    public DesafioDto(String desafioId, boolean requiereInscripcion,
+                      String uriDeAprovisionamiento) {
+        this(desafioId, requiereInscripcion, uriDeAprovisionamiento, "APP_AUTENTICADORA");
+    }
 
     public static DesafioDto desde(DesafioAbierto desafio) {
         return new DesafioDto(
                 desafio.desafioId().toString(),
                 desafio.requiereInscripcion(),
-                desafio.uriDeAprovisionamiento());
+                desafio.uriDeAprovisionamiento(),
+                desafio.tipoMetodo() != null
+                        ? desafio.tipoMetodo().name()
+                        : "APP_AUTENTICADORA");
     }
 
     @Override
     public String toString() {
         return "DesafioDto[desafioId=" + desafioId
-                + ", requiereInscripcion=" + requiereInscripcion + "]";
+                + ", requiereInscripcion=" + requiereInscripcion
+                + ", tipoMetodo=" + tipoMetodo + "]";
     }
 }
+

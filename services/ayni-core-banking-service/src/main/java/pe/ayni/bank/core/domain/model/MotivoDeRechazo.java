@@ -21,7 +21,13 @@ public enum MotivoDeRechazo {
     IMPORTE_FUERA_DE_LIMITE("Importe fuera de limite",
             "El importe esta fuera de los limites permitidos para esta operacion."),
     SIN_CUENTA("Todavia no tienes cuenta",
-            "Tu cuenta aun no esta abierta.");
+            "Tu cuenta aun no esta abierta."),
+    TARJETA_CONGELADA("Tarjeta congelada",
+            "Tu tarjeta esta congelada y no admite consumos hasta que la descongeles."),
+    LIMITE_DIARIO_TARJETA_EXCEDIDO("Limite diario superado",
+            "El consumo supera el limite diario configurado para tu tarjeta."),
+    COMPRAS_POR_INTERNET_DESHABILITADAS("Compras por internet deshabilitadas",
+            "Tienes deshabilitadas las compras por internet en los controles de tu tarjeta.");
 
     private final String titulo;
     private final String detalle;

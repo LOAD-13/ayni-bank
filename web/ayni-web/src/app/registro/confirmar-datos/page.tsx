@@ -16,5 +16,5 @@ export default async function ConfirmarDatos({
 }) {
   const { solicitudId } = await searchParams;
 
-  return <PasoDeConfirmacionDeDatos solicitudId={solicitudId} pasoActual={3} />;
+  return <PasoDeConfirmacionDeDatos solicitudId={solicitudId} pasoActual={4} />;
 }

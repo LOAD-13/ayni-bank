@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import pe.ayni.bank.identity.domain.model.DocumentoKyc;
@@ -18,6 +19,8 @@ import pe.ayni.bank.identity.domain.port.in.EvaluarCapturaDeDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.GestionarFalloDeVerificacionKycUseCase;
 import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.VerificadorKycPort;
 
@@ -39,6 +42,8 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
     private final VerificadorKycPort verificador;
     private final GestionarFalloDeVerificacionKycUseCase fallos;
     private final Clock reloj;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final RepositorioDeSegundoFactorPort segundosFactores;
 
     public EvaluarCapturaDeDniService(RepositorioDeSolicitudesPort solicitudes,
                                       RepositorioDeDocumentosKycPort documentos,
@@ -46,12 +51,27 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
                                       VerificadorKycPort verificador,
                                       GestionarFalloDeVerificacionKycUseCase fallos,
                                       Clock reloj) {
+        this(solicitudes, documentos, almacen, verificador, fallos, reloj, null, null);
+    }
+
+    @Autowired
+    @SuppressWarnings("java:S107")
+    public EvaluarCapturaDeDniService(RepositorioDeSolicitudesPort solicitudes,
+                                      RepositorioDeDocumentosKycPort documentos,
+                                      AlmacenDeDocumentosPort almacen,
+                                      VerificadorKycPort verificador,
+                                      GestionarFalloDeVerificacionKycUseCase fallos,
+                                      Clock reloj,
+                                      @Autowired(required = false) RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                      @Autowired(required = false) RepositorioDeSegundoFactorPort segundosFactores) {
         this.solicitudes = solicitudes;
         this.documentos = documentos;
         this.almacen = almacen;
         this.verificador = verificador;
         this.fallos = fallos;
         this.reloj = reloj;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.segundosFactores = segundosFactores;
     }
 
     @Override
@@ -59,9 +79,10 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
         if (lado == TipoDeDocumentoKyc.SELFIE) {
             throw new IllegalArgumentException("Solo se evaluan el anverso y el reverso del DNI.");
         }
-        solicitudes.titularDe(solicitudId)
+        UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         // La clave la firmo GenerarUrlDeSubidaService con este prefijo. Sin esta comprobacion,
         // cualquiera podria hacer pasar como suya la foto subida para otra solicitud.
@@ -113,3 +134,4 @@ public class EvaluarCapturaDeDniService implements EvaluarCapturaDeDniUseCase {
                 objeto.tamanoBytes(), reloj.instant()));
     }
 }
+

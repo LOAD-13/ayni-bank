@@ -27,5 +27,13 @@ public enum TipoDeEventoDeOperacion {
     /** HU-09: la tarjeta de debito virtual emitida; el recurso es la tarjeta. */
     TARJETA_EMITIDA,
     /** HU-09: el titular vio el PAN completo tras confirmar con segundo factor; con su IP. */
-    PAN_REVELADO
+    PAN_REVELADO,
+    /** HU-10: el titular congelo su tarjeta de debito virtual; el recurso es la tarjeta. */
+    TARJETA_CONGELADA,
+    /** HU-10: el titular descongelo su tarjeta de debito virtual; el recurso es la tarjeta. */
+    TARJETA_DESCONGELADA,
+    /** HU-10: el titular actualizo el limite diario o las compras por internet. */
+    CONTROL_TARJETA_ACTUALIZADO,
+    /** HU-10: un consumo con tarjeta fue aprobado y cargado en la cuenta. */
+    CONSUMO_TARJETA_REALIZADO
 }

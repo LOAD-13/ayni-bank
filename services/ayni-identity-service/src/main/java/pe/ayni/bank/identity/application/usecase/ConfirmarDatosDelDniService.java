@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,8 @@ import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.port.in.ConfirmarDatosDelDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.GestionarFalloDeVerificacionKycUseCase;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 
 /**
@@ -42,21 +45,35 @@ public class ConfirmarDatosDelDniService implements ConfirmarDatosDelDniUseCase 
     private final RepositorioDeSolicitudesPort solicitudes;
     private final RepositorioDeDocumentosKycPort documentos;
     private final GestionarFalloDeVerificacionKycUseCase fallos;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final RepositorioDeSegundoFactorPort segundosFactores;
 
     public ConfirmarDatosDelDniService(RepositorioDeSolicitudesPort solicitudes,
                                        RepositorioDeDocumentosKycPort documentos,
                                        GestionarFalloDeVerificacionKycUseCase fallos) {
+        this(solicitudes, documentos, fallos, null, null);
+    }
+
+    @Autowired
+    public ConfirmarDatosDelDniService(RepositorioDeSolicitudesPort solicitudes,
+                                       RepositorioDeDocumentosKycPort documentos,
+                                       GestionarFalloDeVerificacionKycUseCase fallos,
+                                       @Autowired(required = false) RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                       @Autowired(required = false) RepositorioDeSegundoFactorPort segundosFactores) {
         this.solicitudes = solicitudes;
         this.documentos = documentos;
         this.fallos = fallos;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.segundosFactores = segundosFactores;
     }
 
     @Override
     @Transactional
     public EstadoDelPasoKyc confirmar(UUID solicitudId, DatosConfirmados confirmados) {
-        solicitudes.titularDe(solicitudId)
+        UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
+        GuardiaDeSegundoFactorEnKyc.exigirVerificado(titularId, metodosSegundoFactor, segundosFactores);
 
         if (solicitudes.estaEnRevisionManual(solicitudId)) {
             return EstadoDelPasoKyc.EN_REVISION_MANUAL;

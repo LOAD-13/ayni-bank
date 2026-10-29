@@ -27,9 +27,7 @@ Característica: Consulta de saldo e historial de movimientos
     Entonces el saldo disponible de Ana es S/ 175.00
     Y Ana ve sus movimientos del más reciente al más antiguo: 25.00, 50.00 y 100.00
 
-  # Pendiente · AYNI-329: la consulta de movimientos solo devuelve «los últimos N». No admite
-  # rango de fechas, tipo ni importe, no pagina y no informa el saldo posterior de cada movimiento.
-  @pendiente
+  # AYNI-329: filtro de movimientos por rango de fechas, tipo, importe y saldo posterior.
   Escenario: Consulta de movimientos con filtro
     Cuando Ana filtra sus movimientos del 2026-10-05 al 2026-10-15
     Entonces Ana ve únicamente el depósito de S/ 50.00 del 2026-10-10

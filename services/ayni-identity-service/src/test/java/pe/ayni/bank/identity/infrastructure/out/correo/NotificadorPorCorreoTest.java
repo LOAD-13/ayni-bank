@@ -41,7 +41,7 @@ class NotificadorPorCorreoTest {
 
         assertThat(enviados).singleElement().satisfies(e -> {
             assertThat(e.para()).isEqualTo("ana.quispe@example.pe");
-            assertThat(e.html()).contains("https://ayni.example.pe/registro/dni-anverso?solicitudId=" + solicitud);
+            assertThat(e.html()).contains("https://ayni.example.pe/registro/segundo-factor?solicitudId=" + solicitud);
             assertThat(e.texto()).contains(solicitud.toString());
         });
     }

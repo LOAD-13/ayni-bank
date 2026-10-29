@@ -55,4 +55,31 @@ class MetodoSegundoFactorControllerTest {
                 .andExpect(jsonPath("$.tipo").value("CORREO_ELECTRONICO"))
                 .andExpect(jsonPath("$.confirmado").value(false));
     }
+
+    @Test
+    @DisplayName("OWASP A01/A02: nunca expone el secreto TOTP ni el URI cuando el metodo ya esta confirmado")
+    void noExponeSecretoCuandoYaEstaConfirmado() throws Exception {
+        UUID usuarioId = UUID.randomUUID();
+        UUID metodoId = UUID.randomUUID();
+        Instant ahora = Instant.now();
+
+        MetodoDeSegundoFactor confirmado = MetodoDeSegundoFactor.inscribir(
+                metodoId, usuarioId, TipoDeSegundoFactor.APP_AUTENTICADORA, "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", ahora
+        ).confirmar(ahora);
+
+        given(seleccionarSegundoFactor.seleccionarMetodo(usuarioId, TipoDeSegundoFactor.APP_AUTENTICADORA))
+                .willReturn(confirmado);
+
+        mockMvc.perform(post("/api/v1/usuarios/{usuarioId}/segundo-factor/metodo", usuarioId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "tipo": "APP_AUTENTICADORA"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.confirmado").value(true))
+                .andExpect(jsonPath("$.secreto").doesNotExist())
+                .andExpect(jsonPath("$.uriDeAprovisionamiento").doesNotExist());
+    }
 }

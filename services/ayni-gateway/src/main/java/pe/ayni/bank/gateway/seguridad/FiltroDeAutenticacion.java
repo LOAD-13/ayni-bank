@@ -51,6 +51,8 @@ public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange intercambio, GatewayFilterChain cadena) {
+        aplicarCabecerasDeSeguridad(intercambio.getResponse());
+
         ServerHttpRequest peticion = intercambio.getRequest().mutate()
                 .headers(cabeceras -> cabeceras.remove(CABECERA_USUARIO))
                 .build();
@@ -101,5 +103,14 @@ public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
         respuesta.getHeaders().set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         DataBuffer buffer = respuesta.bufferFactory().wrap(CUERPO_401);
         return respuesta.writeWith(Mono.just(buffer));
+    }
+
+    /** OWASP A05: cabeceras defensivas en todas las respuestas que atraviesan el gateway. */
+    private static void aplicarCabecerasDeSeguridad(ServerHttpResponse respuesta) {
+        HttpHeaders cabeceras = respuesta.getHeaders();
+        cabeceras.set("X-Content-Type-Options", "nosniff");
+        cabeceras.set("X-Frame-Options", "DENY");
+        cabeceras.set("Referrer-Policy", "strict-origin-when-cross-origin");
+        cabeceras.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
     }
 }

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * HU-03 · paso 4 de 5 del onboarding: consentimiento biométrico y selfie (AYNI-14).
+ * HU-03 · paso 5 de 6 del onboarding: consentimiento biométrico y selfie (AYNI-14).
  *
  * Al terminar, la selfie queda en manos de un operador que la compara con la foto del DNI
  * y aprueba la apertura: la pantalla de revisión lo explica y el correo avisa del resultado.
@@ -24,7 +24,7 @@ export default async function PruebaDeVida({
   return (
     <PasoDeCapturaDeSelfie
       solicitudId={solicitudId}
-      pasoActual={4}
+      pasoActual={5}
       siguienteHref="/registro/en-revision?motivo=cotejo"
     />
   );

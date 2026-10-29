@@ -214,14 +214,16 @@ public class IniciarSesionService implements IniciarSesionUseCase {
                                         Instant momento) {
         Optional<MetodoDeSegundoFactor> metodoPorCodigo = metodosSegundoFactor
                 .listarPorUsuario(usuario.id()).stream()
+                .filter(MetodoDeSegundoFactor::estaConfirmado)
                 .filter(m -> m.tipo() == TipoDeSegundoFactor.CORREO_ELECTRONICO
                         || m.tipo() == TipoDeSegundoFactor.SMS)
                 .max(java.util.Comparator.comparing(MetodoDeSegundoFactor::creadoEn));
 
         if (metodoPorCodigo.isPresent()) {
+            TipoDeSegundoFactor tipo = metodoPorCodigo.get().tipo();
             ResultadoGeneracionDesafio resultado =
-                    generarDesafioCodigo.generar(usuario.id(), metodoPorCodigo.get().tipo());
-            return DesafioAbierto.paraQuienYaTieneSegundoFactor(resultado.desafio().id());
+                    generarDesafioCodigo.generar(usuario.id(), tipo);
+            return DesafioAbierto.paraQuienYaTieneSegundoFactor(resultado.desafio().id(), tipo);
         }
 
         DesafioDeSegundoFactor desafio = DesafioDeSegundoFactor.abrir(usuario.id(), momento);
