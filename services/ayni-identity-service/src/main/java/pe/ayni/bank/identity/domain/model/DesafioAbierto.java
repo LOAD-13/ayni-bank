@@ -13,20 +13,33 @@ import java.util.UUID;
  * la interfaz necesita saber es que pantalla mostrar, no como llego el usuario hasta aqui.
  */
 public record DesafioAbierto(UUID desafioId, boolean requiereInscripcion,
-                             String uriDeAprovisionamiento) {
+                             String uriDeAprovisionamiento, TipoDeSegundoFactor tipoMetodo) {
+
+    public DesafioAbierto(UUID desafioId, boolean requiereInscripcion,
+                          String uriDeAprovisionamiento) {
+        this(desafioId, requiereInscripcion, uriDeAprovisionamiento,
+                TipoDeSegundoFactor.APP_AUTENTICADORA);
+    }
 
     public static DesafioAbierto paraQuienYaTieneSegundoFactor(UUID desafioId) {
-        return new DesafioAbierto(desafioId, false, null);
+        return new DesafioAbierto(desafioId, false, null, TipoDeSegundoFactor.APP_AUTENTICADORA);
+    }
+
+    public static DesafioAbierto paraQuienYaTieneSegundoFactor(UUID desafioId,
+                                                               TipoDeSegundoFactor tipoMetodo) {
+        return new DesafioAbierto(desafioId, false, null, tipoMetodo);
     }
 
     public static DesafioAbierto conInscripcion(UUID desafioId, String uri) {
-        return new DesafioAbierto(desafioId, true, uri);
+        return new DesafioAbierto(desafioId, true, uri, TipoDeSegundoFactor.APP_AUTENTICADORA);
     }
 
     /** El URI lleva el secreto dentro: no puede acabar en un log. */
     @Override
     public String toString() {
         return "DesafioAbierto[desafioId=" + desafioId
-                + ", requiereInscripcion=" + requiereInscripcion + "]";
+                + ", requiereInscripcion=" + requiereInscripcion
+                + ", tipoMetodo=" + tipoMetodo + "]";
     }
 }
+

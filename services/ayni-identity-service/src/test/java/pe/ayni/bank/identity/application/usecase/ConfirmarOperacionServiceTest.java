@@ -129,7 +129,8 @@ class ConfirmarOperacionServiceTest {
     @DisplayName("con el correo como metodo se envia el codigo y se verifica contra ese desafio")
     void correo() {
         when(metodos.listarPorUsuario(ana)).thenReturn(List.of(MetodoDeSegundoFactor.inscribir(
-                UUID.randomUUID(), ana, TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA)));
+                UUID.randomUUID(), ana, TipoDeSegundoFactor.CORREO_ELECTRONICO, null, AHORA)
+                .confirmar(AHORA)));
         DesafioPorCodigo desafio = mock(DesafioPorCodigo.class);
         UUID desafioId = UUID.randomUUID();
         when(desafio.id()).thenReturn(desafioId);

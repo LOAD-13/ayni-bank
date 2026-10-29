@@ -104,7 +104,7 @@ public class SolicitudOnboardingEntity {
 
     void aprobar(Instant momento) {
         this.estado = "APROBADA";
-        this.pasoActual = 5;
+        this.pasoActual = 6;
         this.actualizadaEn = momento;
     }
 

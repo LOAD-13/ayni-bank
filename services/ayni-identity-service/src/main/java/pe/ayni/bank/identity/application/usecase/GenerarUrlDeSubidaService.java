@@ -5,13 +5,19 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
+import pe.ayni.bank.identity.domain.model.SegundoFactor;
+import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.model.UrlDeSubida;
 import pe.ayni.bank.identity.domain.port.in.GenerarUrlDeSubidaUseCase;
 import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 
 /**
@@ -27,18 +33,31 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
     private final RepositorioDeSolicitudesPort solicitudes;
     private final AlmacenDeDocumentosPort almacen;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final RepositorioDeSegundoFactorPort segundosFactores;
 
     public GenerarUrlDeSubidaService(RepositorioDeSolicitudesPort solicitudes,
                                      AlmacenDeDocumentosPort almacen) {
+        this(solicitudes, almacen, null, null);
+    }
+
+    @Autowired
+    public GenerarUrlDeSubidaService(RepositorioDeSolicitudesPort solicitudes,
+                                     AlmacenDeDocumentosPort almacen,
+                                     @Autowired(required = false) RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                     @Autowired(required = false) RepositorioDeSegundoFactorPort segundosFactores) {
         this.solicitudes = solicitudes;
         this.almacen = almacen;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.segundosFactores = segundosFactores;
     }
 
     @Override
     public UrlDeSubida generar(UUID solicitudId, TipoDeDocumentoKyc tipoDocumento, String extension) {
-        solicitudes.titularDe(solicitudId)
+        UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
+        exigirSegundoFactorVerificado(titularId);
 
         String extensionLimpia = sanitizarExtension(extension);
 
@@ -47,6 +66,22 @@ public class GenerarUrlDeSubidaService implements GenerarUrlDeSubidaUseCase {
 
         return almacen.generarUrlDeSubida(claveDeObjeto, tipoDocumento.tipoDeContenidoEsperado(extensionLimpia),
                 TipoDeDocumentoKyc.TAMANO_MAXIMO_BYTES);
+    }
+
+    private void exigirSegundoFactorVerificado(UUID titularId) {
+        if (metodosSegundoFactor == null && segundosFactores == null) {
+            return;
+        }
+        boolean verificadoPorMetodo = metodosSegundoFactor != null
+                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
+                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
+        boolean verificadoPorTotp = segundosFactores != null
+                && segundosFactores.buscarPorUsuario(titularId)
+                        .filter(SegundoFactor::estaConfirmado)
+                        .isPresent();
+        if (!verificadoPorMetodo && !verificadoPorTotp) {
+            throw new SegundoFactorNoVerificadoException();
+        }
     }
 
     /**

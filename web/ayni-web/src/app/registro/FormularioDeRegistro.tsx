@@ -148,6 +148,14 @@ export function FormularioDeRegistro() {
           Referencia de tu solicitud:{" "}
           <span className="cifra text-gris-700">{resultado.solicitudId}</span>
         </p>
+        <div className="mt-6">
+          <Link
+            href={`/registro/segundo-factor?solicitudId=${resultado.solicitudId}`}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-azul-700 px-7 text-[15px] font-bold text-blanco hover:bg-azul-800"
+          >
+            Elegir mi segundo factor <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
     );
   }

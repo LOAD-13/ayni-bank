@@ -16,18 +16,27 @@ Además, se exige verificar el contacto inicial durante el proceso de registro a
 
 ## Decisión
 
-### 1. Modelo de datos flexible para métodos 2FA
-Se incorpora la tabla `metodo_segundo_factor`, que registra los métodos 2FA inscritos y su estado de confirmación por usuario, soportando `APP_AUTENTICADORA`, `CORREO_ELECTRONICO` y `SMS`.
-- El secreto TOTP (si aplica) se almacena cifrado en reposo con AES-256-GCM.
+### 1. Modelo de datos flexible para métodos 2FA y cifrado en reposo
+Se incorpora la tabla `metodo_segundo_factor` (`V10__segundo_factor_y_desafios_codigo.sql`), que registra los métodos 2FA inscritos y su estado de confirmación por usuario, soportando `APP_AUTENTICADORA`, `CORREO_ELECTRONICO` y `SMS`.
+- El secreto TOTP (si aplica) se almacena cifrado en reposo con **AES-256-GCM** mediante `CifradorDeDatosPort` en `AdaptadorRepositorioDeMetodoSegundoFactor`, nunca en texto claro.
+- El onboarding evoluciona de 5 a **6 pasos** (`V11__onboarding_seis_pasos.sql`, `CHECK (paso_actual BETWEEN 1 AND 6)`):
+  1. Tus datos
+  2. Segundo factor
+  3. DNI anverso
+  4. DNI reverso
+  5. Prueba de vida
+  6. Listo
 
-### 2. Desafíos OTP por código (SHA-256 y 3 intentos)
-Para canales OTP (Correo Electrónico y SMS):
+### 2. Desafíos OTP por código (SHA-256 con sal por usuario y 3 intentos)
+Para canales OTP (`CORREO_ELECTRONICO` y `SMS`):
 - Los códigos OTP consisten en 6 dígitos numéricos aleatorios generados mediante `SecureRandom`.
-- **Nunca se almacena el código en claro en la base de datos**; se guarda únicamente su resumen **SHA-256** en la tabla `desafio_por_codigo`.
+- **Nunca se almacena el código en claro en la base de datos**; se guarda únicamente su resumen **SHA-256** con sal ligada al `usuarioId` (`usuarioId:codigo`) en la tabla `desafio_por_codigo` y se compara en tiempo constante (`MessageDigest.isEqual`).
 - Los desafíos OTP tienen una vigencia estricta de **10 minutos** (`DesafioPorCodigo.VIGENCIA`).
 - Se limita a **máximo 3 intentos fallidos** de verificación (`DesafioPorCodigo.MAX_INTENTOS`), tras lo cual el desafío queda invalidado por seguridad.
+- En esta versión académica sin proveedor SMS contratado, la elección de `SMS` se muestra visible con la insignia **«Próximamente»** y deshabilitada en la interfaz, y el backend rechaza su selección con `400 Bad Request`.
 
-### 3. Integración en el flujo de inicio de sesión y registro
-- `SesionController` e `IniciarSesionService` verifican transparentemente el código 2FA presentado, soportando tanto desafíos de App Autenticadora (TOTP) como desafíos OTP de 6 dígitos registrados en `desafio_por_codigo`.
-- Se dispone de endpoints REST para la solicitud, reenvío y verificación de códigos OTP de contacto inicial durante el registro (`VerificacionContactoController`).
-- En la interfaz de usuario React (`ayni-web`), el formulario de confirmación de 2FA ofrece la selección activa del método de verificación (`SelectorMetodoSegundoFactor`) y la opción de reenvío para métodos OTP.
+### 3. Verificación obligatoria antes del KYC e integración con el inicio de sesión
+- Ningún paso de captura o evaluación del DNI ni selfie (`GenerarUrlDeSubidaService`, `EvaluarCapturaDeDniService`, `ExtraerDatosDelDniService`, `ConfirmarDatosDelDniService`, `EntregarSelfieService`) permite avanzar si el titular no cuenta con un método de segundo factor confirmado (`409 Conflict`, problema `segundo-factor-no-verificado`).
+- `SesionController` e `IniciarSesionService` verifican transparentemente el código 2FA presentado, devolviendo `tipoMetodo` en `DesafioAbierto` / `DesafioDto` y considerando únicamente métodos confirmados (`MetodoDeSegundoFactor::estaConfirmado`).
+- En la interfaz de usuario React (`ayni-web`), la ruta `/registro/segundo-factor` implementa el paso 2 de 6 del onboarding con soporte completo para `APP_AUTENTICADORA` (QR + clave manual) y `CORREO_ELECTRONICO` (código de 6 dígitos y reenvío).
+

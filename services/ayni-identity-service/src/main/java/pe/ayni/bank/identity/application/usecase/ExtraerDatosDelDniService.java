@@ -5,19 +5,25 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import pe.ayni.bank.identity.domain.model.CapturasIncompletasException;
 import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.KycServiceNoDisponibleException;
 import pe.ayni.bank.identity.domain.model.LecturaDelDni;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.ResultadoDeExtraccion;
+import pe.ayni.bank.identity.domain.model.SegundoFactor;
+import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.port.in.ExtraerDatosDelDniUseCase;
 import pe.ayni.bank.identity.domain.port.in.GestionarFalloDeVerificacionKycUseCase;
 import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 import pe.ayni.bank.identity.domain.port.out.VerificadorKycPort;
 
@@ -41,24 +47,40 @@ public class ExtraerDatosDelDniService implements ExtraerDatosDelDniUseCase {
     private final AlmacenDeDocumentosPort almacen;
     private final VerificadorKycPort verificador;
     private final GestionarFalloDeVerificacionKycUseCase fallos;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final RepositorioDeSegundoFactorPort segundosFactores;
 
     public ExtraerDatosDelDniService(RepositorioDeSolicitudesPort solicitudes,
                                      RepositorioDeDocumentosKycPort documentos,
                                      AlmacenDeDocumentosPort almacen,
                                      VerificadorKycPort verificador,
                                      GestionarFalloDeVerificacionKycUseCase fallos) {
+        this(solicitudes, documentos, almacen, verificador, fallos, null, null);
+    }
+
+    @Autowired
+    public ExtraerDatosDelDniService(RepositorioDeSolicitudesPort solicitudes,
+                                     RepositorioDeDocumentosKycPort documentos,
+                                     AlmacenDeDocumentosPort almacen,
+                                     VerificadorKycPort verificador,
+                                     GestionarFalloDeVerificacionKycUseCase fallos,
+                                     @Autowired(required = false) RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                     @Autowired(required = false) RepositorioDeSegundoFactorPort segundosFactores) {
         this.solicitudes = solicitudes;
         this.documentos = documentos;
         this.almacen = almacen;
         this.verificador = verificador;
         this.fallos = fallos;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.segundosFactores = segundosFactores;
     }
 
     @Override
     public ResultadoDeExtraccion extraer(UUID solicitudId) {
-        solicitudes.titularDe(solicitudId)
+        UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
+        exigirSegundoFactorVerificado(titularId);
 
         if (solicitudes.estaEnRevisionManual(solicitudId)) {
             return ResultadoDeExtraccion.enRevisionManual();
@@ -96,4 +118,21 @@ public class ExtraerDatosDelDniService implements ExtraerDatosDelDniUseCase {
         return almacen.describir(documento.claveDeObjeto()).isPresent()
                 && almacen.calcularHash(documento.claveDeObjeto()).equals(documento.hashSha256());
     }
+
+    private void exigirSegundoFactorVerificado(UUID titularId) {
+        if (metodosSegundoFactor == null && segundosFactores == null) {
+            return;
+        }
+        boolean verificadoPorMetodo = metodosSegundoFactor != null
+                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
+                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
+        boolean verificadoPorTotp = segundosFactores != null
+                && segundosFactores.buscarPorUsuario(titularId)
+                        .filter(SegundoFactor::estaConfirmado)
+                        .isPresent();
+        if (!verificadoPorMetodo && !verificadoPorTotp) {
+            throw new SegundoFactorNoVerificadoException();
+        }
+    }
 }
+

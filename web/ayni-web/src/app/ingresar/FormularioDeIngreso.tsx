@@ -5,7 +5,12 @@ import { useCallback, useState } from "react";
 
 import { PasoDeCredenciales } from "@/componentes/ingreso/PasoDeCredenciales";
 import { PasoDeSegundoFactor } from "@/componentes/ingreso/PasoDeSegundoFactor";
-import { ErrorDeApi, presentarCredenciales, verificarSegundoFactor } from "@/lib/api";
+import {
+  ErrorDeApi,
+  presentarCredenciales,
+  verificarSegundoFactor,
+  type TipoDeSegundoFactor,
+} from "@/lib/api";
 import { guardarSesion } from "@/lib/sesion";
 
 /**
@@ -21,6 +26,7 @@ export function FormularioDeIngreso() {
 
   const [desafioId, setDesafioId] = useState<string | null>(null);
   const [uriDeAprovisionamiento, setUri] = useState<string | null>(null);
+  const [tipoMetodo, setTipoMetodo] = useState<TipoDeSegundoFactor>("APP_AUTENTICADORA");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [esperaSegundos, setEspera] = useState<number | null>(null);
@@ -34,6 +40,7 @@ export function FormularioDeIngreso() {
       const desafio = await presentarCredenciales(correo, contrasena);
       setDesafioId(desafio.desafioId);
       setUri(desafio.requiereInscripcion ? desafio.uriDeAprovisionamiento : null);
+      setTipoMetodo(desafio.tipoMetodo ?? "APP_AUTENTICADORA");
     } catch (fallo) {
       interpretar(fallo);
     } finally {
@@ -85,6 +92,7 @@ export function FormularioDeIngreso() {
     return (
       <PasoDeSegundoFactor
         uriDeAprovisionamiento={uriDeAprovisionamiento}
+        tipoMetodo={tipoMetodo}
         onEnviar={enviarCodigo}
         onVolver={() => {
           setDesafioId(null);

@@ -70,6 +70,17 @@ class SeleccionarSegundoFactorServiceTest {
         assertEquals(1, repositorio.metodos.size());
     }
 
+    @Test
+    @DisplayName("Seleccionar metodo SMS se rechaza porque no esta habilitado en esta version")
+    void testSeleccionarMetodoSmsRechazado() {
+        UUID usuarioId = UUID.randomUUID();
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> servicio.seleccionarMetodo(usuarioId, TipoDeSegundoFactor.SMS));
+        assertTrue(ex.getMessage().contains("SMS"));
+    }
+
     private static class RepositorioEnMemoria implements RepositorioDeMetodoSegundoFactorPort {
         final List<MetodoDeSegundoFactor> metodos = new ArrayList<>();
 
@@ -106,7 +117,8 @@ class SeleccionarSegundoFactorServiceTest {
 
         @Override
         public String uriDeAprovisionamiento(SecretoTotp secreto, CorreoElectronico correo) {
-            return "otpauth://totp/Ayni:" + correo.valor() + "?secret=" + secreto.valor() + "&issuer=Ayni";
+            return "otpauth://totp/Ayni:" + correo.valor() + "&secret=" + secreto.valor() + "&issuer=Ayni";
         }
     }
 }
+

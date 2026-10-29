@@ -4,19 +4,25 @@ import java.time.Clock;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.identity.domain.model.DocumentoKyc;
 import pe.ayni.bank.identity.domain.model.DocumentoNoSubidoException;
 import pe.ayni.bank.identity.domain.model.EstadoDelPasoKyc;
+import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.ObjetoAlmacenado;
+import pe.ayni.bank.identity.domain.model.SegundoFactor;
+import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SolicitudNoExisteException;
 import pe.ayni.bank.identity.domain.model.TipoDeDocumentoKyc;
 import pe.ayni.bank.identity.domain.port.in.EntregarSelfieUseCase;
 import pe.ayni.bank.identity.domain.port.in.GestionarFalloDeVerificacionKycUseCase;
 import pe.ayni.bank.identity.domain.port.out.AlmacenDeDocumentosPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeDocumentosKycPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
+import pe.ayni.bank.identity.domain.port.out.RepositorioDeSegundoFactorPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort;
 
 /**
@@ -40,25 +46,41 @@ public class EntregarSelfieService implements EntregarSelfieUseCase {
     private final AlmacenDeDocumentosPort almacen;
     private final GestionarFalloDeVerificacionKycUseCase fallos;
     private final Clock reloj;
+    private final RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor;
+    private final RepositorioDeSegundoFactorPort segundosFactores;
 
     public EntregarSelfieService(RepositorioDeSolicitudesPort solicitudes,
                                  RepositorioDeDocumentosKycPort documentos,
                                  AlmacenDeDocumentosPort almacen,
                                  GestionarFalloDeVerificacionKycUseCase fallos,
                                  Clock reloj) {
+        this(solicitudes, documentos, almacen, fallos, reloj, null, null);
+    }
+
+    @Autowired
+    public EntregarSelfieService(RepositorioDeSolicitudesPort solicitudes,
+                                 RepositorioDeDocumentosKycPort documentos,
+                                 AlmacenDeDocumentosPort almacen,
+                                 GestionarFalloDeVerificacionKycUseCase fallos,
+                                 Clock reloj,
+                                 @Autowired(required = false) RepositorioDeMetodoSegundoFactorPort metodosSegundoFactor,
+                                 @Autowired(required = false) RepositorioDeSegundoFactorPort segundosFactores) {
         this.solicitudes = solicitudes;
         this.documentos = documentos;
         this.almacen = almacen;
         this.fallos = fallos;
         this.reloj = reloj;
+        this.metodosSegundoFactor = metodosSegundoFactor;
+        this.segundosFactores = segundosFactores;
     }
 
     @Override
     @Transactional
     public EstadoDelPasoKyc entregar(UUID solicitudId, String claveDeObjeto) {
-        solicitudes.titularDe(solicitudId)
+        UUID titularId = solicitudes.titularDe(solicitudId)
                 .orElseThrow(() -> new SolicitudNoExisteException(
                         "La solicitud no existe o es un senuelo sin titular."));
+        exigirSegundoFactorVerificado(titularId);
 
         String prefijo = "kyc/" + solicitudId + "/" + TipoDeDocumentoKyc.SELFIE.prefijoDeObjeto();
         if (claveDeObjeto == null || !claveDeObjeto.startsWith(prefijo)) {
@@ -80,5 +102,21 @@ public class EntregarSelfieService implements EntregarSelfieUseCase {
 
         fallos.derivarParaCotejoFacial(solicitudId);
         return EstadoDelPasoKyc.EN_REVISION_MANUAL;
+    }
+
+    private void exigirSegundoFactorVerificado(UUID titularId) {
+        if (metodosSegundoFactor == null && segundosFactores == null) {
+            return;
+        }
+        boolean verificadoPorMetodo = metodosSegundoFactor != null
+                && metodosSegundoFactor.listarPorUsuario(titularId).stream()
+                        .anyMatch(MetodoDeSegundoFactor::estaConfirmado);
+        boolean verificadoPorTotp = segundosFactores != null
+                && segundosFactores.buscarPorUsuario(titularId)
+                        .filter(SegundoFactor::estaConfirmado)
+                        .isPresent();
+        if (!verificadoPorMetodo && !verificadoPorTotp) {
+            throw new SegundoFactorNoVerificadoException();
+        }
     }
 }

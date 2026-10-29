@@ -30,6 +30,7 @@ import pe.ayni.bank.identity.domain.model.EnlaceDeRecuperacionInvalidoException;
 import pe.ayni.bank.identity.domain.model.MaximoIntentosDesafioExcedidoException;
 import pe.ayni.bank.identity.domain.model.ReutilizacionDeRefreshTokenException;
 import pe.ayni.bank.identity.domain.model.SegundoFactorInvalidoException;
+import pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException;
 import pe.ayni.bank.identity.domain.model.SesionExpiradaException;
 import pe.ayni.bank.identity.domain.model.SinSegundoFactorException;
 
@@ -229,6 +230,14 @@ public class ManejadorDeErrores {
     public ProblemDetail alNoTenerSegundoFactor(SinSegundoFactorException excepcion, WebRequest peticion) {
         return problema(HttpStatus.CONFLICT, "sin-segundo-factor",
                 "Activa tu segundo factor", excepcion.getMessage(), List.of(), peticion);
+    }
+
+    /** HU-22 (AYNI-130): no se puede avanzar al KYC sin verificar antes el segundo factor. */
+    @ExceptionHandler(SegundoFactorNoVerificadoException.class)
+    public ProblemDetail alNoHaberVerificadoSegundoFactor(SegundoFactorNoVerificadoException excepcion,
+                                                          WebRequest peticion) {
+        return problema(HttpStatus.CONFLICT, "segundo-factor-no-verificado",
+                "Verifica tu segundo factor", excepcion.getMessage(), List.of(), peticion);
     }
 
     /** Sin la cabecera de usuario la peticion no paso por el gateway: 401. */

@@ -45,7 +45,7 @@ public class NotificadorPorCorreo implements NotificadorDeRegistroPort,
 
     @Override
     public void enviarBienvenida(CorreoElectronico correo, UUID solicitudId) {
-        String enlace = urlPublica + "/registro/dni-anverso?solicitudId=" + solicitudId;
+        String enlace = urlPublica + "/registro/segundo-factor?solicitudId=" + solicitudId;
         enviar(correo, PlantillaDeCorreo.BIENVENIDA, enlace);
     }
 

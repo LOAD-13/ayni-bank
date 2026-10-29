@@ -200,6 +200,16 @@ class ManejadorDeErroresTest {
     }
 
     @Test
+    @DisplayName("avanzar al KYC sin segundo factor verificado devuelve 409 Conflict")
+    void excepcionDeSegundoFactorNoVerificadoDevuelve409() {
+        ProblemDetail problema = manejador.alNoHaberVerificadoSegundoFactor(
+                new pe.ayni.bank.identity.domain.model.SegundoFactorNoVerificadoException(), peticion);
+
+        assertThat(problema.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+        assertThat(String.valueOf(problema.getType())).contains("segundo-factor-no-verificado");
+    }
+
+    @Test
     @DisplayName("un fallo no previsto no filtra el mensaje de la excepcion")
     void elErrorInternoEsDeliberadamenteVago() {
         // Un mensaje real filtra nombres de tablas, versiones de bibliotecas y rutas del

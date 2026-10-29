@@ -8,15 +8,25 @@ import org.springframework.stereotype.Component;
 
 import pe.ayni.bank.identity.domain.model.MetodoDeSegundoFactor;
 import pe.ayni.bank.identity.domain.model.TipoDeSegundoFactor;
+import pe.ayni.bank.identity.domain.port.out.CifradorDeDatosPort;
 import pe.ayni.bank.identity.domain.port.out.RepositorioDeMetodoSegundoFactorPort;
 
+/**
+ * Implementa {@link RepositorioDeMetodoSegundoFactorPort} sobre JPA.
+ *
+ * <p>El secreto TOTP se cifra en reposo con AES-256-GCM antes de escribirse en la base de
+ * datos y se descifra al reconstituir la entidad de dominio (ADR-0025).
+ */
 @Component
 public class AdaptadorRepositorioDeMetodoSegundoFactor implements RepositorioDeMetodoSegundoFactorPort {
 
     private final MetodoSegundoFactorJpaRepository jpaRepository;
+    private final CifradorDeDatosPort cifrador;
 
-    public AdaptadorRepositorioDeMetodoSegundoFactor(MetodoSegundoFactorJpaRepository jpaRepository) {
+    public AdaptadorRepositorioDeMetodoSegundoFactor(MetodoSegundoFactorJpaRepository jpaRepository,
+                                                     CifradorDeDatosPort cifrador) {
         this.jpaRepository = jpaRepository;
+        this.cifrador = cifrador;
     }
 
     @Override
@@ -34,11 +44,12 @@ public class AdaptadorRepositorioDeMetodoSegundoFactor implements RepositorioDeM
 
     @Override
     public MetodoDeSegundoFactor guardar(MetodoDeSegundoFactor metodo) {
+        String secretoCifrado = metodo.secreto() != null ? cifrador.cifrar(metodo.secreto()) : null;
         MetodoSegundoFactorEntity entity = new MetodoSegundoFactorEntity(
                 metodo.id(),
                 metodo.usuarioId(),
                 metodo.tipo(),
-                metodo.secreto(),
+                secretoCifrado,
                 metodo.creadoEn(),
                 metodo.confirmadoEn()
         );
@@ -47,13 +58,15 @@ public class AdaptadorRepositorioDeMetodoSegundoFactor implements RepositorioDeM
     }
 
     private MetodoDeSegundoFactor aDominio(MetodoSegundoFactorEntity entity) {
+        String secretoEnClaro = entity.getSecreto() != null ? cifrador.descifrar(entity.getSecreto()) : null;
         return MetodoDeSegundoFactor.reconstituir(
                 entity.getId(),
                 entity.getUsuarioId(),
                 entity.getTipo(),
-                entity.getSecreto(),
+                secretoEnClaro,
                 entity.getCreadoEn(),
                 entity.getConfirmadoEn()
         );
     }
 }
+
