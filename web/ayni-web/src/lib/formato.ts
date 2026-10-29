@@ -104,26 +104,6 @@ export function rendimientoMensualEstimado(saldo: string, trea: string): string 
 }
 
 /**
- * Saldo al cabo de un año con la TREA: capital × (1 + TREA / 100), redondeado a céntimos
- * con HALF_EVEN y sin coma flotante. `null` si el capital o la TREA no son decimales.
- *
- * La TREA ya es una tasa **efectiva anual**: incorpora la capitalización, así que aplicarla
- * de nuevo día a día contaría el interés compuesto dos veces y prometería de más. Basta
- * multiplicar una vez, y eso es justamente lo que significa «efectiva».
- */
-export function proyeccionAUnAno(capital: string, trea: string): string | null {
-  const c = leerDecimal(capital);
-  const t = leerDecimal(trea);
-  if (!c || !t) return null;
-  // capital × (100 + trea) / 100, expresado en céntimos (× 100): capital × (100 + trea).
-  const escalaDeLaTasa = potenciaDeDiez(t.escala);
-  const factor = BigInt(100) * escalaDeLaTasa + t.unidades;
-  return deCentimos(
-    dividirHalfEven(c.unidades * factor, potenciaDeDiez(c.escala) * escalaDeLaTasa),
-  );
-}
-
-/**
  * Qué parte de un límite ya se usó, en tanto por ciento entero entre 0 y 100, para pintar
  * la barra del límite diario de la tarjeta (HU-10). Es solo visual, pero se calcula igual
  * que el resto: sin `parseFloat` ni coma flotante. Un límite cero o un texto que no es un

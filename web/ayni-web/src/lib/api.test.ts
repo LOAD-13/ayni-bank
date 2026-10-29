@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   confirmarDatosDelDni,
-  consultarCuenta,
   consultarTitular,
   ErrorDeApi,
   evaluarCaptura,
@@ -157,7 +156,7 @@ describe("api client", () => {
     );
   });
 
-  it("consultarTitular y consultarCuenta hacen GET requests", async () => {
+  it("consultarTitular hace un GET", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({}),
@@ -166,12 +165,6 @@ describe("api client", () => {
     await consultarTitular("u-123");
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/api/v1/usuarios/u-123/resumen"),
-      expect.objectContaining({ method: "GET" }),
-    );
-
-    await consultarCuenta("u-123");
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/cuentas/titular/u-123"),
       expect.objectContaining({ method: "GET" }),
     );
   });

@@ -419,7 +419,9 @@ function CuentaPendiente({ titular }: { titular: Titular | null }) {
             ? "No pudimos aprobar tu solicitud de apertura. Te escribimos por correo con el motivo."
             : titular?.estado === "EN_REVISION" || titular?.estadoSolicitud === "EN_REVISION_MANUAL"
               ? "Estamos revisando tu identidad. Un analista compara tu documento con tus datos y te escribirá por correo con el resultado. No necesitas volver a registrarte."
-              : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
+              : titular?.estado === "ACTIVO"
+                ? "Tu identidad ya está verificada y estamos terminando de abrir tu cuenta. Tarda unos segundos: vuelve a cargar esta página."
+                : "Tu solicitud de apertura venció. Vuelve a registrarte para empezar de nuevo."}
       </p>
       {solicitud && (
         <Link
