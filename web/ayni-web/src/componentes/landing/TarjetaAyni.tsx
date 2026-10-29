@@ -3,6 +3,10 @@ import Image from "next/image";
 interface Props {
   titular?: string;
   ultimos4?: string;
+  /** Los cuatro primeros dígitos (el inicio del BIN), que no identifican la tarjeta. */
+  inicio?: string;
+  /** MM/AA; la portada no lo muestra. */
+  vencimiento?: string;
 }
 
 /**
@@ -14,7 +18,12 @@ interface Props {
  *
  * Se reutiliza tal cual en la banca por internet cuando llegue HU-09.
  */
-export function TarjetaAyni({ titular = "JOAQUÍN LOA S.", ultimos4 = "8842" }: Props) {
+export function TarjetaAyni({
+  titular = "JOAQUÍN LOA S.",
+  ultimos4 = "8842",
+  inicio = "4021",
+  vencimiento,
+}: Props) {
   return (
     <div
       role="img"
@@ -60,11 +69,14 @@ export function TarjetaAyni({ titular = "JOAQUÍN LOA S.", ultimos4 = "8842" }: 
       </div>
 
       <p className="cifra relative mt-5 text-[15px] font-semibold tracking-wider text-texto-nav">
-        4021 •••• •••• {ultimos4}
+        {inicio} •••• •••• {ultimos4}
       </p>
 
       <div className="relative mt-4 flex items-end justify-between">
-        <span className="text-[10.5px] font-semibold text-azul-300">{titular}</span>
+        <span className="flex flex-col text-[10.5px] font-semibold text-azul-300">
+          {vencimiento && <span>VENCE {vencimiento}</span>}
+          <span>{titular}</span>
+        </span>
         <span className="text-[19px] font-bold text-blanco">DÉBITO</span>
       </div>
     </div>

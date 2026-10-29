@@ -12,6 +12,8 @@ interface Props {
   onCancelar: () => void;
   enviando: boolean;
   error: string | null;
+  /** Lo que hace el botón al confirmar; por defecto, transferir. */
+  textoDeConfirmar?: string;
 }
 
 const INDICACION: Record<TipoDeSegundoFactor, string> = {
@@ -26,7 +28,14 @@ const INDICACION: Record<TipoDeSegundoFactor, string> = {
  * Un solo campo y no seis: el navegador y el gestor de contraseñas rellenan
  * `autocomplete="one-time-code"` en un único input, y el teclado numérico aparece solo.
  */
-export function PasoDeConfirmacion({ metodo, onVerificar, onCancelar, enviando, error }: Props) {
+export function PasoDeConfirmacion({
+  metodo,
+  onVerificar,
+  onCancelar,
+  enviando,
+  error,
+  textoDeConfirmar = "Confirmar y transferir",
+}: Props) {
   const idCodigo = useId();
   const [codigo, setCodigo] = useState("");
   const completo = /^\d{6}$/.test(codigo);
@@ -76,7 +85,7 @@ export function PasoDeConfirmacion({ metodo, onVerificar, onCancelar, enviando, 
         />
         <div className="flex flex-col gap-3 sm:flex-row">
           <Boton type="submit" cargando={enviando} disabled={!completo}>
-            Confirmar y transferir
+            {textoDeConfirmar}
           </Boton>
           <Boton type="button" variante="contorno" disabled={enviando} onClick={onCancelar}>
             Cancelar

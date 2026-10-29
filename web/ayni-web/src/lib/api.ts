@@ -665,6 +665,53 @@ export async function borrarBeneficiario(token: string, id: string): Promise<voi
   });
 }
 
+// ─── Tarjeta de débito virtual · HU-09 ───────────────────────────────────
+
+/** Lo que se ve por defecto de la tarjeta: nunca el número completo. */
+export interface TarjetaVirtual {
+  ultimos4: string;
+  numeroEnmascarado: string;
+  vencimiento: string;
+  estado: "ACTIVA" | "CONGELADA";
+}
+
+export interface CvvDinamico {
+  cvv: string;
+  validoHasta: string;
+}
+
+export interface PanRevelado {
+  numero: string;
+  visibleHasta: string;
+}
+
+/** Prefijo de la operación que identity confirma para revelar el PAN (HU-09). */
+export const OPERACION_REVELAR_PAN = "REVELAR-PAN-";
+/** Identity exige un importe positivo; la revelación no cobra nada. */
+export const IMPORTE_SIMBOLICO_DE_REVELACION = "0.01";
+
+export async function consultarTarjeta(token: string): Promise<TarjetaVirtual> {
+  return pedir<TarjetaVirtual>("/api/v1/tarjetas/mia", undefined, { token });
+}
+
+export async function cvvDeLaTarjeta(token: string): Promise<CvvDinamico> {
+  return pedir<CvvDinamico>("/api/v1/tarjetas/mia/cvv", undefined, { token });
+}
+
+/** El PAN completo durante unos segundos, con la confirmación de segundo factor. */
+export async function revelarPan(
+  token: string,
+  clave: string,
+  confirmacion: string,
+): Promise<PanRevelado> {
+  return pedir<PanRevelado>("/api/v1/tarjetas/mia/revelacion", undefined, {
+    token,
+    metodo: "POST",
+    idempotencia: clave,
+    confirmacion,
+  });
+}
+
 // ─── Controles de la tarjeta · HU-10 ─────────────────────────────────────
 // Contrato en contracts/core-banking-controles-de-tarjeta.openapi.yaml.
 

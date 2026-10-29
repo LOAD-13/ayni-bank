@@ -34,4 +34,7 @@ public interface PistaDeAuditoriaPort {
      * transaccion propia porque la consulta que lo detecta es de solo lectura.
      */
     void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId);
+
+    /** HU-09: revelar el PAN completo queda registrado con la tarjeta, la hora y la IP. */
+    void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip);
 }

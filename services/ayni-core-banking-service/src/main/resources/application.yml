@@ -67,6 +67,10 @@ ayni:
   # (AYNI_CONFIRMACION_CLAVE). Generar una nueva:  openssl rand -base64 32
   confirmacion:
     clave: ${AYNI_CONFIRMACION_CLAVE:YXluaS1jb25maXJtYWNpb24tZGUtZGVzYXJyb2xsbzA=}
+  # Clave maestra AES-256 en Base64 (32 bytes). De ella se derivan la de cifrado del PAN, la de su
+  # huella y la del CVV dinamico (HU-09). En produccion llega de SSM (AYNI_CIFRADO_CLAVE).
+  cifrado:
+    clave: ${AYNI_CIFRADO_CLAVE:YXluaS1jbGF2ZS1kZS1kZXNhcnJvbGxvLTMyYnl0ZXM=}
   cuentas:
     # Cuenta tecnica de contrapartida de los depositos simulados. La siembra la
     # migracion V3 con este mismo identificador.

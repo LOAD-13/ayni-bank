@@ -34,6 +34,23 @@ async function conTarjeta(page: Page, tarjeta: Controles | null) {
   );
 
   const servidor = tarjeta ? { ...tarjeta } : null;
+  // HU-09: la tarjeta virtual, con solo sus últimos 4 dígitos.
+  await page.route("**/api/v1/tarjetas/mia", (ruta) =>
+    servidor
+      ? ruta.fulfill({
+          json: {
+            ultimos4: servidor.ultimos4,
+            numeroEnmascarado: `•••• •••• •••• ${servidor.ultimos4}`,
+            vencimiento: "10/30",
+            estado: servidor.estado,
+          },
+        })
+      : ruta.fulfill({
+          status: 404,
+          contentType: "application/problem+json",
+          json: { title: "Todavía no tienes tarjeta", status: 404 },
+        }),
+  );
   await page.route("**/api/v1/tarjetas/mia/**", async (ruta) => {
     if (!servidor) {
       return ruta.fulfill({

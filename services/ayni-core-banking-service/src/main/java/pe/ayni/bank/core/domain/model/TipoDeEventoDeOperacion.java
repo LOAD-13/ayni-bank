@@ -23,5 +23,9 @@ public enum TipoDeEventoDeOperacion {
     INTERBANCARIA_ENVIADA,
     INTERBANCARIA_COMPLETADA,
     /** HU-11: la devolucion del importe porque la camara la rechazo o no respondio a tiempo. */
-    INTERBANCARIA_REVERTIDA
+    INTERBANCARIA_REVERTIDA,
+    /** HU-09: la tarjeta de debito virtual emitida; el recurso es la tarjeta. */
+    TARJETA_EMITIDA,
+    /** HU-09: el titular vio el PAN completo tras confirmar con segundo factor; con su IP. */
+    PAN_REVELADO
 }
