@@ -33,9 +33,9 @@ Lo que hace interoperable cada frontera:
 | Herramienta | Uso en la suite |
 |---|---|
 | **JUnit 5** + AssertJ | Base de todas las pruebas Java |
-| **Testcontainers** | PostgreSQL, RabbitMQ, Redis y **MinIO reales** en contenedores durante la prueba |
+| **Testcontainers** | PostgreSQL, Redis y **MinIO reales** en contenedores durante la prueba |
 | **MockRestServiceServer** (Spring) | Frontera HTTP de la cámara: comprueba la petición que sale y responde según el contrato |
-| **Cucumber** (Gherkin) | Escenarios de aceptación que cruzan servicios con PostgreSQL y RabbitMQ reales |
+| **Cucumber** (Gherkin) | Escenarios de aceptación que cruzan servicios con PostgreSQL real; el envío a RabbitMQ se verifica en su frontera (`RabbitTemplate`) |
 | **WebTestClient** (Spring WebFlux) | Gateway real contra servicios simulados y Redis real |
 | **pytest** | Adaptadores de kyc (almacenamiento y visión) |
 | **Playwright** (`request`) | Suite de API contra la pila desplegada, en local y en la nube (capítulo 11) |
@@ -77,7 +77,7 @@ También se ejecuta en local:
 ./mvnw verify -pl services/ayni-gateway,services/ayni-identity-service,services/ayni-core-banking-service,services/ayni-notification-service -am
 ```
 
-Los reportes de surefire, uno por clase, son la evidencia de ejecución. Incluyen los 30 escenarios Cucumber de core-banking, que corren con PostgreSQL y RabbitMQ reales. Se reúnen y resumen con
+Los reportes de surefire, uno por clase, son la evidencia de ejecución. Incluyen los 30 escenarios Cucumber de core-banking, que corren con PostgreSQL real y verifican en su frontera lo que se envía a RabbitMQ. Se reúnen y resumen con
 `resumir_integracion.py`, que no escribe ningún número a mano.
 
 ## 5. Reporte de resultados
@@ -90,12 +90,14 @@ Ver la sección 6 y el anexo F del informe, que es el `resumen.md` generado a pa
 |---|---|---|
 | Cumplimiento de la suite | casos que pasan / casos ejecutados | **100 %** (117 de 117, `mvn clean verify` local del 30-oct-2026 sobre la 2.0.0) |
 | Sistemas externos cubiertos | sistemas con al menos una prueba de su frontera / sistemas identificados | **7 de 7** |
-| Fronteras con el protocolo real | sistemas probados contra una instancia real (Testcontainers) | 4 de 7: PostgreSQL, RabbitMQ, Redis y S3/MinIO |
+| Fronteras con el protocolo real | sistemas probados contra una instancia real (Testcontainers) | 3 de 7: PostgreSQL, Redis y S3/MinIO. RabbitMQ, SES y la cámara se prueban en su frontera |
 | Tiempo de la suite | suma de los tiempos medidos | 21,3 s |
 
 **Observaciones**
 
-1. **SES y la cámara se prueban en su frontera, no contra el servicio real.** SES necesitaría credenciales de AWS en
+1. **SES, la cámara y RabbitMQ se prueban en su frontera, no contra el servicio real.** En RabbitMQ
+   se verifica lo que sale hacia el broker (`RabbitTemplate`): mensaje, `messageId` y persistencia; el
+   intercambio real entre servicios se ejerce en el compose local y en producción. SES necesitaría credenciales de AWS en
    la CI, y la cámara no existe fuera del entorno académico. Se valida que la petición que sale cumple el contrato y
    que cada respuesta posible, buena, mala o ausente, se trata bien. La prueba contra SES real se hace en la nube
    (capítulo 11), con el correo que llega al abrir una cuenta.
