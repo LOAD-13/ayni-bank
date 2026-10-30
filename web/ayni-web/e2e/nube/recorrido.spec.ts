@@ -54,13 +54,16 @@ async function sinViolaciones(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
+// Sin cuenta de prueba solo corre la parte pública (publico.spec.ts).
+test.skip(!process.env.NUBE_CORREO, "Sin NUBE_CORREO: el recorrido con sesión no se ejecuta");
+
 test("la v2 en la nube: ingreso, operaciones, tarjeta y accesibilidad", async ({ page }) => {
   test.setTimeout(240_000);
 
   await test.step("Portada pública servida desde AWS", async () => {
     await page.goto("/");
     await rotular(page, "Ayni Bank v2 en AWS", "La portada se sirve desde la nube, con HTTPS");
-    await expect(page).toHaveTitle(/Ayni/);
+    await expect(page).toHaveTitle(/Banca digital/);
     await sinViolaciones(page);
   });
 
@@ -137,11 +140,4 @@ test("la v2 en la nube: ingreso, operaciones, tarjeta y accesibilidad", async ({
     await expect(page.getByText(/•{4}/).first()).toBeVisible();
     await sinViolaciones(page);
   });
-});
-
-test("el gateway en la nube exige sesión para consultar cuentas (401 sin token)", async ({
-  request,
-}) => {
-  const respuesta = await request.get("/api/v1/cuentas/mia");
-  expect(respuesta.status()).toBe(401);
 });

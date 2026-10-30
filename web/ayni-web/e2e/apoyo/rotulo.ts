@@ -32,5 +32,5 @@ export async function rotular(page: Page, titulo: string, detalle = "") {
     [titulo, detalle],
   );
   // Que el rótulo se alcance a leer en el video antes de la siguiente acción.
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2500);
 }

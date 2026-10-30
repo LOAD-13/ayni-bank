@@ -64,7 +64,11 @@ export default defineConfig({
             ...devices["Desktop Chrome"],
             baseURL: NUBE,
             storageState: undefined,
-            video: "on",
+            // A 1280×720 para los videos de la entrega; por omisión Playwright graba a 800×450.
+            viewport: { width: 1280, height: 720 },
+            video: { mode: "on", size: { width: 1280, height: 720 } },
+            // Al grabar con rótulos, cada acción a cámara lenta para que el video se pueda seguir.
+            launchOptions: { slowMo: process.env.ROTULOS === "1" ? 350 : 0 },
             trace: "on",
           },
         },
