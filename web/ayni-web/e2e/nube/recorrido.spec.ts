@@ -23,6 +23,11 @@ const entorno = (nombre: string) => {
 
 let ultimoCodigo = "";
 
+// La misma suite se graba también contra el compose local: los rótulos dicen dónde corre.
+const EN_LOCAL = /localhost|127\.0\.0\.1/.test(process.env.BASE_URL_NUBE ?? "");
+const DONDE = EN_LOCAL ? "en local (Docker Compose)" : "en AWS";
+const BASE_DE_DATOS = EN_LOCAL ? "PostgreSQL" : "RDS";
+
 /** Un TOTP no se acepta dos veces: si ya se usó el de esta ventana, se espera al siguiente. */
 async function codigoNuevo(page: Page) {
   let codigo = codigoTotp(entorno("NUBE_TOTP_SEMILLA"));
@@ -60,14 +65,14 @@ test.skip(!process.env.NUBE_CORREO, "Sin NUBE_CORREO: el recorrido con sesión n
 test("la v2 en la nube: ingreso, operaciones, tarjeta y accesibilidad", async ({ page }) => {
   test.setTimeout(240_000);
 
-  await test.step("Portada pública servida desde AWS", async () => {
+  await test.step("Portada pública", async () => {
     await page.goto("/");
-    await rotular(page, "Ayni Bank v2 en AWS", "La portada se sirve desde la nube, con HTTPS");
+    await rotular(page, `Ayni Bank v2 ${DONDE}`, "Recorrido completo de una clienta con sesión");
     await expect(page).toHaveTitle(/Banca digital/);
     await sinViolaciones(page);
   });
 
-  await test.step("Ingreso con contraseña y segundo factor (identity + SES/TOTP)", async () => {
+  await test.step("Ingreso con contraseña y segundo factor (identity + TOTP)", async () => {
     await page.goto("/ingresar");
     await rotular(
       page,
@@ -85,11 +90,11 @@ test("la v2 en la nube: ingreso, operaciones, tarjeta y accesibilidad", async ({
     await expect(page.getByRole("heading", { name: /^Hola/ })).toBeVisible();
   });
 
-  await test.step("Panel con el saldo derivado de los asientos (core-banking + RDS)", async () => {
+  await test.step("Panel con el saldo derivado de los asientos (core-banking)", async () => {
     await rotular(
       page,
       "Panel de la banca",
-      "Saldo y movimientos leídos de RDS a través del gateway",
+      `Saldo y movimientos leídos de ${BASE_DE_DATOS} a través del gateway`,
     );
     await expect(page.getByTestId("saldo-total")).toBeVisible();
     await sinViolaciones(page);
