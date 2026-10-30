@@ -18,6 +18,13 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const PUERTO = process.env.PUERTO_E2E ?? "4173";
 
+/**
+ * Validación en la nube (APF3, T-26): con `BASE_URL_NUBE` solo corre `e2e/nube` contra la
+ * versión desplegada, sin levantar ningún servidor local, y graba la ejecución en video.
+ * Las credenciales de la cuenta de prueba llegan por variables de entorno (ver e2e/nube).
+ */
+const NUBE = process.env.BASE_URL_NUBE;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -48,17 +55,37 @@ export default defineConfig({
     },
   },
 
-  projects: [
-    { name: "escritorio", use: { ...devices["Desktop Chrome"] } },
-    { name: "movil", use: { ...devices["Pixel 7"] } },
-  ],
+  projects: NUBE
+    ? [
+        {
+          name: "nube",
+          testDir: "./e2e/nube",
+          use: {
+            ...devices["Desktop Chrome"],
+            baseURL: NUBE,
+            storageState: undefined,
+            // A 1280×720 para los videos de la entrega; por omisión Playwright graba a 800×450.
+            viewport: { width: 1280, height: 720 },
+            video: { mode: "on", size: { width: 1280, height: 720 } },
+            // Al grabar con rótulos, cada acción a cámara lenta para que el video se pueda seguir.
+            launchOptions: { slowMo: process.env.ROTULOS === "1" ? 350 : 0 },
+            trace: "on",
+          },
+        },
+      ]
+    : [
+        { name: "escritorio", testIgnore: /nube\//, use: { ...devices["Desktop Chrome"] } },
+        { name: "movil", testIgnore: /nube\//, use: { ...devices["Pixel 7"] } },
+      ],
 
   // Levanta la aplicación real construida, no el servidor de desarrollo: es la que se
   // despliega, y `next dev` difiere en optimización de imágenes y en hidratación.
-  webServer: {
-    command: `npm run build && npx next start --port ${PUERTO} --hostname 127.0.0.1`,
-    url: `http://127.0.0.1:${PUERTO}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-  },
+  webServer: NUBE
+    ? undefined
+    : {
+        command: `npm run build && npx next start --port ${PUERTO} --hostname 127.0.0.1`,
+        url: `http://127.0.0.1:${PUERTO}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 180_000,
+      },
 });
