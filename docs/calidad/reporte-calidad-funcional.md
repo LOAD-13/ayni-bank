@@ -1,10 +1,10 @@
 # Reporte de calidad funcional · ISO/IEC 25010
 
-**Historia:** AYNI-219 (T-19, capítulo 12 del informe del APF3) · **Corte:** 27-oct-2026, Sprint 5 en
-curso (de 8) · **Métricas:** ISO/IEC 25023 para la característica *adecuación funcional* de ISO/IEC
-25010:2023 · **Datos:** historias y criterios de aceptación de Jira, y la ejecución de CI de
-`develop` [40452694016](https://github.com/LOAD-13/ayni-bank/actions/runs/40452694016) descrita en el
-[plan de pruebas](plan-de-pruebas.md).
+**Historia:** AYNI-219 (T-19, capítulo 12 del informe del APF3) · **Corte:** 30-oct-2026, cierre del
+Sprint 5 (de 8) y versión 2.0.0 en producción · **Métricas:** ISO/IEC 25023 para la característica *adecuación funcional* de ISO/IEC
+25010:2023 · **Datos:** historias y criterios de aceptación de Jira, la CI del PR de la release 2.0.0
+[40967550502](https://github.com/LOAD-13/ayni-bank/actions/runs/40967550502), una ejecución limpia
+de `mvn clean verify` y de Playwright sobre la 2.0.0, y el [plan de pruebas](plan-de-pruebas.md).
 
 ---
 
@@ -37,15 +37,15 @@ características de ISO 25010 (eficiencia, fiabilidad, seguridad, usabilidad, ma
 
 ### 2.1 Por historia de usuario
 
-De las 22 historias, 15 son funcionales.
+De las 22 historias, 15 son funcionales. Estado en Jira al 30-oct-2026.
 
 | Alcance | Especificadas (B) | Faltan (A) | X | Nivel |
 |---|---:|---:|---:|---|
-| Comprometidas en los sprints ya cerrados (0 a 4) | 11 | 1 (HU-22) | **0,91** | Alto |
-| Backlog funcional completo (hasta el Sprint 8) | 15 | 5 | **0,67** | Parcial: esperado a mitad del proyecto |
+| Comprometidas en los sprints ya cerrados (0 a 5) | 14 | 0 | **1,00** | Alto |
+| Backlog funcional completo (hasta el Sprint 8) | 15 | 1 (HU-12) | **0,93** | Alto |
 
 | HU | Historia | Sprint | Estado |
-|---|---|---|---|
+|---|---|---:|---|
 | HU-01 | Registro de usuario | 1 | Listo |
 | HU-02 | Verificación de identidad con la foto del DNI | 2 | Listo |
 | HU-03 | Verificación biométrica facial con selfie | 2 | Listo |
@@ -53,53 +53,53 @@ De las 22 historias, 15 son funcionales.
 | HU-05 | Apertura automática de cuenta de ahorro | 1 | Listo |
 | HU-06 | Rendimiento diario del saldo con TREA | 3 | Listo |
 | HU-07 | Transferencia entre cuentas Ayni | 4 | Listo |
-| HU-08 | Consulta de saldo e historial de movimientos | 3 | Listo, con una brecha (2.2) |
+| HU-08 | Consulta de saldo e historial de movimientos | 3 | Listo (el filtro del extracto llegó con el #94) |
+| HU-09 | Emisión de tarjeta de débito virtual | 5 | Listo |
+| HU-10 | Control de la tarjeta | 5 | Listo |
+| HU-11 | Transferencia interbancaria por CCI | 5 | Listo |
 | HU-13 | Notificación por correo de cada movimiento | 4 | Listo |
 | HU-21 | Recuperación de la contraseña | 2 | Listo |
-| HU-22 | Segundo factor a elección y verificación del contacto | 2 → 5 | En curso |
-| HU-09 | Emisión de tarjeta de débito virtual | 5 | Por hacer (sprint en curso) |
-| HU-10 | Control de la tarjeta | 5 | En curso: web hecha, falta el backend |
-| HU-11 | Transferencia interbancaria por CCI | 5 | Por hacer (sprint en curso) |
-| HU-12 | Cuenta en dólares y conversión | 6 | Por hacer |
+| HU-22 | Segundo factor a elección y verificación del contacto | 2 → 5 | Listo |
+| HU-12 | Cuenta en dólares y conversión | 6 | Por hacer (sprint siguiente) |
 
 ### 2.2 Por criterio de aceptación de las historias en «Listo»
 
-| HU | Criterios (escenarios) | Implementados | Automatizados en Gherkin | Cubiertos con otras pruebas |
-|---|---:|---:|---:|---|
-| HU-01 | 4 | 4 | 4 | — |
-| HU-02 | 5 | 5 | 5 | — |
-| HU-03 | 5 | 5 | 0 | Unitarias e integración de kyc e identity (rostro único y vivacidad, cotejo, consentimiento) |
-| HU-04 | 4 | 4 | 0 | Unitarias e integración de identity (credenciales, bloqueo, reutilización del token de renovación) |
-| HU-05 | 4 | 4 | 4 | — |
-| HU-06 | 4 | 4 | 4 | — |
-| HU-07 | 5 | 5 | 0 | CP-CORE-025, -032 y -033; concurrencia contra PostgreSQL real (CP-CORE-149 y -150) |
-| HU-08 | 2 | **1** | 1 (+1 `@pendiente`) | — |
-| HU-13 | 3 | 3 | 3 | — |
-| HU-21 | 5 | 5 | 5 | — |
-| **Total** | **41** | **40** | **26** | **14** |
+Cada criterio de aceptación es un escenario Gherkin que se ejecuta en la CI (Cucumber). Ningún
+escenario lleva ya la etiqueta `@pendiente`.
 
-**Completitud por criterios: X = 1 − 1/41 = 0,976 · Alto.**
+| HU | Escenarios Gherkin | Ejecutables | Archivo |
+|---|---:|---:|---|
+| HU-01 | 5 | 5 | `registro-de-usuario.feature` |
+| HU-02 | 6 | 6 | `verificacion-de-identidad-dni.feature` |
+| HU-03 | 4 | 4 | `verificacion-biometrica-selfie.feature` |
+| HU-04 | 4 | 4 | `inicio-de-sesion.feature` |
+| HU-05 | 9 | 9 | `apertura-automatica-de-cuenta.feature`, `rechazo-de-solicitud.feature`, `aviso-de-solicitud-rechazada.feature` |
+| HU-06 | 4 | 4 | `rendimiento-diario.feature` |
+| HU-07 | 5 | 5 | `transferencia-entre-cuentas.feature` |
+| HU-08 | 4 | 4 | `saldo-e-historial.feature` |
+| HU-09 | 3 | 3 | `emision-de-tarjeta.feature` |
+| HU-10 | 2 | 2 | `control-de-tarjeta.feature` |
+| HU-11 | 7 | 7 | `transferencia-interbancaria.feature` |
+| HU-13 | 3 | 3 | `notificacion-de-movimientos.feature` |
+| HU-21 | 5 | 5 | `recuperacion-de-contrasena.feature` |
+| HU-22 | 5 | 5 | `segundo-factor-a-eleccion.feature` |
+| **Total** | **66** | **66** | |
 
-La brecha es el escenario 1 de HU-08, *consulta de movimientos con filtro*. El extracto no filtra
-por rango de fechas, tipo ni importe, no pagina y no informa el saldo posterior de cada movimiento.
-No se ocultó: está escrito como escenario `@pendiente` en `saldo-e-historial.feature`, que la suite
-de aceptación omite a propósito y la CI cuenta como omitido. La historia figura en «Listo» con esa
-deuda reconocida.
+**Completitud por criterios: X = 66 / 66 = 1,00 · Alto.**
 
-Los catorce escenarios de HU-03, HU-04 y HU-07 se comprueban con pruebas unitarias y de integración,
-pero todavía no como Gherkin ejecutable. La Definition of Done exige Gherkin: el de HU-04 y HU-07 es
-AYNI-229 y AYNI-231 (Sprint 5).
+Las acciones del corte anterior (27-oct) quedaron hechas: el filtro y la paginación del extracto
+(escenario 1 de HU-08, ya sin `@pendiente`) y el Gherkin de HU-03, HU-04 y HU-07.
 
 ## 3. Corrección funcional
 
 | Medida | Evaluadas (B) | Incorrectas (A) | X | Nivel |
 |---|---:|---:|---:|---|
-| Ejecuciones de prueba en la CI de `develop` | 1 236 | 0 | **1,00** | Alto |
-| Criterios implementados con resultado correcto | 40 | 0 | **1,00** | Alto |
+| Pruebas Java en `mvn clean verify` sobre la 2.0.0 (incluye los escenarios Cucumber) | 929 | 0 | **1,00** | Alto |
+| Pruebas de interfaz Playwright (escritorio, ejecución local del 30-oct) | 107 | 0 | **1,00** | Alto |
+| Escenarios Gherkin ejecutables | 66 | 0 | **1,00** | Alto |
 | Defectos funcionales abiertos en Jira | — | 0 | — | — |
 
-Dos omisiones no cuentan como evaluadas: el escenario `@pendiente` de HU-08 (su función no existe;
-cuenta en la completitud) y una prueba de tamaño táctil que solo se mide en el celular.
+Una omisión no cuenta como evaluada: una prueba de tamaño táctil que solo se mide en el celular.
 
 Que la cifra sea 1,00 no significa que nunca hubo defectos. Significa que los encontrados se
 corrigieron antes de llegar a `develop` o en cuanto se detectaron. En este ciclo:
@@ -122,40 +122,38 @@ un conjunto de funciones. Si falta una, el objetivo no se logra por completo.
 | Objetivo de uso | Funciones que necesita | Faltan | X |
 |---|---|---|---:|
 | **O1 · Abrir una cuenta sin ir a una agencia** | Registro (HU-01) · DNI (HU-02) · selfie (HU-03) · cuenta automática (HU-05) | — | **1,00** |
-| **O2 · Entrar de forma segura** | Ingreso con segundo factor (HU-04) · recuperar la contraseña (HU-21) · elegir el método del segundo factor (HU-22) | Elegir el método | **0,67** |
-| **O3 · Saber cuánto tengo y qué pasó con mi dinero** | Saldo · historial · filtrar movimientos (HU-08) · rendimiento diario (HU-06) | Filtrar | **0,75** |
-| **O4 · Enviar dinero** | Entre cuentas Ayni con comprobante (HU-07) · aviso por correo (HU-13) · a otros bancos por CCI (HU-11) | Interbancaria | **0,67** |
-| **O5 · Pagar con tarjeta** | Emitir la tarjeta virtual (HU-09) · congelarla y limitarla (HU-10) | Ambas | **0,00** |
+| **O2 · Entrar de forma segura** | Ingreso con segundo factor (HU-04) · recuperar la contraseña (HU-21) · elegir el método del segundo factor (HU-22) | — | **1,00** |
+| **O3 · Saber cuánto tengo y qué pasó con mi dinero** | Saldo · historial · filtrar movimientos (HU-08) · rendimiento diario (HU-06) | — | **1,00** |
+| **O4 · Enviar dinero** | Entre cuentas Ayni con comprobante (HU-07) · aviso por correo (HU-13) · a otros bancos por CCI (HU-11) | — | **1,00** |
+| **O5 · Pagar con tarjeta** | Emitir la tarjeta virtual (HU-09) · congelarla y limitarla (HU-10) | — | **1,00** |
 | **O6 · Ahorrar en dólares** | Cuenta en dólares y conversión (HU-12) | Toda | **0,00** |
 
 | Alcance | X media | Nivel |
 |---|---:|---|
-| Objetivos con todas sus historias planificadas hasta el Sprint 4 o antes, más O4 (O1–O4) | **0,77** | Aceptable |
-| Los seis objetivos del producto | **0,51** | Parcial: O5 y O6 son de los sprints 5 y 6 |
+| Objetivos con todas sus historias planificadas hasta el Sprint 5 (O1–O5) | **1,00** | Alto |
+| Los seis objetivos del producto | **0,83** | Alto: O6 es del Sprint 6 |
 
-Lectura: el cliente **ya puede abrir su cuenta, entrar, ver su dinero y transferir a otro cliente de
-Ayni de principio a fin**. Le faltan tres cosas: filtrar el extracto, transferir a otros bancos y la
-tarjeta. Dos de ellas están en el sprint en curso.
+Lectura: con la versión 2.0.0 el cliente **ya puede abrir su cuenta, entrar, ver y filtrar su dinero,
+transferir a clientes de Ayni y a otros bancos, y usar su tarjeta virtual**. Falta la cuenta en
+dólares (HU-12), planificada para el Sprint 6.
 
 ## 5. Resumen
 
 | Subcaracterística | Medida principal | X | Nivel |
 |---|---|---:|---|
-| Completitud funcional | Criterios de aceptación de las HU entregadas | 0,976 | **Alto** |
-| Completitud funcional | HU comprometidas en sprints cerrados | 0,91 | **Alto** |
-| Corrección funcional | Ejecuciones de prueba en `develop` | 1,00 | **Alto** |
-| Pertinencia funcional | Objetivos de uso O1–O4 | 0,77 | **Aceptable** |
+| Completitud funcional | Criterios de aceptación de las HU entregadas | 1,00 | **Alto** |
+| Completitud funcional | HU comprometidas en sprints cerrados | 1,00 | **Alto** |
+| Corrección funcional | Pruebas ejecutadas sobre la 2.0.0 | 1,00 | **Alto** |
+| Pertinencia funcional | Objetivos de uso O1–O5 | 1,00 | **Alto** |
+| Pertinencia funcional | Los seis objetivos | 0,83 | **Alto** |
 
-**Nivel de cumplimiento global de la adecuación funcional del incremento entregado: Alto en
-completitud y corrección, Aceptable en pertinencia.** La pertinencia sube con tres entregas
-concretas: el filtro del extracto (deuda de HU-08), HU-11 y HU-22. Las dos últimas ya están en el
-Sprint 5.
+**Nivel de cumplimiento global de la adecuación funcional de la versión 2.0.0: Alto** en
+completitud, corrección y pertinencia. Lo único pendiente es la cuenta en dólares (HU-12, Sprint 6).
 
 ### Acciones derivadas
 
 | Acción | Dónde |
 |---|---|
-| Implementar el filtro y la paginación del extracto (escenario 1 de HU-08) y quitar el `@pendiente` | Nueva tarea de HU-08 |
-| Automatizar en Gherkin los escenarios de HU-04 y HU-07 | AYNI-229 y AYNI-231 |
-| Automatizar en Gherkin los escenarios de HU-03 a partir de `tests/onboarding_kyc.feature` | Nueva tarea de HU-03 |
-| Repetir esta medición al cierre del Sprint 8, para el informe final | T-19 del PROY |
+| Cuenta en dólares y conversión con tipo de cambio real (objetivo O6) | HU-12, Sprint 6 |
+| Llevar la prueba de tamaño táctil también a la medición de escritorio | Mejora de la suite de usabilidad |
+
