@@ -1,54 +1,56 @@
 # Anexo H · Evidencia del historial de commits
 
-> Generado con `infra/scripts/evidencia-de-commits.py` sobre `origin/develop` en el commit `5c1c14b`. **No se edita a mano**: se vuelve a generar. Fechas y horas en hora de Lima (UTC−5).
+> Generado con `infra/scripts/evidencia-de-commits.py` sobre `origin/develop` en el commit `e1d4926`. **No se edita a mano**: se vuelve a generar. Fechas y horas en hora de Lima (UTC−5).
 
 ## 1. Resumen
 
 | | |
 |---|---|
-| Periodo | 15-08-2026 → 27-10-2026 |
-| Commits (sin contar los de merge) | 243 |
-| Pull requests fusionados | 74 |
-| Commits de merge | 105 |
-| Mensajes con Conventional Commits (`tipo(ámbito): …`) | 243 de 243 (100,0 %) |
-| Commits con referencia a Jira (`Refs: AYNI-NN`) | 136 de 243 (56,0 %) |
+| Periodo | 15-08-2026 → 30-10-2026 |
+| Commits (sin contar los de merge) | 300 |
+| Pull requests fusionados | 95 |
+| Commits de merge | 136 |
+| Mensajes con Conventional Commits (`tipo(ámbito): …`) | 300 de 300 (100,0 %) |
+| Commits con referencia a Jira (`Refs: AYNI-NN`) | 177 de 300 (59,0 %) |
 
 ## 2. Por autor
 
 | Autor | Commits | % | Primer commit | Último commit | PR en los que participa |
 |---|---:|---:|---|---|---:|
-| Joaquín Loa Denegri | 149 | 61,3 % | 15-08-2026 00:04 | 26-10-2026 22:20 | 61 |
-| Eduardo Vargas Zumaeta | 60 | 24,7 % | 06-09-2026 17:57 | 01-10-2026 23:58 | 6 |
-| Kiara Santti Saavedra | 21 | 8,6 % | 20-10-2026 01:39 | 22-10-2026 23:14 | 8 |
-| Gerardo Raúl Socualaya Mandamiento | 13 | 5,3 % | 26-10-2026 23:03 | 27-10-2026 00:13 | 4 |
+| Joaquín Loa Denegri | 175 | 58,3 % | 15-08-2026 00:04 | 30-10-2026 03:10 | 77 |
+| Eduardo Vargas Zumaeta | 64 | 21,3 % | 06-09-2026 17:57 | 28-10-2026 23:32 | 8 |
+| Kiara Santti Saavedra | 27 | 9,0 % | 20-10-2026 01:39 | 27-10-2026 02:41 | 10 |
+| Gerardo Raúl Socualaya Mandamiento | 15 | 5,0 % | 26-10-2026 23:03 | 27-10-2026 00:18 | 6 |
+| Fabian | 11 | 3,7 % | 27-10-2026 18:01 | 28-10-2026 03:16 | 2 |
+| Frank Grheg Sotomayor Suasnabar | 8 | 2,7 % | 28-10-2026 19:05 | 28-10-2026 19:20 | 4 |
 
 ## 3. Por tipo de commit
 
 | Tipo | Commits | % |
 |---|---:|---:|
-| `feat` | 90 | 37,0 % |
-| `fix` | 74 | 30,5 % |
-| `docs` | 26 | 10,7 % |
-| `test` | 22 | 9,1 % |
-| `chore` | 14 | 5,8 % |
-| `ci` | 8 | 3,3 % |
-| `build` | 4 | 1,6 % |
-| `style` | 2 | 0,8 % |
-| `revert` | 1 | 0,4 % |
-| `refactor` | 1 | 0,4 % |
-| `perf` | 1 | 0,4 % |
+| `feat` | 107 | 35,7 % |
+| `fix` | 90 | 30,0 % |
+| `docs` | 35 | 11,7 % |
+| `test` | 33 | 11,0 % |
+| `chore` | 16 | 5,3 % |
+| `ci` | 8 | 2,7 % |
+| `style` | 4 | 1,3 % |
+| `build` | 4 | 1,3 % |
+| `revert` | 1 | 0,3 % |
+| `refactor` | 1 | 0,3 % |
+| `perf` | 1 | 0,3 % |
 
 ## 4. Por tipo de rama (GitFlow)
 
 | Tipo de rama | Ramas fusionadas | Commits que aportaron |
 |---|---:|---:|
-| `feature` | 35 | 181 |
-| `bugfix` | 8 | 17 |
-| `release` | 7 | 48 |
-| `chore` | 6 | 14 |
-| `fix` | 6 | 12 |
-| `hotfix` | 3 | 4 |
-| `otra` | 3 | 117 |
+| `feature` | 46 | 211 |
+| `bugfix` | 10 | 19 |
+| `release` | 9 | 176 |
+| `chore` | 8 | 16 |
+| `fix` | 7 | 17 |
+| `otra` | 5 | 135 |
+| `hotfix` | 4 | 5 |
 | `docs` | 3 | 3 |
 | `test` | 2 | 4 |
 | `ci` | 1 | 2 |
@@ -59,6 +61,26 @@ Cada fila es un pull request: la rama que entró en la rama de integración, cu�
 
 | PR | Rama | Commits | Autores | Fusionado |
 |---:|---|---:|---|---|
+| #107 | `chore/AYNI-222-compromiso-medido` | 1 | Joaquín Loa Denegri | 30-10-2026 03:13 |
+| #106 | `chore/AYNI-219-casos-de-prueba-de-la-2-0-0` | 1 | Joaquín Loa Denegri | 30-10-2026 03:09 |
+| #105 | `bugfix/AYNI-220-rabbitmq-en-su-frontera` | 1 | Joaquín Loa Denegri | 30-10-2026 02:24 |
+| #104 | `feature/AYNI-338-autorizar-en-swagger` | 1 | Joaquín Loa Denegri | 30-10-2026 01:25 |
+| #103 | `bugfix/AYNI-220-recuento-de-la-suite-de-integracion` | 1 | Joaquín Loa Denegri | 29-10-2026 23:50 |
+| #102 | `feature/AYNI-226-suite-contra-la-nube` | 3 | Joaquín Loa Denegri | 30-10-2026 00:05 |
+| #101 | `feature/AYNI-223-manual-de-despliegue-v2` | 1 | Joaquín Loa Denegri | 29-10-2026 23:31 |
+| #100 | `main` | 2 | Joaquín Loa Denegri | 29-10-2026 19:21 |
+| #99 | `hotfix/AYNI-20-prueba-de-manipulacion-del-pan` | 1 | Joaquín Loa Denegri | 29-10-2026 18:25 |
+| #97 | `release/2.0.0` | 122 | Eduardo Vargas Zumaeta, Fabian, Frank Grheg Sotomayor Suasnabar, Gerardo Raúl Socualaya Mandamiento, Joaquín Loa Denegri, Kiara Santti Saavedra | 29-10-2026 18:00 |
+| #96 | `feature/AYNI-220-suite-de-interoperabilidad` | 3 | Joaquín Loa Denegri | 29-10-2026 17:38 |
+| #95 | `feature/AYNI-330-consulta-de-cuenta-con-sesion` | 2 | Joaquín Loa Denegri | 29-10-2026 17:19 |
+| #94 | `fix/AYNI-124-completar-segundo-factor` | 5 | Eduardo Vargas Zumaeta, Joaquín Loa Denegri | 29-10-2026 13:17 |
+| #93 | `feature/AYNI-20-componente-de-tarjeta` | 2 | Frank Grheg Sotomayor Suasnabar | 29-10-2026 00:52 |
+| #92 | `feature/AYNI-20-emision-y-revelacion` | 3 | Frank Grheg Sotomayor Suasnabar | 29-10-2026 00:35 |
+| #91 | `feature/AYNI-20-modelo-de-tarjeta` | 3 | Frank Grheg Sotomayor Suasnabar | 29-10-2026 00:17 |
+| #90 | `feature/AYNI-318-asistencia-y-compromiso-del-usuario` | 4 | Joaquín Loa Denegri | 28-10-2026 12:14 |
+| #89 | `rama-FG` | 16 | Fabian, Joaquín Loa Denegri | 28-10-2026 11:31 |
+| #88 | `feature/AYNI-222-informe-de-usabilidad` | 6 | Kiara Santti Saavedra | 28-10-2026 10:34 |
+| #87 | `feature/AYNI-224-evidencia-de-commits` | 2 | Gerardo Raúl Socualaya Mandamiento | 27-10-2026 00:48 |
 | #86 | `feature/AYNI-219-plan-de-pruebas` | 4 | Gerardo Raúl Socualaya Mandamiento | 27-10-2026 00:17 |
 | #85 | `feature/AYNI-154-alta-disponibilidad` | 3 | Gerardo Raúl Socualaya Mandamiento | 26-10-2026 23:58 |
 | #84 | `feature/AYNI-155-particionar-asiento` | 3 | Gerardo Raúl Socualaya Mandamiento | 26-10-2026 23:57 |
@@ -85,6 +107,7 @@ Cada fila es un pull request: la rama que entró en la rama de integración, cu�
 | #63 | `feature/AYNI-123-recuperacion-de-contrasena` | 8 | Joaquín Loa Denegri | 10-10-2026 01:30 |
 | #62 | `release/1.1.6` | 4 | Joaquín Loa Denegri | 04-10-2026 18:16 |
 | #61 | `chore/AYNI-31-encendido-diario` | 3 | Joaquín Loa Denegri | 04-10-2026 18:14 |
+| #60 | `release/1.1.6` | 6 | Joaquín Loa Denegri | 03-10-2026 05:41 |
 | #59 | `fix/AYNI-159-kpis-desde-cero` | 1 | Joaquín Loa Denegri | 03-10-2026 04:51 |
 | #58 | `feature/AYNI-14-selfie-y-aprobacion-por-operador` | 1 | Joaquín Loa Denegri | 03-10-2026 04:20 |
 | #56 | `release/1.1.5` | 2 | Joaquín Loa Denegri | 03-10-2026 03:10 |
@@ -148,12 +171,69 @@ Cada fila es un pull request: la rama que entró en la rama de integración, cu�
 | 28-09-2026 | 70 | Eduardo Vargas Zumaeta, Joaquín Loa Denegri |
 | 05-10-2026 | 30 | Joaquín Loa Denegri |
 | 19-10-2026 | 28 | Joaquín Loa Denegri, Kiara Santti Saavedra |
-| 26-10-2026 | 14 | Gerardo Raúl Socualaya Mandamiento, Joaquín Loa Denegri |
+| 26-10-2026 | 71 | Eduardo Vargas Zumaeta, Fabian, Frank Grheg Sotomayor Suasnabar, Gerardo Raúl Socualaya Mandamiento, Joaquín Loa Denegri, Kiara Santti Saavedra |
 
 ## 7. Registro completo
 
 | Fecha y hora | Commit | Autor | Mensaje |
 |---|---|---|---|
+| 30-10-2026 03:10 | `69b8b2f` | Joaquín Loa Denegri | docs(calidad): medir el compromiso del usuario con sus mecanismos verificados |
+| 30-10-2026 03:06 | `5900fbb` | Joaquín Loa Denegri | docs(calidad): casos de prueba y calidad funcional al cierre del Sprint 5 |
+| 30-10-2026 02:21 | `5fa4186` | Joaquín Loa Denegri | docs(calidad): RabbitMQ se prueba en su frontera, no contra un broker real |
+| 30-10-2026 00:50 | `968ab11` | Joaquín Loa Denegri | feat(docs): autorizar con el token de acceso en Swagger UI local |
+| 29-10-2026 23:45 | `7d2c77e` | Joaquín Loa Denegri | docs(calidad): recuento de la suite de integración con una ejecución limpia |
+| 29-10-2026 23:38 | `8246d30` | Joaquín Loa Denegri | test(web): rótulos del recorrido según dónde corre la suite |
+| 29-10-2026 23:29 | `ba3db19` | Joaquín Loa Denegri | docs(despliegue): manual de despliegue v2 con la release 2.0.0 |
+| 29-10-2026 23:27 | `1881412` | Joaquín Loa Denegri | test(web): parte pública de la validación en la nube y grabación legible |
+| 29-10-2026 18:06 | `07d2a7b` | Joaquín Loa Denegri | fix(core-banking): la prueba de manipulación del PAN fallaba al azar |
+| 29-10-2026 17:39 | `b8c9678` | Joaquín Loa Denegri | chore(release): versión 2.0.0 |
+| 29-10-2026 17:18 | `9a47d4a` | Joaquín Loa Denegri | test(web): suite de validación contra la versión desplegada en la nube |
+| 29-10-2026 17:15 | `a1f7496` | Joaquín Loa Denegri | test(identity): usar la imagen pública de MinIO de Chainguard |
+| 29-10-2026 17:09 | `4085947` | Joaquín Loa Denegri | docs(calidad): reporte de interoperabilidad y pruebas de integración |
+| 29-10-2026 17:09 | `edf3594` | Joaquín Loa Denegri | test(identity): interoperabilidad con el almacenamiento S3 contra un MinIO real |
+| 29-10-2026 17:02 | `21682cc` | Joaquín Loa Denegri | feat(web): la pantalla final del registro lleva a iniciar sesión |
+| 29-10-2026 17:01 | `9adcd9d` | Joaquín Loa Denegri | fix(gateway): exigir sesión en toda consulta de cuentas |
+| 29-10-2026 12:55 | `ea0fa13` | Joaquín Loa Denegri | fix(core-banking): bloquear la cuenta antes de comprobar el límite diario de la tarjeta |
+| 28-10-2026 23:32 | `8e203e1` | Eduardo Vargas Zumaeta | test(identity,core): extraer GuardiaDeSegundoFactorEnKyc y ampliar cobertura de codigo nuevo sobre 90% |
+| 28-10-2026 23:18 | `927aa37` | Eduardo Vargas Zumaeta | style(web): formatear componentes de segundo factor con Prettier |
+| 28-10-2026 21:27 | `db06f17` | Eduardo Vargas Zumaeta | feat(sprint-5): implementar controles de tarjeta HU-10, filtro de movimientos HU-08 y pruebas Gherkin HU-03/04/07 |
+| 28-10-2026 21:03 | `65f8ab2` | Eduardo Vargas Zumaeta | feat(identity,web): AYNI-124 completar segundo factor a eleccion, pasos 2-6 y parches OWASP |
+| 28-10-2026 19:20 | `0806e51` | Frank Grheg Sotomayor Suasnabar | feat(web): mostrar la tarjeta virtual en Mi tarjeta |
+| 28-10-2026 19:20 | `fe73089` | Frank Grheg Sotomayor Suasnabar | feat(web): componente de la tarjeta virtual con CVV dinamico y revelacion del PAN |
+| 28-10-2026 19:13 | `7dcfd5c` | Frank Grheg Sotomayor Suasnabar | test(core): escenarios de HU-09 contra PostgreSQL real |
+| 28-10-2026 19:13 | `0fb36b6` | Frank Grheg Sotomayor Suasnabar | feat(core): consultar la tarjeta enmascarada, el CVV dinamico y revelar el PAN con segundo factor |
+| 28-10-2026 19:13 | `5c7dbac` | Frank Grheg Sotomayor Suasnabar | feat(core): emitir la tarjeta al abrirse la cuenta y auditarla |
+| 28-10-2026 19:05 | `8c7baed` | Frank Grheg Sotomayor Suasnabar | feat(core): guardar el PAN cifrado con AES-256-GCM y su huella para la unicidad |
+| 28-10-2026 19:05 | `21d013c` | Frank Grheg Sotomayor Suasnabar | feat(core): emitir la tarjeta una sola vez y con un PAN unico |
+| 28-10-2026 19:05 | `3ac4b30` | Frank Grheg Sotomayor Suasnabar | feat(core): modelar la tarjeta de debito con PAN de Luhn y CVV dinamico |
+| 28-10-2026 11:57 | `6a63ee0` | Joaquín Loa Denegri | test(web): bienvenida, pistas y ayuda en la suite de usabilidad |
+| 28-10-2026 11:57 | `6fa6e6c` | Joaquín Loa Denegri | feat(web): ayuda con preguntas frecuentes y encuesta de opinión SUS |
+| 28-10-2026 11:57 | `94dfd1a` | Joaquín Loa Denegri | feat(web): bienvenida, pistas en el panel y logro de la primera operación |
+| 28-10-2026 11:57 | `1d2df2b` | Joaquín Loa Denegri | feat(web): pasos visibles y validación mientras se escribe en las transferencias |
+| 28-10-2026 11:12 | `9e1dcd2` | Joaquín Loa Denegri | fix(web): transferencia interbancaria con segundo factor y sin usuario en la peticion |
+| 28-10-2026 11:12 | `6787360` | Joaquín Loa Denegri | test(core): escenarios de HU-11 contra PostgreSQL real |
+| 28-10-2026 11:12 | `81af7f2` | Joaquín Loa Denegri | feat(notification): avisar por correo del resultado de la transferencia interbancaria |
+| 28-10-2026 11:12 | `c13587a` | Joaquín Loa Denegri | fix(core): tomar el titular de la cabecera y confirmar la interbancaria con segundo factor |
+| 28-10-2026 10:45 | `e176d02` | Joaquín Loa Denegri | fix(config): conservar los comentarios de la configuracion y anadir solo lo de HU-11 |
+| 28-10-2026 03:16 | `9194f91` | Fabian | fix(security): actualizar Guava y Snappy Java en Identity |
+| 28-10-2026 02:27 | `af4c4f9` | Fabian | fix(AYNI-22): corregir mocks de pruebas Cucumber interbancarias |
+| 28-10-2026 02:13 | `0d7a94b` | Fabian | test(AYNI-22): implementar tres escenarios Cucumber interbancarios |
+| 28-10-2026 01:54 | `ed01cdc` | Fabian | style(AYNI-22): corregir formato de pantalla interbancaria |
+| 28-10-2026 01:54 | `d61e09d` | Fabian | fix(AYNI-22): corregir version duplicada de migracion Flyway |
+| 28-10-2026 01:03 | `d2185ff` | Fabian | fix(AYNI-22): integrar dependencias y configuracion de transferencias interbancarias |
+| 28-10-2026 00:54 | `8d24190` | Fabian | fix(AYNI-22): corregir validacion CCI y arquitectura hexagonal |
+| 27-10-2026 22:13 | `2633eb4` | Fabian | fix(AYNI-22): integrar servicio transaccional de reversion interbancaria |
+| 27-10-2026 21:31 | `7a16de8` | Fabian | fix(AYNI-22): separar reversion transaccional y mejorar conciliacion e idempotencia |
+| 27-10-2026 18:34 | `e598717` | Fabian | feat(AYNI-22): definir contrato OpenAPI de camara de compensacion |
+| 27-10-2026 18:01 | `2d0c22f` | Fabian | feat(core): validar CCI de 20 digitos con su digito de control |
+| 27-10-2026 02:41 | `b3c77f9` | Kiara Santti Saavedra | docs(calidad): contrastar la usabilidad con lo pedido en la semana 12 |
+| 27-10-2026 02:12 | `1389ce2` | Kiara Santti Saavedra | test(web): vigilar cada corrección de la evaluación de usabilidad |
+| 27-10-2026 02:06 | `65b0c93` | Kiara Santti Saavedra | docs(calidad): reporte de evaluación de usabilidad según ISO 25010 |
+| 27-10-2026 02:01 | `c80a68f` | Kiara Santti Saavedra | fix(web): decir el formato del DNI y revisar la banca con axe |
+| 27-10-2026 01:53 | `b1c57a4` | Kiara Santti Saavedra | fix(web): que los mensajes de error digan también qué hacer |
+| 27-10-2026 01:51 | `320a8db` | Kiara Santti Saavedra | fix(web): reintentar un depósito con la misma clave de idempotencia |
+| 27-10-2026 00:18 | `c92a617` | Gerardo Raúl Socualaya Mandamiento | docs(gestion): anexo H con el historial de commits por autor y por rama |
+| 27-10-2026 00:18 | `dcb455a` | Gerardo Raúl Socualaya Mandamiento | chore(gestion): generar la evidencia del historial de commits desde git |
 | 27-10-2026 00:13 | `1d59459` | Gerardo Raúl Socualaya Mandamiento | docs(calidad): actualizar casos, resultados y cobertura con la CI de develop en 8ae035b |
 | 26-10-2026 23:34 | `bc23308` | Gerardo Raúl Socualaya Mandamiento | docs(calidad): reporte de calidad funcional segun ISO/IEC 25010 |
 | 26-10-2026 23:34 | `43701c6` | Gerardo Raúl Socualaya Mandamiento | docs(calidad): plan de pruebas del sistema con ejecucion y cobertura |
