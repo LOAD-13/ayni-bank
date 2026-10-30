@@ -88,10 +88,10 @@ Ver la sección 6 y el anexo F del informe, que es el `resumen.md` generado a pa
 
 | Métrica | Fórmula | Resultado |
 |---|---|---|
-| Cumplimiento de la suite | casos que pasan / casos ejecutados | **100 %** (131 de 131, ejecución local del 29-oct-2026) |
+| Cumplimiento de la suite | casos que pasan / casos ejecutados | **100 %** (117 de 117, `mvn clean verify` local del 30-oct-2026 sobre la 2.0.0) |
 | Sistemas externos cubiertos | sistemas con al menos una prueba de su frontera / sistemas identificados | **7 de 7** |
 | Fronteras con el protocolo real | sistemas probados contra una instancia real (Testcontainers) | 4 de 7: PostgreSQL, RabbitMQ, Redis y S3/MinIO |
-| Tiempo de la suite | suma de los tiempos medidos | 22,7 s |
+| Tiempo de la suite | suma de los tiempos medidos | 21,3 s |
 
 **Observaciones**
 
