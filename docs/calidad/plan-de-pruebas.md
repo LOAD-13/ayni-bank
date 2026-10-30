@@ -88,33 +88,33 @@ El listado completo, con identificador, nivel, nombre y archivo de cada caso, es
 <!-- resumen-casos -->
 | Componente | Unitaria | Arquitectura | Integración | Aceptación | Navegador | Usabilidad | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| identity | 449 | 5 | 19 | 18 | — | — | **491** |
-| core-banking | 143 | 5 | 15 | 13 | — | — | **176** |
-| notification | 21 | 5 | 6 | 5 | — | — | **37** |
-| gateway | 31 | — | 10 | — | — | — | **41** |
+| identity | 464 | 5 | 23 | 31 | — | — | **523** |
+| core-banking | 191 | 5 | 19 | 30 | — | — | **245** |
+| notification | 24 | 5 | 6 | 5 | — | — | **40** |
+| gateway | 32 | — | 10 | — | — | — | **42** |
 | kyc | 59 | — | 25 | — | — | — | **84** |
-| web | 138 | — | — | — | 32 | 17 | **187** |
-| **Total** | **841** | **15** | **75** | **36** | **32** | **17** | **1 016** |
+| web | 165 | — | — | — | 38 | 23 | **226** |
+| **Total** | **935** | **15** | **83** | **66** | **38** | **23** | **1 160** |
 <!-- /resumen-casos -->
 
 ## 7. Ejecución y resultados
 
-Ejecución de referencia: **CI de `develop`, ejecución
-[40452694016](https://github.com/LOAD-13/ayni-bank/actions/runs/40452694016)** (commit `8ae035b`,
-27-oct-2026). Los casos parametrizados y los de navegador cuentan una vez por ejecución (los de
+Ejecución de referencia: **CI del PR de la release 2.0.0, ejecución
+[40967550502](https://github.com/LOAD-13/ayni-bank/actions/runs/40967550502)** (commit `b8c9678`,
+29-oct-2026). Los casos parametrizados y los de navegador cuentan una vez por ejecución (los de
 Playwright corren en escritorio y en celular), por eso hay más ejecuciones que casos.
 
 <!-- resultados -->
-| Suite | Ejecutadas | Pasan | Fallan | Omitidas | Tiempo |
-|---|---:|---:|---:|---:|---:|
-| Java · identity | 558 | 558 | 0 | 0 | 24,8 s |
-| Java · core-banking | 176 | 175 | 0 | 1 (`@pendiente`) | 34,0 s |
-| Java · notification | 37 | 37 | 0 | 0 | 19,0 s |
-| Java · gateway | 41 | 41 | 0 | 0 | 19,2 s |
-| Python · kyc (pytest) | 92 | 92 | 0 | 0 | 9 s |
-| Web · unitarias (Vitest, 19 archivos) | 140 | 140 | 0 | 0 | — |
-| Web · navegador, accesibilidad y usabilidad (Playwright) | 194 | 193 | 0 | 1 | 1,9 min |
-| **Total** | **1 238** | **1 236** | **0** | **2** | |
+| Suite | Ejecutadas | Pasan | Fallan | Omitidas |
+|---|---:|---:|---:|---:|
+| Java · identity | 596 | 596 | 0 | 0 |
+| Java · core-banking | 255 | 255 | 0 | 0 |
+| Java · notification | 40 | 40 | 0 | 0 |
+| Java · gateway | 45 | 45 | 0 | 0 |
+| Python · kyc (pytest; sin cambios desde la ejecución del 27-oct) | 92 | 92 | 0 | 0 |
+| Web · unitarias (Vitest, 28 archivos) | 167 | 167 | 0 | 0 |
+| Web · navegador, accesibilidad y usabilidad (Playwright) | 216 | 215 | 0 | 1 |
+| **Total** | **1 411** | **1 410** | **0** | **1** |
 <!-- /resultados -->
 
 La omisión de Playwright es deliberada: el tamaño táctil mínimo (WCAG 2.5.8) solo se mide en el
@@ -135,22 +135,18 @@ proyecto de celular.
 <!-- cobertura -->
 | Componente | Líneas | Ramas | Fuente |
 |---|---:|---:|---|
-| identity | 94,2 % | 83,0 % | JaCoCo |
-| core-banking | 97,3 % | 88,1 % | JaCoCo |
+| identity | 94,4 % | 83,1 % | JaCoCo |
+| core-banking | 96,9 % | 86,1 % | JaCoCo |
 | notification | 99,0 % | 100 % | JaCoCo |
-| gateway | 97,4 % | 87,5 % | JaCoCo |
+| gateway | 97,5 % | 87,5 % | JaCoCo |
 | kyc | 94,8 % | — | coverage.py |
-| web · `dominio` | 100 % | 100 % | V8 |
-| web · `lib` (cliente de la API, validaciones) | 89,4 % | 94,3 % | V8 |
-| web · componentes de banca, ingreso y KYC | 58–72 % | 79–91 % | V8 |
-| web · total | 48,0 % | — | V8 |
+| web · total | 57,9 % | 86,4 % | V8 (Vitest) |
 <!-- /cobertura -->
 
 JaCoCo excluye lo que no tiene lógica (clases de arranque, configuración, puertos, entidades, DTO y
 el cliente generado de OpenAPI). En la web, el total baja por la portada (`componentes/landing`, 0 %
 en Vitest): es contenido estático que cubren las pruebas de navegador y de accesibilidad, que no
-cuentan para la cobertura de Vitest. Las páginas (`app/`, 41 %) también se ejercitan sobre todo con
-Playwright. La puerta de SonarCloud exige el 80 % sobre el **código nuevo** de cada PR, y se cumple.
+cuentan para la cobertura de Vitest. Las páginas (`app/`) también se ejercitan sobre todo con Playwright. La puerta de SonarCloud exige el 80 % sobre el **código nuevo** de cada PR, y se cumple.
 
 ## 9. Riesgos del plan
 
