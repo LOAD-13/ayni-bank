@@ -103,9 +103,12 @@ class TarjetaEnPostgresTest {
     @DisplayName("Un criptograma alterado o de otro esquema no se descifra: GCM detecta la manipulacion")
     void manipulacionDetectada() {
         String criptograma = cifrador.cifrar(PAN);
-        char ultimo = criptograma.charAt(criptograma.length() - 2);
-        String alterado = criptograma.substring(0, criptograma.length() - 2) + (ultimo == 'A' ? 'B' : 'A')
-                + criptograma.charAt(criptograma.length() - 1);
+        // Se altera un caracter del centro: sus 6 bits son datos. Junto al relleno «=» algunos bits
+        // no se usan, y cambiarlos dejaba el criptograma intacto en ~6 % de las ejecuciones.
+        int medio = criptograma.length() / 2;
+        char original = criptograma.charAt(medio);
+        String alterado = criptograma.substring(0, medio) + (original == 'A' ? 'g' : 'A')
+                + criptograma.substring(medio + 1);
 
         assertThatThrownBy(() -> cifrador.descifrar(alterado)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> cifrador.descifrar("v0:abc")).isInstanceOf(IllegalStateException.class);

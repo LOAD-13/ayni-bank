@@ -164,9 +164,11 @@ class LimiteDeTasaTest {
 
     @Test
     @DisplayName("Las rutas que no se limitan siguen igual")
-    void rutasSinLimite() {
+    void rutasSinLimite() throws Exception {
+        String sesion = "Bearer " + token("5d1f3c9e-1b2a-4c3d-8e9f-0a1b2c3d4e5f");
         for (int i = 0; i < 8; i++) {
-            cliente.get().uri("/api/v1/cuentas/titular/u-1").header("X-Forwarded-For", "203.0.113.90")
+            cliente.get().uri("/api/v1/cuentas/mia").header("X-Forwarded-For", "203.0.113.90")
+                    .header(HttpHeaders.AUTHORIZATION, sesion)
                     .exchange().expectStatus().isOk();
         }
     }

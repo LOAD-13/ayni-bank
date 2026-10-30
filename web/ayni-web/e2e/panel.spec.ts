@@ -12,7 +12,7 @@ const TOKEN = [
   "firma",
 ].join(".");
 
-async function conSesion(page: Page, cuenta: "abierta" | "pendiente" | "rechazada") {
+async function conSesion(page: Page, cuenta: "abierta" | "abriendose" | "pendiente" | "rechazada") {
   await page.route("**/api/v1/sesion/renovacion", (ruta) =>
     ruta.fulfill({
       json: { tokenDeAcceso: TOKEN, expiraEn: new Date(Date.now() + 15 * 60_000).toISOString() },
@@ -23,7 +23,8 @@ async function conSesion(page: Page, cuenta: "abierta" | "pendiente" | "rechazad
       json: {
         nombreDePila: "Ana",
         correo: "a***@example.pe",
-        estado: cuenta === "abierta" ? "ACTIVO" : "PENDIENTE_VERIFICACION",
+        estado:
+          cuenta === "abierta" || cuenta === "abriendose" ? "ACTIVO" : "PENDIENTE_VERIFICACION",
         solicitudPendiente: cuenta === "pendiente" ? "eff2c2e3-8c0e-4e71-aadc-1f6426b518a7" : null,
         estadoSolicitud: cuenta === "rechazada" ? "RECHAZADA" : null,
       },
@@ -124,5 +125,17 @@ test.describe("Panel de la banca", () => {
     ).toBeVisible();
     await expect(page.getByText(/venció|vuelve a registrarte/i)).toHaveCount(0);
     await expect(page.getByRole("link", { name: /continuar la verificación/i })).toHaveCount(0);
+  });
+
+  test("verificada pero con la cuenta todavía abriéndose, pide esperar unos segundos", async ({
+    page,
+  }) => {
+    // ADR-0038: la pantalla final del registro lleva a ingresar, y se puede llegar antes de que
+    // core-banking termine de abrir la cuenta. No es una solicitud vencida.
+    await conSesion(page, "abriendose");
+    await page.goto("/banca");
+
+    await expect(page.getByText(/terminando de abrir tu cuenta/i)).toBeVisible();
+    await expect(page.getByText(/venció|vuelve a registrarte/i)).toHaveCount(0);
   });
 });
