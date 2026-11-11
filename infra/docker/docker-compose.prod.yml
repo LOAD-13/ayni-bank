@@ -254,9 +254,13 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-      # Quince dias o 2 GB, lo que llegue antes: el disco de la instancia es de 30 GB.
-      - --storage.tsdb.retention.time=15d
-      - --storage.tsdb.retention.size=2GB
+      # 35 dias o 5 GB, lo que llegue antes (AYNI-312). HU-16 compromete una
+      # disponibilidad MENSUAL medida con Prometheus: con 15 dias no habia un mes
+      # que medir. Del orden de 10 000 series a 15 s ocupan unos 100 MB al dia,
+      # asi que 2 GB tambien cortaba antes del mes. El disco es de 30 GB; si el
+      # tope de tamano llega primero, medir-disponibilidad.py lo avisa.
+      - --storage.tsdb.retention.time=35d
+      - --storage.tsdb.retention.size=5GB
     volumes:
       - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
