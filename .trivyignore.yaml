@@ -36,6 +36,11 @@ vulnerabilities:
   # QUÉ HACER AL LLEGAR LA FECHA. Comprobar si hay una 6.2.x corregida en Maven
   # Central o si la migración a Spring Boot 4 ya está hecha. Si no, repetir la
   # comprobación de arriba y renovar la caducidad dejando constancia.
+  #
+  # RENOVACIÓN DEL 11 DE NOVIEMBRE DE 2026. La 6.2.19 sigue siendo la última 6.2 en
+  # Maven Central (la corrección solo existe en 7.0.x) y la migración a Spring Boot
+  # 4 (AYNI-162) no está hecha. El grep de arriba no devuelve nada en ningún
+  # servicio. Se renueva hasta el cierre del Sprint 7.
   # ───────────────────────────────────────────────────────────────────────────
 
   - id: CVE-2026-47884
@@ -43,14 +48,14 @@ vulnerabilities:
       SSRF y ejecución remota mediante XsltView en Spring MVC. El proyecto no
       renderiza vistas: todos los controladores son REST y no se usa XsltView.
       Sin versión 6.2.x corregida publicada al 10 de octubre de 2026.
-    expired_at: 2026-11-10
+    expired_at: 2026-11-30
 
   - id: CVE-2026-47890
     statement: >-
       Corrupción del flujo de Server-Sent Events con fragmentos de vista en
       Spring MVC y WebFlux. El proyecto no usa SSE ni fragmentos de vista. Sin
       versión 6.2.x corregida publicada al 10 de octubre de 2026.
-    expired_at: 2026-11-10
+    expired_at: 2026-11-30
 
   - id: CVE-2026-47892
     statement: >-
@@ -58,4 +63,4 @@ vulnerabilities:
       endpoints funcionales de WebFlux. El gateway no declara RouterFunction; el
       enrutado es de Spring Cloud Gateway. Sin versión 6.2.x corregida publicada
       al 10 de octubre de 2026.
-    expired_at: 2026-11-10
+    expired_at: 2026-11-30
