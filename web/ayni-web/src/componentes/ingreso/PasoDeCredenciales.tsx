@@ -31,6 +31,9 @@ export function PasoDeCredenciales({
 }: Props) {
   const idCorreo = useId();
   const idContrasena = useId();
+  // El aviso de error se enlaza a los dos campos (AYNI-291): al volver a uno de ellos, el
+  // lector de pantalla repite qué falló sin que haya que buscar el mensaje en la página.
+  const idError = useId();
 
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
@@ -38,6 +41,7 @@ export function PasoDeCredenciales({
   const [visible, setVisible] = useState(false);
 
   const pausado = esperaSegundos !== null;
+  const conError = Boolean(error) && !pausado;
 
   async function alEnviar(evento: FormEvent) {
     evento.preventDefault();
@@ -67,8 +71,9 @@ export function PasoDeCredenciales({
         </div>
       )}
 
-      {error && !pausado && (
+      {conError && (
         <p
+          id={idError}
           role="alert"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
@@ -85,6 +90,8 @@ export function PasoDeCredenciales({
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idCorreo}
+              aria-invalid={conError || undefined}
+              aria-describedby={conError ? idError : undefined}
               type="email"
               inputMode="email"
               autoComplete="username"
@@ -103,6 +110,8 @@ export function PasoDeCredenciales({
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idContrasena}
+              aria-invalid={conError || undefined}
+              aria-describedby={conError ? idError : undefined}
               type={visible ? "text" : "password"}
               autoComplete="current-password"
               value={contrasena}

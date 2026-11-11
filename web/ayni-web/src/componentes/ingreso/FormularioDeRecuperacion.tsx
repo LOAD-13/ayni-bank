@@ -17,6 +17,7 @@ import { ErrorDeApi, solicitarRecuperacion } from "@/lib/api";
  */
 export function FormularioDeRecuperacion() {
   const idCorreo = useId();
+  const idError = useId();
   const [correo, setCorreo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export function FormularioDeRecuperacion() {
 
       {error && (
         <p
+          id={idError}
           role="alert"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
@@ -95,6 +97,8 @@ export function FormularioDeRecuperacion() {
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idCorreo}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
               type="email"
               inputMode="email"
               autoComplete="username"
