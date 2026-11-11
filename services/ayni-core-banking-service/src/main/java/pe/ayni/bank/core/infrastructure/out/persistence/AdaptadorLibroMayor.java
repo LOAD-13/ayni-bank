@@ -31,14 +31,23 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     private final AsientoJpaRepository asientos;
     private final UUID fondeoPen;
     private final UUID interesesPen;
+    private final boolean historialEnBase;
 
+    /**
+     * {@code historialEnBase} es un feature flag (AYNI-319): con {@code true} el historial
+     * filtrado se pagina en PostgreSQL; con {@code false} vuelve al calculo en memoria. Se
+     * cambia con la variable AYNI_FUNCIONES_HISTORIAL_EN_BASE y un reinicio, sin reconstruir
+     * la imagen.
+     */
     AdaptadorLibroMayor(CuentaJpaRepository cuentas, AsientoJpaRepository asientos,
                         @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen,
-                        @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen) {
+                        @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen,
+                        @Value("${ayni.funciones.historial-en-base:true}") boolean historialEnBase) {
         this.cuentas = cuentas;
         this.asientos = asientos;
         this.fondeoPen = fondeoPen;
         this.interesesPen = interesesPen;
+        this.historialEnBase = historialEnBase;
     }
 
     @Override
@@ -108,6 +117,20 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
 
     @Override
     public List<AsientoConSaldo> filtrarAsientosDe(UUID cuentaId, FiltroDeMovimientos filtro) {
+        if (historialEnBase) {
+            return asientos.paginaConSaldo(cuentaId, filtro.desde(), filtro.hasta(),
+                            filtro.tipo() == null ? null : filtro.tipo().name(),
+                            filtro.importeMinimo(), filtro.importeMaximo(),
+                            filtro.tamano(), (long) filtro.pagina() * filtro.tamano()).stream()
+                    .map(fila -> {
+                        Moneda moneda = Moneda.valueOf(fila.getMoneda());
+                        return new AsientoConSaldo(new Asiento(fila.getId(), fila.getCuentaId(),
+                                fila.getMovimientoId(), TipoDeAsiento.valueOf(fila.getTipo()),
+                                new Dinero(fila.getImporte(), moneda), fila.getConcepto(),
+                                fila.getRegistradoEn()), new Dinero(fila.getSaldoPosterior(), moneda));
+                    })
+                    .toList();
+        }
         List<AsientoEntity> cronologicos = asientos.findByCuentaIdOrderByRegistradoEnAsc(cuentaId);
         if (cronologicos.isEmpty()) {
             return List.of();

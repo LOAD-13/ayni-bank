@@ -43,7 +43,7 @@ class AdaptadorLibroMayorTest {
     private AsientoJpaRepository asientos;
 
     private AdaptadorLibroMayor adaptador() {
-        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES);
+        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES, false);
     }
 
     private static CuentaEntity fila(UUID id, String numero) {
