@@ -25,6 +25,7 @@ type Estado = "validando" | "invalido" | "formulario" | "listo";
 export function FormularioDeContrasenaNueva() {
   const idNueva = useId();
   const idRepetida = useId();
+  const idError = useId();
 
   const [estado, setEstado] = useState<Estado>("validando");
   const [token, setToken] = useState<string | null>(null);
@@ -149,6 +150,7 @@ export function FormularioDeContrasenaNueva() {
 
       {error && (
         <p
+          id={idError}
           role="alert"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
@@ -165,6 +167,8 @@ export function FormularioDeContrasenaNueva() {
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idNueva}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
               type={visible ? "text" : "password"}
               autoComplete="new-password"
               value={nueva}
@@ -196,6 +200,8 @@ export function FormularioDeContrasenaNueva() {
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idRepetida}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
               type={visible ? "text" : "password"}
               autoComplete="new-password"
               value={repetida}

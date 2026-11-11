@@ -19,6 +19,16 @@ const RUTAS = [
   // directa a esta ruta, y tiene que ser tan accesible como el resto.
   "/registro/dni-anverso",
   "/registro/dni-reverso",
+  // AYNI-286: el resto del onboarding y la recuperación de contraseña. En celular, la barra
+  // de pasos de «listo» y «en revisión» era una región desplazable inalcanzable con teclado
+  // y no lo detectaba nadie porque estas rutas no se analizaban.
+  "/registro/segundo-factor",
+  "/registro/confirmar-datos",
+  "/registro/prueba-de-vida",
+  "/registro/en-revision",
+  "/registro/listo",
+  "/recuperar",
+  "/recuperar/nueva",
 ] as const;
 
 for (const ruta of RUTAS) {

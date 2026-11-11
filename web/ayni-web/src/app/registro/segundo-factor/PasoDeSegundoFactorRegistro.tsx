@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 
 import { IndicadorDeProgreso, PASOS_DEL_ONBOARDING } from "@/componentes/IndicadorDeProgreso";
 import { InscripcionDelSegundoFactor } from "@/componentes/ingreso/InscripcionDelSegundoFactor";
@@ -52,6 +52,8 @@ export function PasoDeSegundoFactorRegistro({ solicitudId }: Props) {
   const [reenviando, setReenviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensajeReenvio, setMensajeReenvio] = useState<string | null>(null);
+  // Las casillas del código se enlazan al error del paso de verificación (AYNI-291).
+  const idError = useId();
 
   useEffect(() => {
     if (!metodoInscrito) return;
@@ -289,6 +291,7 @@ export function PasoDeSegundoFactorRegistro({ solicitudId }: Props) {
 
               {error && (
                 <p
+                  id={idError}
                   role="alert"
                   className="mt-5 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
                 >
@@ -321,6 +324,8 @@ export function PasoDeSegundoFactorRegistro({ solicitudId }: Props) {
                         autoComplete={indice === 0 ? "one-time-code" : "off"}
                         maxLength={1}
                         aria-label={`Dígito ${indice + 1} de ${DIGITOS}`}
+                        aria-invalid={error ? true : undefined}
+                        aria-describedby={error ? idError : undefined}
                         value={digito}
                         onChange={(e) => escribir(indice, e.target.value)}
                         onKeyDown={(e) => alPulsarTecla(indice, e.key)}

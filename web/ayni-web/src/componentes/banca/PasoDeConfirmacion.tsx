@@ -37,6 +37,7 @@ export function PasoDeConfirmacion({
   textoDeConfirmar = "Confirmar y transferir",
 }: Props) {
   const idCodigo = useId();
+  const idError = useId();
   const [codigo, setCodigo] = useState("");
   const completo = /^\d{6}$/.test(codigo);
 
@@ -63,6 +64,7 @@ export function PasoDeConfirmacion({
 
       {error && (
         <p
+          id={idError}
           role="alert"
           className="mt-4 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
@@ -76,6 +78,8 @@ export function PasoDeConfirmacion({
         </label>
         <input
           id={idCodigo}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? idError : undefined}
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}

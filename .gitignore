@@ -85,3 +85,6 @@ playwright-report/
 test-results/
 allure-results/
 .scannerwork/
+
+# Resultados de la prueba de estrés de k6 (infra/carga/estres.js): evidencia local, no código
+estres-resultado.*
