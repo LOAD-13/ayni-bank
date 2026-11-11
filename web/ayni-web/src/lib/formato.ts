@@ -104,6 +104,20 @@ export function rendimientoMensualEstimado(saldo: string, trea: string): string 
 }
 
 /**
+ * `true` si `importe` es mayor que `tope`, comparando los decimales exactos: «850.01» supera
+ * a «850.00» y «850.0» no supera a «850.00». Sirve para avisar de un saldo insuficiente
+ * antes de pedir el segundo factor (HU-17, escenario 3). Si alguno no es un importe, `false`:
+ * la decisión final la toma siempre el servidor.
+ */
+export function superaA(importe: string, tope: string): boolean {
+  const i = leerDecimal(importe);
+  const t = leerDecimal(tope);
+  if (!i || !t) return false;
+  // Los dos a la misma escala antes de comparar.
+  return i.unidades * potenciaDeDiez(t.escala) > t.unidades * potenciaDeDiez(i.escala);
+}
+
+/**
  * Qué parte de un límite ya se usó, en tanto por ciento entero entre 0 y 100, para pintar
  * la barra del límite diario de la tarjeta (HU-10). Es solo visual, pero se calcula igual
  * que el resto: sin `parseFloat` ni coma flotante. Un límite cero o un texto que no es un

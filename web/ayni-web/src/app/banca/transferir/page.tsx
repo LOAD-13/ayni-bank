@@ -11,13 +11,14 @@ import { PasoDeConfirmacion } from "@/componentes/banca/PasoDeConfirmacion";
 import { TarjetaDeComprobante } from "@/componentes/banca/TarjetaDeComprobante";
 import {
   ErrorDeApi,
+  consultarMiCuenta,
   iniciarConfirmacion,
   transferir,
   verificarConfirmacion,
   type Comprobante,
   type ConfirmacionIniciada,
 } from "@/lib/api";
-import { formatearImporte, normalizarImporte, nuevaClave } from "@/lib/formato";
+import { formatearImporte, normalizarImporte, nuevaClave, superaA } from "@/lib/formato";
 
 interface Borrador {
   cuentaDestino: string;
@@ -47,8 +48,22 @@ export default function PaginaDeTransferencia() {
   const [enviando, setEnviando] = useState(false);
   const [confirmacion, setConfirmacion] = useState<ConfirmacionIniciada | null>(null);
   const espera = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // El saldo disponible, para avisar de que no alcanza antes de pedir el segundo factor
+  // (HU-17, escenario 3). Si no carga, no se bloquea nada: el servidor rechaza igual.
+  const [saldo, setSaldo] = useState<string | null>(null);
 
   useEffect(() => () => clearTimeout(espera.current), []);
+
+  useEffect(() => {
+    let vigente = true;
+    token()
+      .then(consultarMiCuenta)
+      .then((cuenta) => vigente && setSaldo(cuenta.saldo))
+      .catch(() => undefined);
+    return () => {
+      vigente = false;
+    };
+  }, [token]);
 
   /**
    * Validación mientras se escribe (sesión 23): tras 400 ms sin teclear se revisan todos los
@@ -63,7 +78,7 @@ export default function PaginaDeTransferencia() {
         const nuevos = { ...previos };
         for (const nombre of ["cuentaDestino", "importe"] as const) {
           const valor = (formulario.elements.namedItem(nombre) as HTMLInputElement).value;
-          if (valor.trim()) nuevos[nombre] = errorDe(nombre, valor);
+          if (valor.trim()) nuevos[nombre] = errorDe(nombre, valor, saldo);
         }
         return nuevos;
       });
@@ -85,8 +100,8 @@ export default function PaginaDeTransferencia() {
 
     clearTimeout(espera.current);
     const encontrados: Partial<Record<keyof Borrador, string>> = {
-      cuentaDestino: errorDe("cuentaDestino", tecleado.cuentaDestino),
-      importe: errorDe("importe", tecleado.importe),
+      cuentaDestino: errorDe("cuentaDestino", tecleado.cuentaDestino, saldo),
+      importe: errorDe("importe", tecleado.importe, saldo),
     };
     setErrores(encontrados);
     if (encontrados.cuentaDestino || encontrados.importe || !importe) return;
@@ -261,15 +276,24 @@ export default function PaginaDeTransferencia() {
   );
 }
 
-function errorDe(campo: "cuentaDestino" | "importe", valor: string): string | undefined {
+function errorDe(
+  campo: "cuentaDestino" | "importe",
+  valor: string,
+  saldo: string | null,
+): string | undefined {
   if (campo === "cuentaDestino") {
     return /^\d{14}$/.test(valor.replace(/[\s-]/g, ""))
       ? undefined
       : "El número de cuenta Ayni tiene 14 dígitos.";
   }
-  return normalizarImporte(valor)
-    ? undefined
-    : "Escribe un importe válido, con hasta dos decimales.";
+  const importe = normalizarImporte(valor);
+  if (!importe) return "Escribe un importe válido, con hasta dos decimales.";
+  // Qué pasó y cómo corregirlo, con la cifra: «saldo insuficiente» a secas obliga a ir al
+  // panel a mirar cuánto hay. CampoDeTexto lo anuncia con role="alert".
+  if (saldo && superaA(importe, saldo)) {
+    return `Saldo insuficiente: tienes ${formatearImporte(saldo)} disponibles. Escribe un importe igual o menor.`;
+  }
+  return undefined;
 }
 
 function Fila({ clave, valor }: { clave: string; valor: string }) {
