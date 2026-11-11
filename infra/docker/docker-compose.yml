@@ -232,6 +232,9 @@ services:
       AYNI_FX_SUNAT_URL: ${AYNI_FX_SUNAT_URL}
       # HU-06: cada cuanto se buscan dias sin cerrar (por defecto, cada hora a los 5 min).
       AYNI_DEVENGO_CRON: ${AYNI_DEVENGO_CRON:-0 5 * * * *}
+      # Feature flag (AYNI-319): false vuelve al historial calculado en memoria. Se cambia en
+      # el .env y basta recrear el contenedor; la imagen no se reconstruye.
+      AYNI_FUNCIONES_HISTORIAL_EN_BASE: ${AYNI_FUNCIONES_HISTORIAL_EN_BASE:-true}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

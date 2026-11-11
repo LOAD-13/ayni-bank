@@ -77,6 +77,11 @@ ayni:
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
     # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
     intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+  funciones:
+    # Feature flags (12-Factor, factor III): se cambian por variable de entorno y un reinicio,
+    # sin reconstruir la imagen. AYNI-319.
+    # true: el historial filtrado se pagina en PostgreSQL. false: vuelve al calculo en memoria.
+    historial-en-base: ${AYNI_FUNCIONES_HISTORIAL_EN_BASE:true}
   devengo:
     # Cada hora, a los 5 minutos, en hora de Lima. Solo trabaja si hay dias sin cerrar:
     # si el servicio estuvo caido a medianoche, el siguiente disparo recupera lo pendiente.

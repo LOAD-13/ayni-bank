@@ -87,6 +87,49 @@ interface AsientoJpaRepository extends JpaRepository<AsientoEntity, UUID> {
     @Query("SELECT COALESCE(SUM(CASE WHEN a.tipo = 'ABONO' THEN a.importe ELSE -a.importe END), 0) "
             + "FROM AsientoEntity a WHERE a.cuentaId = :cuenta")
     java.math.BigDecimal saldoDe(@Param("cuenta") UUID cuentaId);
+
+    /**
+     * Una pagina del historial con su saldo posterior, calculada en la base (AYNI-319).
+     *
+     * <p>La suma acumulada recorre todos los asientos de la cuenta en orden cronologico, como
+     * antes; lo que ya no hace es traerlos a memoria: a la aplicacion solo llega la pagina.
+     * Los filtros nulos no restringen. La fecha se compara en UTC, como {@code FiltroDeMovimientos}.
+     */
+    @Query(value = """
+            SELECT t.id AS id, t.cuenta_id AS cuentaId, t.movimiento_id AS movimientoId, t.tipo AS tipo,
+                   t.importe AS importe, t.moneda AS moneda, t.concepto AS concepto,
+                   t.registrado_en AS registradoEn, t.saldo_posterior AS saldoPosterior
+            FROM (SELECT a.*, SUM(CASE WHEN a.tipo = 'ABONO' THEN a.importe ELSE -a.importe END)
+                              OVER (ORDER BY a.registrado_en, a.id) AS saldo_posterior
+                  FROM core.asiento a WHERE a.cuenta_id = :cuenta) t
+            WHERE (CAST(:desde AS date) IS NULL OR CAST(t.registrado_en AT TIME ZONE 'UTC' AS date) >= CAST(:desde AS date))
+              AND (CAST(:hasta AS date) IS NULL OR CAST(t.registrado_en AT TIME ZONE 'UTC' AS date) <= CAST(:hasta AS date))
+              AND (CAST(:tipo AS varchar) IS NULL OR t.tipo = CAST(:tipo AS varchar))
+              AND (CAST(:minimo AS numeric) IS NULL OR t.importe >= CAST(:minimo AS numeric))
+              AND (CAST(:maximo AS numeric) IS NULL OR t.importe <= CAST(:maximo AS numeric))
+            ORDER BY t.registrado_en DESC, t.id DESC
+            LIMIT :tamano OFFSET :salto""", nativeQuery = true)
+    List<FilaConSaldo> paginaConSaldo(@Param("cuenta") UUID cuentaId,
+                                      @Param("desde") java.time.LocalDate desde,
+                                      @Param("hasta") java.time.LocalDate hasta,
+                                      @Param("tipo") String tipo,
+                                      @Param("minimo") java.math.BigDecimal minimo,
+                                      @Param("maximo") java.math.BigDecimal maximo,
+                                      @Param("tamano") int tamano,
+                                      @Param("salto") long salto);
+
+    /** Proyeccion de {@link #paginaConSaldo}: el asiento y el saldo que dejo. */
+    interface FilaConSaldo {
+        UUID getId();
+        UUID getCuentaId();
+        UUID getMovimientoId();
+        String getTipo();
+        java.math.BigDecimal getImporte();
+        String getMoneda();
+        String getConcepto();
+        java.time.Instant getRegistradoEn();
+        java.math.BigDecimal getSaldoPosterior();
+    }
 }
 
 interface OutboxJpaRepository extends JpaRepository<OutboxEntity, UUID> {
