@@ -330,7 +330,7 @@ export function PasoDeSegundoFactorRegistro({ solicitudId }: Props) {
                         onChange={(e) => escribir(indice, e.target.value)}
                         onKeyDown={(e) => alPulsarTecla(indice, e.key)}
                         onPaste={alPegar}
-                        className="campo h-[58px] w-full max-w-[58px] flex-1 rounded-[12px] border border-gris-300 bg-blanco text-center text-[24px] font-bold text-gris-900 outline-none"
+                        className="campo h-[58px] w-full max-w-[58px] flex-1 rounded-[12px] border border-gris-300 bg-blanco text-center text-[24px] font-bold text-gris-900"
                       />
                     ))}
                   </div>

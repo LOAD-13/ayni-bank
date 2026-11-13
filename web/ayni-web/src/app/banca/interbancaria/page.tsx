@@ -366,7 +366,11 @@ export default function PaginaInterbancaria() {
                 </Boton>
               </div>
             )}
-            <Boton type="submit">Continuar</Boton>
+            {/* Mientras se valida el CCI no se puede continuar: si no, un CCI correcto tecleado
+                deprisa se daba por erroneo solo porque la respuesta aun no habia llegado. */}
+            <Boton type="submit" cargando={estadoDelCci === "validando"}>
+              Continuar
+            </Boton>
           </form>
         </>
       )}
