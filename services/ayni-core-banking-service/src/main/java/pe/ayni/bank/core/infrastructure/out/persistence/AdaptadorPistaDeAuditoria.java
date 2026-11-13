@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
+import pe.ayni.bank.core.infrastructure.in.web.DatosDeLaPeticion;
 
 /** Implementa {@link PistaDeAuditoriaPort} sobre JPA. */
 @Repository
@@ -27,39 +28,46 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
     }
 
     /** En la transaccion de la operacion: si el movimiento se deshace, su evento tambien. */
+    /** Actor, accion y momento los pone el evento; IP, agente y recurso, la peticion en curso. */
+    private static EventoAuditoriaEntity conPeticion(EventoAuditoriaEntity evento) {
+        return DatosDeLaPeticion.actuales()
+                .map(datos -> evento.conPeticion(datos.ip(), datos.agente(), datos.recurso()))
+                .orElse(evento);
+    }
+
     @Override
     public void registrar(TipoDeEventoDeOperacion tipo, UUID usuarioId, UUID movimientoId) {
-        repositorio.save(new EventoAuditoriaEntity(tipo.name(), usuarioId, movimientoId, null,
-                reloj.instant()));
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(tipo.name(), usuarioId, movimientoId, null,
+                reloj.instant())));
     }
 
     /** En una transaccion propia: el rechazo deshace la de la operacion, pero no su rastro. */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarRechazo(UUID usuarioId, MotivoDeRechazo motivo) {
-        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.OPERACION_RECHAZADA.name(),
-                usuarioId, null, motivo.name(), reloj.instant()));
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.OPERACION_RECHAZADA.name(),
+                usuarioId, null, motivo.name(), reloj.instant())));
     }
 
     /** En una transaccion propia, por la misma razon que {@link #registrarRechazo}. */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarAperturaDuplicada(UUID usuarioId) {
-        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.APERTURA_RECHAZADA.name(),
-                usuarioId, null, MOTIVO_CUENTA_DUPLICADA, reloj.instant()));
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.APERTURA_RECHAZADA.name(),
+                usuarioId, null, MOTIVO_CUENTA_DUPLICADA, reloj.instant())));
     }
 
     /** En una transaccion propia: la consulta que lo detecta es de solo lectura. */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registrarAccesoAjeno(UUID usuarioId, UUID movimientoId) {
-        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.ACCESO_AJENO_DENEGADO.name(),
-                usuarioId, movimientoId, null, reloj.instant()));
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.ACCESO_AJENO_DENEGADO.name(),
+                usuarioId, movimientoId, null, reloj.instant())));
     }
 
     @Override
     public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
-        repositorio.save(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.PAN_REVELADO.name(), usuarioId, tarjetaId,
-                reloj.instant(), ip));
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.PAN_REVELADO.name(), usuarioId, tarjetaId,
+                reloj.instant(), ip)));
     }
 }

@@ -87,7 +87,7 @@ public class TarjetaController {
                                                   @RequestHeader(value = CABECERA_CONFIRMACION, required = false)
                                                   String confirmacion,
                                                   HttpServletRequest peticion) {
-        PanRevelado pan = tarjetas.revelar(usuarioId, confirmacion, clave, ipDe(peticion));
+        PanRevelado pan = tarjetas.revelar(usuarioId, confirmacion, clave, DatosDeLaPeticion.ipDe(peticion));
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(new PanReveladoDto(pan.numero(), pan.visibleHasta()));
     }
@@ -123,14 +123,6 @@ public class TarjetaController {
         return ResponseEntity.ok(ControlesDeTarjetaDto.desde(controles.descongelar(usuarioId)));
     }
 
-    /** La IP del cliente: el primer valor de X-Forwarded-For, como en identity. */
-    private static String ipDe(HttpServletRequest peticion) {
-        String reenviada = peticion.getHeader("X-Forwarded-For");
-        if (reenviada != null && !reenviada.isBlank()) {
-            return reenviada.split(",")[0].trim();
-        }
-        return peticion.getRemoteAddr();
-    }
 
     // ── Errores ───────────────────────────────────────────────────────────
 

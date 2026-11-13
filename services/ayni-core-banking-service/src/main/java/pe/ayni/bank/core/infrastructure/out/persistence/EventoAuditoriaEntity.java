@@ -1,6 +1,7 @@
 package pe.ayni.bank.core.infrastructure.out.persistence;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -38,6 +39,18 @@ public class EventoAuditoriaEntity {
     @Column(length = 45)
     private String ip;
 
+    @Column(length = 120)
+    private String recurso;
+
+    @Column(length = 256)
+    private String agente;
+
+    @Column(nullable = false, length = 12)
+    private String resultado;
+
+    private static final Set<String> RECHAZOS =
+            Set.of("OPERACION_RECHAZADA", "APERTURA_RECHAZADA", "ACCESO_AJENO_DENEGADO");
+
     protected EventoAuditoriaEntity() {
         // Exigido por JPA.
     }
@@ -49,11 +62,26 @@ public class EventoAuditoriaEntity {
         this.movimientoId = movimientoId;
         this.motivo = motivo;
         this.ocurridoEn = ocurridoEn;
+        this.resultado = RECHAZOS.contains(tipo) ? "RECHAZADO" : "EXITO";
     }
 
     EventoAuditoriaEntity(String tipo, UUID usuarioId, UUID movimientoId, Instant ocurridoEn, String ip) {
         this(tipo, usuarioId, movimientoId, null, ocurridoEn);
         this.ip = ip;
+    }
+
+    /** IP, user-agent y recurso de la peticion; la IP que ya traia el evento se respeta. */
+    EventoAuditoriaEntity conPeticion(String ip, String agente, String recurso) {
+        if (this.ip == null) {
+            this.ip = ip;
+        }
+        this.agente = agente;
+        this.recurso = recurso;
+        return this;
+    }
+
+    String getResultado() {
+        return resultado;
     }
 
     String getTipo() {
