@@ -47,7 +47,11 @@ public class AjustesComunes {
         jdbc.update("DELETE FROM core.devengo_interes");
         jdbc.update("DELETE FROM core.capitalizacion_interes");
         jdbc.update("DELETE FROM core.cierre_diario");
+        // La pista es de solo insercion (V14): solo las pruebas, como duenas de la tabla, apagan el
+        // trigger un instante para empezar cada escenario de cero.
+        jdbc.execute("ALTER TABLE core.evento_auditoria DISABLE TRIGGER USER");
         jdbc.update("DELETE FROM core.evento_auditoria");
+        jdbc.execute("ALTER TABLE core.evento_auditoria ENABLE TRIGGER USER");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
         jdbc.update("DELETE FROM core.consumo_tarjeta");
