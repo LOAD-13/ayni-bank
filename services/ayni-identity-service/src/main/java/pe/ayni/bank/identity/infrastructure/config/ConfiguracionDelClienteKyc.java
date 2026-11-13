@@ -66,7 +66,7 @@ public class ConfiguracionDelClienteKyc {
         requestFactory.setConnectTimeout(TIMEOUT_DE_CONEXION);
         requestFactory.setReadTimeout(timeoutDeLectura);
 
-        ObjectMapper mapper = ApiClient.createDefaultObjectMapper(null);
+        ObjectMapper mapper = ApiClient.createDefaultMapper(null);
         RestClient restClient = ApiClient.buildRestClientBuilder(mapper)
                 .requestFactory(requestFactory)
                 .build();
