@@ -99,6 +99,8 @@ ayni:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
+    # AHORRO_USD, sembrado por V1: la cuenta en dolares de HU-12.
+    ahorro-dolares: ${AYNI_PRODUCTO_AHORRO_USD:2}
   camara:
     # Camara de compensacion interbancaria (HU-11). En el entorno academico es el simulador
     # que vive en este mismo servicio (CamaraSimuladaController) y cumple el contrato
