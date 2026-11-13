@@ -7,8 +7,8 @@ import java.time.ZoneOffset;
 
 import org.mockito.Mockito;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import io.cucumber.spring.CucumberContextConfiguration;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
@@ -65,7 +65,7 @@ import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
         BandejaDeSalida.class, ConfiguracionDeMensajeria.class,
         AdaptadorRegistroDeIntereses.class, AdaptadorLibroMayor.class, AdaptadorRepositorioDeCuentas.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
-        ObjectMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
+        JsonMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
         ConciliadorInterbancario.class, EmitirTarjetaService.class, ConsultarTarjetaService.class,
         ControlarTarjetaService.class,
         AdaptadorRepositorioDeTarjetas.class, CifradorDePan.class, ConfiguracionDeTarjeta.class,

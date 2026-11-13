@@ -86,7 +86,7 @@ class FiltroDeAutenticacionTest {
         StepVerifier.create(filtro.filter(intercambio, cadena)).verifyComplete();
 
         assertThat(reenviada.get().getRequest().getHeaders()
-                .containsKey(FiltroDeAutenticacion.CABECERA_USUARIO)).isFalse();
+                .containsHeader(FiltroDeAutenticacion.CABECERA_USUARIO)).isFalse();
     }
 
     @Test
