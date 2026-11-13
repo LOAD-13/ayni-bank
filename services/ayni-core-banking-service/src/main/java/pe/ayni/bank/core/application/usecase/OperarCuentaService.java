@@ -272,6 +272,7 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         String contraparte = switch (tipo) {
             case DEPOSITO_SIMULADO -> "Deposito simulado";
             case INTERES -> "Intereses Ayni";
+            case CONVERSION -> "Cambio de moneda";
             case TRANSFERENCIA -> libro.buscarPorId(contraparteId)
                     .map(c -> c.numero().enmascarado())
                     .orElse("Cuenta Ayni");
@@ -288,6 +289,10 @@ public class OperarCuentaService implements OperarCuentaUseCase {
 
     /** Las cuentas tecnicas delatan el tipo: fondeo es un deposito; intereses, una capitalizacion. */
     private TipoDeMovimiento tipoSegunContraparte(UUID contraparteId, Moneda moneda) {
+        // Primero la posicion cambiaria: es la unica cuenta tecnica que existe tambien en dolares.
+        if (libro.cuentaDePosicionCambiaria(moneda).id().equals(contraparteId)) {
+            return TipoDeMovimiento.CONVERSION;
+        }
         if (libro.cuentaDeFondeo(moneda).id().equals(contraparteId)) {
             return TipoDeMovimiento.DEPOSITO_SIMULADO;
         }

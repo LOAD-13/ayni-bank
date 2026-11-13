@@ -35,6 +35,8 @@ class AdaptadorLibroMayorTest {
     private static final Instant AHORA = Instant.parse("2026-10-02T15:00:00Z");
     private static final UUID FONDEO = UUID.fromString("f0de0000-0000-4000-8000-000000000001");
     private static final UUID INTERESES = UUID.fromString("1e7e0000-0000-4000-8000-000000000001");
+    private static final UUID POSICION_PEN = UUID.fromString("ca4b0000-0000-4000-8000-000000000001");
+    private static final UUID POSICION_USD = UUID.fromString("ca4b0000-0000-4000-8000-000000000002");
 
     @Mock
     private CuentaJpaRepository cuentas;
@@ -43,7 +45,7 @@ class AdaptadorLibroMayorTest {
     private AsientoJpaRepository asientos;
 
     private AdaptadorLibroMayor adaptador() {
-        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES, false);
+        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES, POSICION_PEN, POSICION_USD, false);
     }
 
     private static CuentaEntity fila(UUID id, String numero) {
@@ -91,6 +93,16 @@ class AdaptadorLibroMayorTest {
 
         when(cuentas.findById(INTERESES)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> adaptador().cuentaDeIntereses(Moneda.PEN)).hasMessageContaining("V5");
+    }
+
+    @Test
+    @DisplayName("hay una posicion cambiaria por moneda, y su ausencia apunta a V13")
+    void cuentaDePosicionCambiaria() {
+        when(cuentas.findById(POSICION_PEN)).thenReturn(Optional.of(fila(POSICION_PEN, "00110000000004")));
+        assertThat(adaptador().cuentaDePosicionCambiaria(Moneda.PEN).id()).isEqualTo(POSICION_PEN);
+
+        when(cuentas.findById(POSICION_USD)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> adaptador().cuentaDePosicionCambiaria(Moneda.USD)).hasMessageContaining("V13");
     }
 
     @Test
