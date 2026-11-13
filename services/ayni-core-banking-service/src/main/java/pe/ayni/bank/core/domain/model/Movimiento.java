@@ -130,19 +130,19 @@ public record Movimiento(UUID id, TipoDeMovimiento tipo, Asiento cargo, Asiento 
         return List.of(cargo, abono);
     }
 
-    private static void exigirOperativa(Cuenta cuenta) {
+    static void exigirOperativa(Cuenta cuenta) {
         if (!cuenta.admiteMovimientos()) {
             throw new OperacionRechazadaException(MotivoDeRechazo.CUENTA_NO_OPERATIVA);
         }
     }
 
-    private static void exigirDentroDeLimites(Dinero importe, BigDecimal maximo) {
+    static void exigirDentroDeLimites(Dinero importe, BigDecimal maximo) {
         if (importe.importe().compareTo(MINIMO) < 0 || importe.importe().compareTo(maximo) > 0) {
             throw new OperacionRechazadaException(MotivoDeRechazo.IMPORTE_FUERA_DE_LIMITE);
         }
     }
 
-    private static String recortar(String concepto) {
+    static String recortar(String concepto) {
         return concepto.length() <= 140 ? concepto : concepto.substring(0, 140);
     }
 }

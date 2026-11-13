@@ -79,7 +79,9 @@ class HistorialEnBaseTest {
     }
 
     private List<AsientoConSaldo> historial(boolean enBase, FiltroDeMovimientos filtro) {
-        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES, enBase).filtrarAsientosDe(FONDEO, filtro);
+        return new AdaptadorLibroMayor(cuentas, asientos, FONDEO, INTERESES,
+                UUID.fromString("ca4b0000-0000-4000-8000-000000000001"),
+                UUID.fromString("ca4b0000-0000-4000-8000-000000000002"), enBase).filtrarAsientosDe(FONDEO, filtro);
     }
 
     @Test
