@@ -19,7 +19,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2025.0.3</version>
+                <version>2025.1.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -27,6 +27,12 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Spring Boot 4 separa las pruebas por capas en modulos propios. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- `spring-cloud-starter-gateway` a secas arrastra el artefacto
              spring-cloud-gateway-server, que Spring Cloud declara obsoleto y retira
              en la proxima version mayor: el propio arranque lo avisa por log. Este
@@ -55,7 +61,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Swagger UI en /api/docs con los contratos de los servicios. Apagada salvo con
