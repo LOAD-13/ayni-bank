@@ -15,9 +15,21 @@
     <name>ayni-core-banking-service</name>
 
     <dependencies>
+        <!-- Spring Boot 4 separa las pruebas por capas en modulos propios. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <!-- Spring Boot 4 autoconfigura el RestClient.Builder desde su propio modulo; lo usa el
+             adaptador de la camara de compensacion (HU-11). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
         <!-- Acceso a datos: JDBC puro. JPA llegara con la primera entidad
              persistida; hoy solo se necesita el DataSource que Flyway usa
@@ -54,8 +66,8 @@
             <artifactId>nimbus-jose-jwt</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <!-- Desde Flyway 10 el soporte de cada motor va en su propio modulo -->
         <dependency>
@@ -74,12 +86,12 @@
         </dependency>       
         <dependency>
             <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.2.0</version>
+            <artifactId>resilience4j-spring-boot4</artifactId>
+            <version>2.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-             <artifactId>spring-boot-starter-aop</artifactId>
+             <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
         <!-- La concurrencia de HU-07 solo se puede probar contra un PostgreSQL de verdad:
              los dobles en memoria no tienen bloqueos ni transacciones. Testcontainers
@@ -91,12 +103,12 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- HU-06: los cuatro escenarios en Gherkin, contra el PostgreSQL de Testcontainers.

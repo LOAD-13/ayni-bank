@@ -3,8 +3,8 @@ package pe.ayni.bank.core.infrastructure.out.persistence;
 import java.time.Clock;
 import java.util.UUID;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.stereotype.Repository;
 
@@ -34,7 +34,7 @@ public class AdaptadorPublicadorDeEventos implements PublicadorDeEventosPort {
         try {
             outbox.save(new OutboxEntity(UUID.randomUUID(), agregadoTipo, agregadoId,
                     tipoDeEvento, mapeador.writeValueAsString(carga), reloj.instant()));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Se propaga para que la transaccion entera falle. Guardar la cuenta sin su
             // evento dejaria el sistema en el estado incoherente que el outbox evita.
             throw new IllegalStateException(

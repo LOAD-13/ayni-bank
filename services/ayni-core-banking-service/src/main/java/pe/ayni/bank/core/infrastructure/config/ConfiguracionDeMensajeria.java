@@ -5,12 +5,12 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Topologia de RabbitMQ para el esqueleto ambulante.
@@ -47,10 +47,10 @@ public class ConfiguracionDeMensajeria {
     }
 
     @Bean
-    public MessageConverter conversorDeMensajes(ObjectMapper mapeador) {
+    public MessageConverter conversorDeMensajes(JsonMapper mapeador) {
         // JSON y no la serializacion de Java: los mensajes los tienen que poder leer
         // servicios escritos en Python, y un objeto serializado de Java no lo lee nadie
         // mas que Java.
-        return new Jackson2JsonMessageConverter(mapeador);
+        return new JacksonJsonMessageConverter(mapeador);
     }
 }

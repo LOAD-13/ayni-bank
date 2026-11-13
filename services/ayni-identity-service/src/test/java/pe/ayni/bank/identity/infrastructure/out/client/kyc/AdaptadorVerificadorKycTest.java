@@ -10,8 +10,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import io.github.resilience4j.springboot3.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
-import io.github.resilience4j.springboot3.retry.autoconfigure.RetryAutoConfiguration;
+import io.github.resilience4j.springboot.circuitbreaker.autoconfigure.CircuitBreakerAutoConfiguration;
+import io.github.resilience4j.springboot.retry.autoconfigure.RetryAutoConfiguration;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

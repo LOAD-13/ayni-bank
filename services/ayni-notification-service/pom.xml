@@ -15,6 +15,12 @@
     <name>ayni-notification-service</name>
 
     <dependencies>
+        <!-- Spring Boot 4 separa las pruebas por capas en modulos propios. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- HU-13: el correo de cada movimiento sale por Amazon SES, igual que los de
              identity. Mismo cliente HTTP de java.net y mismas exclusiones. -->
         <dependency>
@@ -41,7 +47,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <!-- Oye los eventos de core-banking e identity (HU-13). -->
         <dependency>
@@ -55,8 +61,8 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <!-- Desde Flyway 10 el soporte de cada motor va en su propio modulo -->
         <dependency>
@@ -98,12 +104,12 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
