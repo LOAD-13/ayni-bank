@@ -47,7 +47,7 @@ Gherkin sin cambiarle el sentido.
 
 | Componente | Lenguaje | Unitarias e integración | Aceptación | Cobertura |
 |---|---|---|---|---|
-| identity · core-banking · notification · gateway | Java 21 · Spring Boot 3.5 | JUnit 5, Mockito, AssertJ, Spring Test, Testcontainers, ArchUnit 1.3 | Cucumber 7.22 | JaCoCo 0.8.12 |
+| identity · core-banking · notification · gateway | Java 21 · Spring Boot 4.0 | JUnit 6, Mockito, AssertJ, Spring Test, Testcontainers 2, ArchUnit 1.4 | Cucumber 7.34 | JaCoCo 0.8.14 |
 | kyc | Python 3.12 · FastAPI | pytest 8.3, httpx (`TestClient`); ruff y mypy `--strict` | Gherkin de referencia (`tests/onboarding_kyc.feature`) | pytest-cov 5.0 |
 | web | TypeScript · Next.js 15.5 · React 19 | Vitest 3.2, Testing Library | Playwright 1.62 + axe-core 4.13 | V8 (Vitest) |
 
