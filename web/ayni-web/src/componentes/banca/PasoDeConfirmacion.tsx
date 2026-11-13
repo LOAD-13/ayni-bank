@@ -85,7 +85,7 @@ export function PasoDeConfirmacion({
           maxLength={6}
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          className="min-h-[48px] rounded-[12px] border border-gris-300 px-4 text-center text-[22px] tracking-[0.4em] text-gris-900 outline-none focus:border-azul-600"
+          className="min-h-[48px] rounded-[12px] border border-gris-300 px-4 text-center text-[22px] tracking-[0.4em] text-gris-900"
         />
         <div className="flex flex-col gap-3 sm:flex-row">
           <Boton type="submit" cargando={enviando} disabled={!completo}>
