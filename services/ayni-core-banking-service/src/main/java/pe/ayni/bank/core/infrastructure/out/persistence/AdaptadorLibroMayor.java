@@ -31,6 +31,8 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     private final AsientoJpaRepository asientos;
     private final UUID fondeoPen;
     private final UUID interesesPen;
+    private final UUID posicionPen;
+    private final UUID posicionUsd;
     private final boolean historialEnBase;
 
     /**
@@ -42,11 +44,15 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     AdaptadorLibroMayor(CuentaJpaRepository cuentas, AsientoJpaRepository asientos,
                         @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen,
                         @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen,
+                        @Value("${ayni.cuentas.posicion-cambiaria-pen}") UUID posicionPen,
+                        @Value("${ayni.cuentas.posicion-cambiaria-usd}") UUID posicionUsd,
                         @Value("${ayni.funciones.historial-en-base:true}") boolean historialEnBase) {
         this.cuentas = cuentas;
         this.asientos = asientos;
         this.fondeoPen = fondeoPen;
         this.interesesPen = interesesPen;
+        this.posicionPen = posicionPen;
+        this.posicionUsd = posicionUsd;
         this.historialEnBase = historialEnBase;
     }
 
@@ -87,6 +93,12 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
         }
         return buscarPorId(interesesPen).orElseThrow(() -> new IllegalStateException(
                 "Falta la cuenta tecnica de intereses: la siembra la migracion V5."));
+    }
+
+    @Override
+    public Cuenta cuentaDePosicionCambiaria(Moneda moneda) {
+        return buscarPorId(moneda == Moneda.PEN ? posicionPen : posicionUsd).orElseThrow(() ->
+                new IllegalStateException("Falta la posicion cambiaria en " + moneda + ": la siembra la migracion V13."));
     }
 
     @Override

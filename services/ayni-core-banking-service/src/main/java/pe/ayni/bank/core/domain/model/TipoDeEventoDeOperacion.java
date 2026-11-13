@@ -35,5 +35,6 @@ public enum TipoDeEventoDeOperacion {
     /** HU-10: el titular actualizo el limite diario o las compras por internet. */
     CONTROL_TARJETA_ACTUALIZADO,
     /** HU-10: un consumo con tarjeta fue aprobado y cargado en la cuenta. */
-    CONSUMO_TARJETA_REALIZADO
+    CONSUMO_TARJETA_REALIZADO,
+    CONVERSION_REALIZADA
 }
