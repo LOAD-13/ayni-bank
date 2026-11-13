@@ -52,6 +52,7 @@ final class ComprobanteEnPdf {
             case TRANSFERENCIA -> "Constancia de transferencia";
             case DEPOSITO_SIMULADO -> "Constancia de deposito";
             case INTERES -> "Constancia de abono de intereses";
+            case CONVERSION -> "Constancia de cambio de moneda";
         },
                 FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13));
         titulo.setSpacingBefore(10);

@@ -370,6 +370,9 @@ class OperarCuentaServiceTest {
         final Cuenta intereses = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
                 new NumeroDeCuenta("00110000000003"), new Cci("99900101000000000309"), Moneda.PEN,
                 EstadoCuenta.ACTIVA, AHORA);
+        final Cuenta posicion = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
+                new NumeroDeCuenta("00110000000004"), new Cci("99900101000000000412"), Moneda.PEN,
+                EstadoCuenta.ACTIVA, AHORA);
 
         Libro() {
             porId.put(fondeo.id(), fondeo);
@@ -402,6 +405,11 @@ class OperarCuentaServiceTest {
         @Override
         public Cuenta cuentaDeIntereses(Moneda moneda) {
             return intereses;
+        }
+
+        @Override
+        public Cuenta cuentaDePosicionCambiaria(Moneda moneda) {
+            return posicion;
         }
 
         @Override

@@ -77,6 +77,9 @@ ayni:
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
     # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
     intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+    # Posiciones cambiarias del banco, contrapartida de las conversiones (HU-12). Las siembra V13.
+    posicion-cambiaria-pen: ca4b0000-0000-4000-8000-000000000001
+    posicion-cambiaria-usd: ca4b0000-0000-4000-8000-000000000002
   funciones:
     # Feature flags (12-Factor, factor III): se cambian por variable de entorno y un reinicio,
     # sin reconstruir la imagen. AYNI-319.
