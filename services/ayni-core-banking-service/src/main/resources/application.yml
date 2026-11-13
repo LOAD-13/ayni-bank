@@ -99,6 +99,13 @@ ayni:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
+  tipo-de-cambio:
+    # Fuente oficial del tipo de cambio (HU-12): API publica de series del BCRP, sin credenciales.
+    # La cache diaria y el respaldo al ultimo valor conocido van aparte (AYNI-267 y AYNI-268).
+    bcrp:
+      url: ${AYNI_BCRP_URL:https://estadisticas.bcrp.gob.pe/estadisticas/series/api}
+      timeout-de-conexion: 2s
+      timeout-de-lectura: 5s
   camara:
     # Camara de compensacion interbancaria (HU-11). En el entorno academico es el simulador
     # que vive en este mismo servicio (CamaraSimuladaController) y cumple el contrato
