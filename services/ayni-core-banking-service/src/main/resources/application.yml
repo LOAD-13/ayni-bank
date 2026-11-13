@@ -104,6 +104,13 @@ ayni:
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
     # AHORRO_USD, sembrado por V1: la cuenta en dolares de HU-12.
     ahorro-dolares: ${AYNI_PRODUCTO_AHORRO_USD:2}
+  tipo-de-cambio:
+    # Fuente oficial del tipo de cambio (HU-12): API publica de series del BCRP, sin credenciales.
+    # La cache diaria y el respaldo al ultimo valor conocido van aparte (AYNI-267 y AYNI-268).
+    bcrp:
+      url: ${AYNI_BCRP_URL:https://estadisticas.bcrp.gob.pe/estadisticas/series/api}
+      timeout-de-conexion: 2s
+      timeout-de-lectura: 5s
   camara:
     # Camara de compensacion interbancaria (HU-11). En el entorno academico es el simulador
     # que vive en este mismo servicio (CamaraSimuladaController) y cumple el contrato
