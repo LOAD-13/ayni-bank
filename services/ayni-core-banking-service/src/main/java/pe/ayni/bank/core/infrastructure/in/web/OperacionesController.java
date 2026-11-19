@@ -260,13 +260,14 @@ public class OperacionesController {
 
     public record ComprobanteDto(String movimientoId, String tipo, String importe, String moneda,
                                  String cuentaOrigen, String cuentaDestino, String concepto,
-                                 String registradoEn, String saldoDisponible) {
+                                 String registradoEn, String saldoDisponible, String sentido) {
 
         static ComprobanteDto desde(Comprobante c) {
             return new ComprobanteDto(c.movimientoId().toString(), c.tipo().name(),
                     c.importe().importe().toPlainString(), c.importe().moneda().name(),
                     c.cuentaOrigen(), c.cuentaDestino(), c.concepto(),
-                    c.registradoEn().toString(), c.saldoDisponible().importe().toPlainString());
+                    c.registradoEn().toString(), c.saldoDisponible().importe().toPlainString(),
+                    c.sentido().name());
         }
     }
 }
