@@ -66,6 +66,7 @@ export function PasoDeConfirmacion({
         <p
           id={idError}
           role="alert"
+          aria-live="assertive"
           className="mt-4 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}

@@ -60,7 +60,7 @@ export function DescargarComprobante({ movimientoId, variante = "boton" }: Props
             : "Comprobante"}
       </button>
       {error && (
-        <span role="alert" className="text-caption text-error">
+        <span role="alert" aria-live="assertive" className="text-caption text-error">
           No pudimos descargarlo. Inténtalo de nuevo.
         </span>
       )}

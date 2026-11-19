@@ -109,7 +109,7 @@ export default function PaginaDeMovimientos() {
       </header>
 
       {estado.tipo === "cargando" ? (
-        <div role="status" className="flex flex-col gap-6">
+        <div role="status" aria-live="polite" className="flex flex-col gap-6">
           <div className="h-72 animate-pulse rounded-[20px] border border-azul-200 bg-blanco" />
           <div className="h-96 animate-pulse rounded-[20px] border border-azul-200 bg-blanco" />
           <span className="sr-only">Cargando tus movimientos…</span>
@@ -130,6 +130,7 @@ export default function PaginaDeMovimientos() {
       ) : estado.tipo === "error" ? (
         <section
           role="alert"
+          aria-live="assertive"
           className="flex gap-4 rounded-[20px] border border-dorado-500 bg-dorado-100/60 p-6"
         >
           <span

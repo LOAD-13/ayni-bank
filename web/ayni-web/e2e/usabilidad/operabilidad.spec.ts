@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-import { enfocado, foco, tabularHasta } from "./apoyo";
+import { conSesion, enfocado, foco, tabularHasta } from "./apoyo";
 
 /**
  * ISO/IEC 25010 · Operabilidad.
@@ -97,7 +97,10 @@ test.describe("Usabilidad · Operabilidad", () => {
     test.skip(info.project.name !== "movil", "el tamaño del objetivo se mide en el celular");
 
     const pequenos: string[] = [];
-    for (const ruta of ["/", "/ingresar", "/registro"]) {
+    // La banca también (hallazgo AC-02): ahí estaban los botones «Comprobante» y «Saltar».
+    await conSesion(page);
+    await conMovimientos(page);
+    for (const ruta of ["/", "/ingresar", "/registro", ...BANCA]) {
       await page.goto(ruta);
       const medidas = await page.evaluate(() => {
         const controles = document.querySelectorAll<HTMLElement>(
@@ -150,7 +153,66 @@ test.describe("Usabilidad · Operabilidad", () => {
 
     expect(pequenos, "controles por debajo de 24 × 24 px (WCAG 2.5.8)").toEqual([]);
   });
+
+  test("en el celular, con el texto al 200 % nada se sale por los lados", async ({
+    page,
+  }, info) => {
+    // Hallazgo AC-01 (WCAG 1.4.4): la letra raíz de 16 a 32 px, como en la auditoría.
+    test.skip(info.project.name !== "movil", "el desbordamiento se medía en el celular");
+    await conSesion(page);
+    await conMovimientos(page);
+
+    const desbordes: string[] = [];
+    for (const ruta of BANCA) {
+      await page.goto(ruta);
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+      await page.waitForTimeout(200);
+      const { contenido, ventana } = await page.evaluate(() => ({
+        contenido: document.documentElement.scrollWidth,
+        ventana: window.innerWidth,
+      }));
+      if (contenido > ventana) desbordes.push(`${ruta}: ${contenido} px en ${ventana} px`);
+    }
+
+    expect(desbordes, "contenido más ancho que la ventana con el texto al 200 %").toEqual([]);
+  });
 });
+
+const BANCA = [
+  "/banca",
+  "/banca/transferir",
+  "/banca/movimientos",
+  "/banca/movimientos/m1",
+  "/banca/cuentas",
+];
+
+/** Un movimiento con su detalle, para que las listas y el detalle tengan contenido real. */
+async function conMovimientos(page: Page) {
+  const movimiento = {
+    movimientoId: "m1",
+    tipo: "CARGO",
+    importe: "1250.50",
+    moneda: "PEN",
+    concepto: "Alquiler de noviembre · a **********0061",
+    registradoEn: new Date().toISOString(),
+    saldoPosterior: "3194.60",
+  };
+  await page.addInitScript(() => localStorage.setItem("ayni.primera-operacion", "1"));
+  await page.route("**/api/v1/cuentas/mia/movimientos**", (r) => r.fulfill({ json: [movimiento] }));
+  await page.route("**/api/v1/movimientos/m1", (r) =>
+    r.fulfill({
+      json: {
+        ...movimiento,
+        tipo: "TRANSFERENCIA",
+        cuentaOrigen: "**********0030",
+        cuentaDestino: "**********0061",
+        saldoDisponible: "3194.60",
+        sentido: "CARGO",
+      },
+    }),
+  );
+}
 
 type Zona = { x: number; y: number; width: number; height: number };
 

@@ -240,6 +240,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       {errorDeSubida && (
         <p
           role="alert"
+          aria-live="assertive"
           className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />

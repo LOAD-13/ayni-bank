@@ -65,6 +65,7 @@ export default function PaginaDeCuentas() {
       {estado.tipo === "cargando" ? (
         <div
           role="status"
+          aria-live="polite"
           className="h-80 animate-pulse rounded-[20px] border border-azul-200 bg-blanco"
         >
           <span className="sr-only">Cargando tu cuenta…</span>
@@ -85,6 +86,7 @@ export default function PaginaDeCuentas() {
       ) : estado.tipo === "error" ? (
         <section
           role="alert"
+          aria-live="assertive"
           className="rounded-[20px] border border-dorado-500 bg-dorado-100/60 p-6"
         >
           <p className="text-body font-bold text-dorado-800">No pudimos cargar tu cuenta</p>

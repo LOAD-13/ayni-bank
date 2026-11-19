@@ -188,6 +188,7 @@ export default function PaginaDeTransferencia() {
       {error && !confirmacion && (
         <p
           role="alert"
+          aria-live="assertive"
           className="mt-5 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}
@@ -289,7 +290,7 @@ function errorDe(
   const importe = normalizarImporte(valor);
   if (!importe) return "Escribe un importe válido, con hasta dos decimales.";
   // Qué pasó y cómo corregirlo, con la cifra: «saldo insuficiente» a secas obliga a ir al
-  // panel a mirar cuánto hay. CampoDeTexto lo anuncia con role="alert".
+  // panel a mirar cuánto hay. CampoDeTexto lo anuncia con role="alert" aria-live="assertive".
   if (saldo && superaA(importe, saldo)) {
     return `Saldo insuficiente: tienes ${formatearImporte(saldo)} disponibles. Escribe un importe igual o menor.`;
   }

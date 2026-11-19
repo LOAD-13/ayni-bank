@@ -52,7 +52,11 @@ export function FormularioDeRecuperacion() {
           <MailCheck aria-hidden="true" className="h-6 w-6" />
         </span>
         <h2 className="mt-5 text-[28px] leading-tight font-bold text-azul-700">Revisa tu correo</h2>
-        <p role="status" className="mt-3 text-[14.5px] leading-[1.6] text-gris-700">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-3 text-[14.5px] leading-[1.6] text-gris-700"
+        >
           Si el correo corresponde a una cuenta de Ayni, te enviamos un enlace para cambiar tu
           contraseña. Vence en 30 minutos y sirve una sola vez.
         </p>
@@ -82,6 +86,7 @@ export function FormularioDeRecuperacion() {
         <p
           id={idError}
           role="alert"
+          aria-live="assertive"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />

@@ -122,7 +122,7 @@ export function AsistenteDeBienvenida() {
           <button
             type="button"
             onClick={cerrar}
-            className="text-small font-semibold text-gris-700 hover:underline"
+            className="-ml-3 min-h-[44px] px-3 text-small font-semibold text-gris-700 hover:underline"
           >
             Saltar
           </button>

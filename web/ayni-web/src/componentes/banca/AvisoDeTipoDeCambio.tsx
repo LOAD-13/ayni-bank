@@ -37,6 +37,7 @@ export function AvisoDeTipoDeCambio({ enCache, obtenidoEn, id }: Props) {
     <div
       id={id}
       role="status"
+      aria-live="polite"
       className="flex items-start gap-3 rounded-[12px] border border-dorado-300 bg-dorado-100 p-4 text-small text-dorado-800"
     >
       <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-aviso" />
