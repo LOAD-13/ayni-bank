@@ -284,7 +284,8 @@ public class OperarCuentaService implements OperarCuentaUseCase {
                 pago ? propia : contraparte,
                 pago ? contraparte : propia,
                 propio.concepto(), propio.registradoEn(),
-                libro.saldoDe(delTitular.id(), delTitular.moneda()));
+                libro.saldoDe(delTitular.id(), delTitular.moneda()),
+                pago ? TipoDeAsiento.CARGO : TipoDeAsiento.ABONO);
     }
 
     /** Las cuentas tecnicas delatan el tipo: fondeo es un deposito; intereses, una capitalizacion. */

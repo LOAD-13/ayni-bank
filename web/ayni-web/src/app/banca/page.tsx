@@ -21,16 +21,19 @@ import { AsistenteDeBienvenida } from "@/componentes/banca/AsistenteDeBienvenida
 import { PanelDeRendimiento } from "@/componentes/banca/PanelDeRendimiento";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { PISTAS_DEL_PANEL } from "@/componentes/banca/pistas";
-import { TablaDeMovimientos } from "@/componentes/banca/TablaDeMovimientos";
+import { ListaDeMovimientos } from "@/componentes/banca/ListaDeMovimientos";
+import { TarjetaAyni } from "@/componentes/landing/TarjetaAyni";
 import {
   consultarMiCuenta,
   consultarMovimientos,
   consultarRendimiento,
+  consultarTarjeta,
   consultarTitular,
   ErrorDeApi,
   type CuentaAbierta,
   type Movimiento,
   type RendimientoDeCuenta,
+  type TarjetaVirtual,
   type Titular,
 } from "@/lib/api";
 import { formatearImporte } from "@/lib/formato";
@@ -42,6 +45,7 @@ type Estado =
       cuenta: CuentaAbierta;
       movimientos: Movimiento[];
       rendimiento: RendimientoDeCuenta | null;
+      tarjeta: TarjetaVirtual | null;
     }
   | { tipo: "sin-cuenta" }
   | { tipo: "error"; mensaje: string };
@@ -51,9 +55,7 @@ type Estado =
  * del diseño: saludo, saldo total con la cuenta y su TREA, tarjeta de débito, rendimiento,
  * accesos rápidos y últimos movimientos.
  *
- * Solo se muestra lo que existe de verdad. La tarjeta de débito (HU-09) y el tipo de cambio
- * (HU-12) aún no se emiten: la tarjeta aparece como «próximamente» y el rendimiento es una
- * estimación con la TREA vigente, rotulada como tal, no un abono.
+ * Solo se muestra lo que existe de verdad: la tarjeta con sus cuatro últimos dígitos y el rendimiento estimado con la TREA vigente, rotulado como tal.
  */
 export default function PanelDeBanca() {
   const { token, usuarioId } = useSesion();
@@ -67,12 +69,13 @@ export default function PanelDeBanca() {
     try {
       const vigente = await token();
       // El rendimiento no bloquea el panel: si su consulta falla, se muestra la estimacion.
-      const [cuenta, movimientos, rendimiento] = await Promise.all([
+      const [cuenta, movimientos, rendimiento, tarjeta] = await Promise.all([
         consultarMiCuenta(vigente),
         consultarMovimientos(vigente, 10),
         consultarRendimiento(vigente).catch(() => null),
+        consultarTarjeta(vigente).catch(() => null),
       ]);
-      setEstado({ tipo: "lista", cuenta, movimientos, rendimiento });
+      setEstado({ tipo: "lista", cuenta, movimientos, rendimiento, tarjeta });
       setActualizado(new Date());
     } catch (fallo) {
       if (fallo instanceof ErrorDeApi && fallo.problema.codigo === "SIN_CUENTA") {
@@ -143,7 +146,10 @@ export default function PanelDeBanca() {
               alternar={() => setOculto((o) => !o)}
               reintentar={() => void cargar()}
             />
-            <TarjetaDeDebito titular={nombre ?? null} />
+            <TarjetaDeDebito
+              tarjeta={estado.tipo === "lista" ? estado.tarjeta : null}
+              cargando={estado.tipo !== "lista"}
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -171,10 +177,10 @@ export default function PanelDeBanca() {
               Icono={PiggyBank}
             />
             <AccesoRapido
-              href="#movimientos"
+              href="/banca/movimientos"
               titulo="Movimientos"
               pista={PISTAS_DEL_PANEL.movimientos}
-              detalle="Cargos y abonos de tu cuenta"
+              detalle="Historial, detalle y gráficas del mes"
               Icono={ReceiptText}
             />
           </div>
@@ -188,9 +194,15 @@ export default function PanelDeBanca() {
               <h2 id="titulo-movimientos" className="text-h3 font-bold text-azul-900">
                 Últimos movimientos
               </h2>
+              <Link
+                href="/banca/movimientos"
+                className="flex min-h-[44px] items-center gap-1 text-small font-semibold text-azul-600 hover:underline"
+              >
+                Ver todos <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
             </div>
             {estado.tipo === "lista" ? (
-              <TablaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
+              <ListaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
             ) : (
               <p role="status" className="px-6 pb-6 text-body text-gris-700">
                 {estado.tipo === "error"
@@ -314,41 +326,43 @@ function SaldoTotal({
   );
 }
 
-/** La tarjeta del lienzo. Aún no se emite (HU-09): sin número ni vigencia inventados. */
-function TarjetaDeDebito({ titular }: { titular: string | null }) {
+/** La tarjeta de débito virtual (HU-09): solo sus cuatro últimos dígitos, o cómo emitirla. */
+function TarjetaDeDebito({
+  tarjeta,
+  cargando,
+}: {
+  tarjeta: TarjetaVirtual | null;
+  cargando: boolean;
+}) {
   return (
     <section aria-label="Tarjeta de débito" className="flex flex-col gap-3">
-      <div className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-azul-900 via-azul-800 to-azul-600 p-6 text-blanco shadow-lg">
-        <div className="flex items-center justify-between">
-          <span className="text-body font-bold tracking-wide">AYNI Bank</span>
-          <span className="rounded-full border border-blanco/40 px-3 py-0.5 text-caption font-semibold">
-            Próximamente
-          </span>
-        </div>
-        <span
-          aria-hidden="true"
-          className="mt-6 block h-9 w-12 rounded-md bg-gradient-to-br from-dorado-400 to-dorado-700"
+      {tarjeta ? (
+        <TarjetaAyni
+          titular="DÉBITO VIRTUAL"
+          ultimos4={tarjeta.ultimos4}
+          inicio="4999"
+          vencimiento={tarjeta.vencimiento}
         />
-        <p className="mt-5 font-mono text-h3 tracking-[0.25em] text-blanco/90">
-          •••• •••• •••• ••••
-        </p>
-        <div className="mt-4 flex justify-between text-caption uppercase text-blanco/70">
-          <span>
-            Titular
-            <span className="block text-small font-semibold normal-case text-blanco">
-              {titular ?? "—"}
-            </span>
-          </span>
-          <span className="text-right">
-            Débito
-            <span className="block text-small font-semibold normal-case text-blanco">Virtual</span>
-          </span>
-        </div>
-      </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="aspect-[1.586] w-full max-w-[300px] rounded-[18px] border border-dashed border-azul-300 bg-blanco"
+        />
+      )}
       <p className="text-small text-gris-700">
-        Tu tarjeta de débito virtual llega en la siguiente entrega. Por seguridad solo mostraremos
-        sus últimos 4 dígitos.
+        {cargando
+          ? "Cargando tu tarjeta…"
+          : tarjeta
+            ? `Débito virtual · vence ${tarjeta.vencimiento} · ${tarjeta.estado === "ACTIVA" ? "Activa" : "Congelada"}`
+            : "Tu tarjeta de débito virtual se emite al abrirse tu cuenta; en unos segundos estará aquí."}
       </p>
+      <Link
+        href="/banca/tarjeta"
+        className="inline-flex min-h-[44px] w-fit items-center gap-1 text-small font-semibold text-azul-600 hover:underline"
+      >
+        {tarjeta ? "Gestionar tu tarjeta" : "Ver tu tarjeta"}
+        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+      </Link>
     </section>
   );
 }

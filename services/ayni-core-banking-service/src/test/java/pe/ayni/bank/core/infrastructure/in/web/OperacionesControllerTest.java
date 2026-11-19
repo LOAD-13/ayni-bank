@@ -65,7 +65,8 @@ class OperacionesControllerTest {
     private Comprobante comprobante() {
         return new Comprobante(UUID.randomUUID(), TipoDeMovimiento.TRANSFERENCIA,
                 Dinero.de("150.00", Moneda.PEN), "**********0030", "**********0031",
-                "Cena · a **********0031", AHORA, Dinero.de("850.00", Moneda.PEN));
+                "Cena · a **********0031", AHORA, Dinero.de("850.00", Moneda.PEN),
+                TipoDeAsiento.CARGO);
     }
 
     @Test
@@ -211,6 +212,7 @@ class OperacionesControllerTest {
                 .andExpect(header().string("Location", "/api/v1/movimientos/" + c.movimientoId()))
                 .andExpect(jsonPath("$.importe").value("150.00"))
                 .andExpect(jsonPath("$.saldoDisponible").value("850.00"))
+                .andExpect(jsonPath("$.sentido").value("CARGO"))
                 .andExpect(jsonPath("$.cuentaDestino").value("**********0031"));
 
         assertThat(registro.counter("ayni.operaciones", "tipo", "TRANSFERENCIA", "resultado", "ACEPTADA")
