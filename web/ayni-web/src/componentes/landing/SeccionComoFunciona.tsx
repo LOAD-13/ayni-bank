@@ -30,7 +30,7 @@ const HECHOS = [
 
 export function SeccionComoFunciona() {
   return (
-    <section className="bg-azul-050">
+    <section id="como-funciona" className="scroll-mt-6 bg-azul-050">
       <div className="mx-auto max-w-[1440px] px-6 py-20 lg:px-16 lg:py-24">
         <p className="flex items-center gap-2.5">
           <span aria-hidden="true" className="h-2 w-2 rounded-full bg-dorado-500" />

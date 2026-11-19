@@ -15,6 +15,17 @@ const RUTAS = [
   "/registro",
   "/ingresar",
   "/pendiente",
+  // Páginas públicas de la landing (AYNI-342).
+  "/ayuda",
+  "/canales",
+  "/tarifario",
+  "/transparencia",
+  "/nosotros",
+  "/trabaja-con-nosotros",
+  "/prensa",
+  "/blog",
+  "/blog/tea-o-trea-que-comparar",
+  "/libro-de-reclamaciones",
   // Sin `solicitudId` a propósito: es el estado con el que responde cualquier visita
   // directa a esta ruta, y tiene que ser tan accesible como el resto.
   "/registro/dni-anverso",

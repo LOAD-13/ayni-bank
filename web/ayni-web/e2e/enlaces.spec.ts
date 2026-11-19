@@ -47,14 +47,22 @@ test.describe("Enlaces", () => {
   });
 
   test("ningún destino devuelve 404", async ({ page, request }) => {
-    await page.goto("/");
-    const destinos = await page
-      .locator("a[href^='/']")
-      .evaluateAll((nodos) => [...new Set(nodos.map((n) => n.getAttribute("href") ?? ""))]);
-
-    for (const destino of destinos) {
-      const respuesta = await request.get(destino);
-      expect(respuesta.status(), `${destino} responde ${respuesta.status()}`).toBe(200);
+    const vistos = new Set<string>();
+    // La portada y las páginas públicas a las que lleva, un nivel más abajo.
+    for (const origen of ["/", "/ayuda", "/canales", "/nosotros", "/prensa", "/blog"]) {
+      await page.goto(origen);
+      const destinos = await page
+        .locator("a[href^='/']")
+        .evaluateAll((nodos) => nodos.map((n) => (n.getAttribute("href") ?? "").split("#")[0]));
+      for (const destino of destinos) {
+        if (!destino || vistos.has(destino)) continue;
+        vistos.add(destino);
+        const respuesta = await request.get(destino);
+        expect(
+          respuesta.status(),
+          `${destino} (desde ${origen}) responde ${respuesta.status()}`,
+        ).toBe(200);
+      }
     }
   });
 
