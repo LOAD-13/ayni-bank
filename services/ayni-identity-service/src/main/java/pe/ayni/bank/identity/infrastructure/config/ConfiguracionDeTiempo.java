@@ -1,6 +1,8 @@
 package pe.ayni.bank.identity.infrastructure.config;
 
+import java.security.SecureRandom;
 import java.time.Clock;
+import java.util.random.RandomGenerator;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,5 +23,14 @@ public class ConfiguracionDeTiempo {
     @Bean
     public Clock reloj() {
         return Clock.systemUTC();
+    }
+
+    /**
+     * El azar entra igual que el tiempo (AYNI-321): criptográficamente seguro en producción y fijo
+     * en una prueba, que así puede comprobar el código exacto que se envió.
+     */
+    @Bean
+    public RandomGenerator aleatorio() {
+        return new SecureRandom();
     }
 }

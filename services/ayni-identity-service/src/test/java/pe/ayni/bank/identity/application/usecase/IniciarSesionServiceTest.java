@@ -107,7 +107,8 @@ class IniciarSesionServiceTest {
         metodosSegundoFactor = new MetodosSegundoFactorFalsos();
 
         GenerarDesafioCodigoService generarDesafioCodigo = new GenerarDesafioCodigoService(
-                desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso());
+                desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso(),
+                Clock.fixed(AHORA, ZoneOffset.UTC), new java.security.SecureRandom(), null);
 
         servicio = new IniciarSesionService(usuarios, segundosFactores, controles, sesiones,
                 cifrador, totp, emisor, auditoria, notificador,
@@ -884,7 +885,8 @@ class IniciarSesionServiceTest {
                 + "verificándose por TOTP")
         void verificarSegundoFactorSinRepositorioDeOtpUsaTotp() {
             GenerarDesafioCodigoService generarDesafioCodigo = new GenerarDesafioCodigoService(
-                    desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso());
+                    desafiosPorCodigo, usuarios, new NotificadorDeSegundoFactorFalso(),
+                Clock.fixed(AHORA, ZoneOffset.UTC), new java.security.SecureRandom(), null);
             IniciarSesionService servicioSinOtp = new IniciarSesionService(usuarios, segundosFactores,
                     controles, sesiones, cifrador, totp, emisor, auditoria, notificador,
                     Clock.fixed(AHORA, ZoneOffset.UTC), metodosSegundoFactor, generarDesafioCodigo);
