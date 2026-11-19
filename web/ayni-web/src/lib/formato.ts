@@ -81,12 +81,21 @@ export function dividirHalfEven(dividendo: bigint, divisor: bigint): bigint {
 }
 
 /** 1250n → «12.50». */
-function deCentimos(centimos: bigint): string {
+export function deCentimos(centimos: bigint): string {
   const cien = BigInt(100);
   const negativo = centimos < BigInt(0);
   const absoluto = negativo ? -centimos : centimos;
   const decimales = String(absoluto % cien).padStart(2, "0");
   return `${negativo ? "-" : ""}${absoluto / cien}.${decimales}`;
+}
+
+/** «12.5» → 1250n, sin coma flotante; más de dos decimales se redondean con HALF_EVEN. */
+export function centimosDe(texto: string): bigint {
+  const d = leerDecimal(texto);
+  if (!d) throw new RangeError(`Importe no válido: «${texto}»`);
+  return d.escala <= 2
+    ? d.unidades * potenciaDeDiez(2 - d.escala)
+    : dividirHalfEven(d.unidades, potenciaDeDiez(d.escala - 2));
 }
 
 /**

@@ -481,12 +481,14 @@ export interface Movimiento {
   moneda: string;
   concepto: string;
   registradoEn: string;
+  /** Saldo tras el movimiento; solo llega en las búsquedas con filtro o página. */
+  saldoPosterior?: string | null;
 }
 
 /** Lo que devuelve una operación terminada. Las cuentas llegan enmascaradas. */
 export interface Comprobante {
   movimientoId: string;
-  tipo: "TRANSFERENCIA" | "DEPOSITO_SIMULADO";
+  tipo: "TRANSFERENCIA" | "DEPOSITO_SIMULADO" | "INTERES" | "CONVERSION";
   importe: string;
   moneda: string;
   cuentaOrigen: string;
@@ -494,6 +496,8 @@ export interface Comprobante {
   concepto: string;
   registradoEn: string;
   saldoDisponible: string;
+  /** Para quien lo pide: CARGO si el dinero salió, ABONO si entró. */
+  sentido?: "CARGO" | "ABONO";
 }
 
 /**
@@ -552,6 +556,30 @@ export async function consultarRendimiento(token: string): Promise<RendimientoDe
 
 export async function consultarMovimientos(token: string, limite = 10): Promise<Movimiento[]> {
   return pedir<Movimiento[]>(`/api/v1/cuentas/mia/movimientos?limite=${limite}`, undefined, {
+    token,
+  });
+}
+
+/** Una página del historial desde una fecha (AAAA-MM-DD), con el saldo tras cada movimiento. */
+export async function buscarMovimientos(
+  token: string,
+  desde: string,
+  pagina: number,
+  limite = 50,
+): Promise<Movimiento[]> {
+  return pedir<Movimiento[]>(
+    `/api/v1/cuentas/mia/movimientos?desde=${desde}&pagina=${pagina}&limite=${limite}`,
+    undefined,
+    { token },
+  );
+}
+
+/** HU-07: el detalle de un movimiento propio. 404 si no existe o es de otra persona. */
+export async function consultarMovimiento(
+  token: string,
+  movimientoId: string,
+): Promise<Comprobante> {
+  return pedir<Comprobante>(`/api/v1/movimientos/${encodeURIComponent(movimientoId)}`, undefined, {
     token,
   });
 }
