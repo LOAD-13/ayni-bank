@@ -9,7 +9,7 @@ import { DescargarComprobante } from "@/componentes/banca/DescargarComprobante";
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { consultarMovimiento, ErrorDeApi, type Comprobante } from "@/lib/api";
 import { formatearFecha, formatearImporte } from "@/lib/formato";
-import { categoriaDe, conceptoLegible, cuentaLegible } from "@/lib/movimientos";
+import { categoriaDe, conceptoLegible } from "@/lib/movimientos";
 
 const OPERACION: Record<Comprobante["tipo"], string> = {
   TRANSFERENCIA: "Transferencia",
@@ -62,6 +62,7 @@ export default function DetalleDeMovimiento() {
       {estado.tipo === "cargando" ? (
         <div
           role="status"
+          aria-live="polite"
           className="h-[420px] animate-pulse rounded-[20px] border border-azul-200 bg-blanco"
         >
           <span className="sr-only">Cargando el movimiento…</span>
@@ -77,6 +78,7 @@ export default function DetalleDeMovimiento() {
       ) : estado.tipo === "error" ? (
         <section
           role="alert"
+          aria-live="assertive"
           className="rounded-[20px] border border-dorado-500 bg-dorado-100/60 p-6"
         >
           <p className="text-body font-bold text-dorado-800">No pudimos cargar el movimiento</p>
@@ -106,8 +108,8 @@ function Detalle({ movimiento: m }: { movimiento: Comprobante }) {
     ["Operación", operacion],
     // La categoría solo añade algo cuando no repite la operación («A otro banco», «Tarjeta»).
     ...(categoria !== operacion ? [["Categoría", categoria] as [string, string]] : []),
-    ["Desde", cuentaLegible(m.cuentaOrigen)],
-    ["Hacia", cuentaLegible(m.cuentaDestino)],
+    ["Desde", conceptoLegible(m.cuentaOrigen)],
+    ["Hacia", conceptoLegible(m.cuentaDestino)],
   ];
 
   return (
