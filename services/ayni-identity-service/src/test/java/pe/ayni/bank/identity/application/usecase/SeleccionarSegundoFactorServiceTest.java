@@ -27,7 +27,9 @@ class SeleccionarSegundoFactorServiceTest {
     void setUp() {
         repositorio = new RepositorioEnMemoria();
         generadorTotp = new GeneradorTotpEnMemoria();
-        servicio = new SeleccionarSegundoFactorService(repositorio, generadorTotp);
+        servicio = new SeleccionarSegundoFactorService(repositorio, generadorTotp,
+                java.time.Clock.fixed(java.time.Instant.parse("2026-11-19T15:00:00Z"), java.time.ZoneOffset.UTC),
+                null, null, null, null);
     }
 
     @Test
