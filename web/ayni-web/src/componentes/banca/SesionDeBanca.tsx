@@ -52,7 +52,7 @@ export function SesionDeBanca({ children }: { children: ReactNode }) {
 
   if (!usuarioId) {
     return (
-      <p role="status" className="p-10 text-body text-gris-700">
+      <p role="status" aria-live="polite" className="p-10 text-body text-gris-700">
         Comprobando tu sesión…
       </p>
     );

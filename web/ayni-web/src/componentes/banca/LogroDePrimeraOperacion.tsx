@@ -26,6 +26,7 @@ export function LogroDePrimeraOperacion() {
   return (
     <div
       role="status"
+      aria-live="polite"
       className="flex gap-4 rounded-[16px] border border-dorado-500 bg-dorado-100 p-5"
     >
       <span

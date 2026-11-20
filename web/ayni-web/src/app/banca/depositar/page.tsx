@@ -76,6 +76,7 @@ export default function PaginaDeDeposito() {
       {error && (
         <p
           role="alert"
+          aria-live="assertive"
           className="mt-5 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}

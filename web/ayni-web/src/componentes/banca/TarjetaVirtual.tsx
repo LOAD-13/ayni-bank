@@ -147,6 +147,7 @@ export function TarjetaVirtual({ alCargar }: Props) {
         {error && (
           <p
             role="alert"
+            aria-live="assertive"
             className="rounded-lg border border-error bg-blanco p-3 text-small text-error"
           >
             {error}

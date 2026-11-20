@@ -131,6 +131,7 @@ export default function PanelDeBanca() {
       {estado.tipo === "cargando" && !actualizado ? (
         <div
           role="status"
+          aria-live="polite"
           className="h-40 animate-pulse rounded-[20px] border border-azul-200 bg-blanco"
         >
           <span className="sr-only">Cargando tu resumen…</span>
@@ -204,7 +205,7 @@ export default function PanelDeBanca() {
             {estado.tipo === "lista" ? (
               <ListaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
             ) : (
-              <p role="status" className="px-6 pb-6 text-body text-gris-700">
+              <p role="status" aria-live="polite" className="px-6 pb-6 text-body text-gris-700">
                 {estado.tipo === "error"
                   ? "No pudimos cargar tus movimientos. Inténtalo de nuevo en unos minutos."
                   : "Cargando…"}
@@ -266,6 +267,7 @@ function SaldoTotal({
       {estado.tipo === "error" ? (
         <div
           role="alert"
+          aria-live="assertive"
           className="mt-5 flex gap-4 rounded-xl border border-dorado-500 bg-dorado-100/60 p-5"
         >
           <span

@@ -155,6 +155,7 @@ export function PasoDeSegundoFactor({
             <p
               id={idError}
               role="alert"
+              aria-live="assertive"
               className="mt-5 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
             >
               <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -163,7 +164,11 @@ export function PasoDeSegundoFactor({
           )}
 
           {mensajeReenvio && (
-            <p role="status" className="mt-3 text-[13.5px] font-semibold text-verde-700">
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-3 text-[13.5px] font-semibold text-verde-700"
+            >
               {mensajeReenvio}
             </p>
           )}

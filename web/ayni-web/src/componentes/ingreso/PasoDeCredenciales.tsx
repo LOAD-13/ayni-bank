@@ -58,7 +58,11 @@ export function PasoDeCredenciales({
       </p>
 
       {pausado && (
-        <div role="alert" className="mt-6 rounded-[14px] border border-error/30 bg-error/5 p-5">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mt-6 rounded-[14px] border border-error/30 bg-error/5 p-5"
+        >
           <p className="flex items-center gap-2.5 text-[14px] font-bold text-error">
             <Lock aria-hidden="true" className="h-4 w-4 shrink-0" />
             Ingreso pausado por seguridad
@@ -75,6 +79,7 @@ export function PasoDeCredenciales({
         <p
           id={idError}
           role="alert"
+          aria-live="assertive"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
