@@ -47,8 +47,8 @@ export default function QuienesSomos() {
         <div className="grid gap-8 lg:grid-cols-2">
           <p className="max-w-[62ch] text-[17px] leading-[1.7] text-gris-700">
             En el Perú, abrir una cuenta todavía exige ir a una agencia en horario bancario, y las
-            cuentas de ahorro rinden alrededor de 0.5 % al año mientras la comisión de mantenimiento
-            se come los saldos pequeños. Quien más necesita ahorrar es quien menos gana.
+            cuentas de ahorro rinden muy poco mientras la comisión de mantenimiento se come los
+            saldos pequeños. Quien más necesita ahorrar es quien menos gana.
           </p>
           <p className="max-w-[62ch] text-[17px] leading-[1.7] text-gris-700">
             Ayni da la vuelta a eso: una cuenta que se abre en minutos desde el navegador, que paga

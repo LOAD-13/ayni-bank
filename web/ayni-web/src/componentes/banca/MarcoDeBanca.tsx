@@ -46,6 +46,13 @@ export function MarcoDeBanca({ children }: { children: ReactNode }) {
   const [nombre, setNombre] = useState<string | null>(null);
   const [saliendo, setSaliendo] = useState(false);
 
+  // En el celular el menú se desplaza de lado: la opción activa tiene que quedar a la vista.
+  useEffect(() => {
+    document
+      .querySelector('nav[aria-label="Banca por internet"] [aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [ruta]);
+
   useEffect(() => {
     consultarTitular(usuarioId)
       .then((titular) => setNombre(titular.nombreDePila))

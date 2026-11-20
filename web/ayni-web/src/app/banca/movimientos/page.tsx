@@ -56,7 +56,6 @@ export default function PaginaDeMovimientos() {
         todos.push(...ultima);
         pagina++;
       } while (ultima.length === POR_PAGINA && pagina < PAGINAS_MAXIMAS);
-      todos.sort((a, b) => b.registradoEn.localeCompare(a.registradoEn));
       setEstado({
         tipo: "lista",
         movimientos: todos,

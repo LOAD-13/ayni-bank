@@ -100,6 +100,21 @@ export function resumirPorMes(movimientos: Movimiento[], claves: string[]): Resu
   return [...meses.values()];
 }
 
+/**
+ * El saldo con el que cerró cada mes: el posterior al último movimiento del mes. Un mes sin
+ * movimientos arrastra el del anterior; antes del primero conocido no hay dato (`null`).
+ */
+export function saldosAlCierre(movimientos: Movimiento[], claves: string[]): (string | null)[] {
+  const ultimo = new Map<string, Movimiento>();
+  for (const m of movimientos) {
+    const mes = claveDeMes(m.registradoEn);
+    const previo = ultimo.get(mes);
+    if (m.saldoPosterior && (!previo || m.registradoEn > previo.registradoEn)) ultimo.set(mes, m);
+  }
+  let arrastre: string | null = null;
+  return claves.map((clave) => (arrastre = ultimo.get(clave)?.saldoPosterior ?? arrastre));
+}
+
 /** En qué se fue el dinero: los cargos sumados por categoría, de mayor a menor. */
 export function gastosPorCategoria(
   movimientos: Movimiento[],

@@ -8,6 +8,7 @@ import {
   gastosPorCategoria,
   nombreDeDia,
   resumirPorMes,
+  saldosAlCierre,
   ultimosMeses,
 } from "@/lib/movimientos";
 
@@ -54,6 +55,15 @@ describe("movimientos", () => {
     // 0.10 + 0.20 en coma flotante daría 0.30000000000000004.
     expect(noviembre.entradas).toBe(BigInt(30));
     expect(noviembre.salidas).toBe(BigInt(21050));
+    const conSaldo = [
+      { ...lista[0], saldoPosterior: "100.10" },
+      { ...lista[2], saldoPosterior: "50.00" },
+    ];
+    expect(saldosAlCierre(conSaldo, ["2026-10", "2026-11", "2026-12"])).toEqual([
+      null,
+      "50.00",
+      "50.00",
+    ]);
     expect(gastosPorCategoria(lista.slice(0, 4))).toEqual([
       { categoria: "Transferencia", centimos: BigInt(15050) },
       { categoria: "A otro banco", centimos: BigInt(6000) },
