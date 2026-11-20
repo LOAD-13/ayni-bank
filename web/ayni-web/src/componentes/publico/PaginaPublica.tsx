@@ -33,7 +33,7 @@ export function PaginaPublica({
           className="pointer-events-none absolute -top-40 right-[-10%] h-[520px] w-[520px] rounded-full bg-azul-500/25 blur-[90px]"
         />
         <BarraDeNavegacion />
-        <div className="relative mx-auto grid max-w-[1440px] items-end gap-10 px-6 pt-[128px] pb-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-16 lg:pt-[160px] lg:pb-20">
+        <div className="relative mx-auto grid max-w-[1440px] items-center gap-10 px-6 pt-[128px] pb-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-16 lg:pt-[160px] lg:pb-20">
           <div className="max-w-[760px]">
             <h1 className="text-[clamp(2.25rem,5vw,64px)] leading-[1.08] font-bold text-balance text-blanco">
               {titulo}
