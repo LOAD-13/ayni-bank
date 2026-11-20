@@ -584,6 +584,34 @@ export async function consultarMovimiento(
   });
 }
 
+/** Una hoja del libro de reclamaciones. Es pública: no lleva token. */
+export interface HojaDeReclamacion {
+  tipo: "RECLAMO" | "QUEJA";
+  nombre: string;
+  tipoDocumento: "DNI" | "CE";
+  numeroDocumento: string;
+  correo: string;
+  telefono: string;
+  bien: "PRODUCTO" | "SERVICIO";
+  descripcionDelBien: string;
+  montoReclamado: string;
+  detalle: string;
+  pedido: string;
+}
+
+export interface ConstanciaDeReclamacion {
+  codigo: string;
+  tipo: "RECLAMO" | "QUEJA";
+  registradaEn: string;
+  responderAntesDe: string;
+}
+
+export async function registrarReclamacion(
+  hoja: HojaDeReclamacion,
+): Promise<ConstanciaDeReclamacion> {
+  return pedir<ConstanciaDeReclamacion>("/api/v1/reclamaciones", hoja);
+}
+
 /**
  * Deposita dinero de prueba en la cuenta propia.
  *

@@ -119,6 +119,23 @@ spring:
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 6
 
+            # Libro de reclamaciones: publico (sin sesion), asi que se cuenta por IP y con un
+            # cupo bajo, como el registro, para que nadie pueda llenarlo de hojas falsas.
+            - id: limite-reclamaciones
+              uri: *core
+              order: -1
+              predicates:
+                - Path=/api/v1/reclamaciones
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 20
+
             # ─── Rutas generales ─────────────────────────────────────────────────────
             - id: identity
               uri: *identity
@@ -137,7 +154,7 @@ spring:
             - id: core-banking
               uri: *core
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/reclamaciones
 
             # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia

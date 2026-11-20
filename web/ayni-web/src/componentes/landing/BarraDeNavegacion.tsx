@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 import { LogotipoAyni } from "@/componentes/LogotipoAyni";
@@ -16,12 +17,12 @@ import { LogotipoAyni } from "@/componentes/LogotipoAyni";
  * vertical, que sería la traducción literal, empujaría el titular fuera de la pantalla.
  */
 const ENLACES = [
-  { texto: "Cuentas", destino: "#cuenta" },
-  { texto: "Tarjetas", destino: "#productos" },
+  { texto: "Cuentas", destino: "/#cuenta" },
+  { texto: "Tarjetas", destino: "/#productos" },
   { texto: "Préstamos", destino: "/pendiente" },
   { texto: "Inversiones", destino: "/pendiente" },
   { texto: "Negocios", destino: "/pendiente" },
-  { texto: "Ayuda", destino: "/pendiente" },
+  { texto: "Ayuda", destino: "/ayuda" },
 ];
 
 export function BarraDeNavegacion() {
@@ -73,9 +74,11 @@ export function BarraDeNavegacion() {
             aria-label={abierto ? "Cerrar menú" : "Abrir menú"}
             className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-blanco/25 text-blanco lg:hidden"
           >
-            <span aria-hidden="true" className="text-[18px] leading-none">
-              {abierto ? "✕" : "☰"}
-            </span>
+            {abierto ? (
+              <X aria-hidden="true" className="h-5 w-5" />
+            ) : (
+              <Menu aria-hidden="true" className="h-5 w-5" />
+            )}
           </button>
         </div>
       </nav>
