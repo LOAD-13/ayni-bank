@@ -1,6 +1,14 @@
+import { ChevronDown } from "lucide-react";
+
 import type { Movimiento } from "@/lib/api";
 import { deCentimos, formatearImporte } from "@/lib/formato";
-import { claveDeMes, gastosPorCategoria, nombreDeMes, resumirPorMes } from "@/lib/movimientos";
+import {
+  claveDeMes,
+  gastosPorCategoria,
+  nombreDeMes,
+  resumirPorMes,
+  saldosAlCierre,
+} from "@/lib/movimientos";
 
 const soles = (centimos: bigint) => formatearImporte(deCentimos(centimos), "PEN");
 const CERO = BigInt(0);
@@ -37,6 +45,13 @@ export function ResumenDeMeses({
     movimientos.filter((m) => claveDeMes(m.registradoEn) === delMes.clave),
   );
   const nombre = nombreDeMes(delMes.clave);
+  // El saldo al cierre de cada mes, en dorado sobre las barras: la gráfica del ahorro.
+  const saldos = saldosAlCierre(movimientos, meses);
+  const saldoMaximo = Math.max(1, ...saldos.map((v) => Number(v ?? 0)));
+  const puntos = saldos
+    .map((v, i) => (v === null ? null : `${i * 100 + 50},${100 - (Number(v) / saldoMaximo) * 88}`))
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <section
@@ -75,37 +90,70 @@ export function ResumenDeMeses({
           <span className="flex items-center gap-2">
             <span className="h-3 w-3 rounded-sm bg-azul-300" /> Salió
           </span>
+          {puntos && (
+            <span className="flex items-center gap-2">
+              <span className="h-0.5 w-4 rounded bg-dorado-600" /> Saldo al cierre
+            </span>
+          )}
         </div>
 
         <div
           role="group"
           aria-label="Elige un mes"
-          className="mt-3 grid h-48 grid-cols-6 items-end gap-1 border-b border-azul-200 sm:gap-3"
+          className="relative mt-3 grid h-28 grid-cols-6 items-end gap-1 border-b border-azul-200 sm:h-48 sm:gap-3"
         >
+          {puntos && (
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 600 100"
+              preserveAspectRatio="none"
+              className="pointer-events-none absolute inset-0 h-full w-full"
+            >
+              <polyline
+                points={puntos}
+                fill="none"
+                className="stroke-dorado-600"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          )}
           {resumen.map((m) => {
             const activo = m.clave === delMes.clave;
+            const vacio = m.entradas === CERO && m.salidas === CERO;
+            const saldo = saldos[meses.indexOf(m.clave)];
             return (
               <button
                 key={m.clave}
                 type="button"
                 aria-pressed={activo}
-                aria-label={`${nombreDeMes(m.clave)}: entraron ${soles(m.entradas)} y salieron ${soles(m.salidas)}`}
+                aria-label={
+                  vacio
+                    ? `${nombreDeMes(m.clave)}: sin movimientos`
+                    : `${nombreDeMes(m.clave)}: entraron ${soles(m.entradas)} y salieron ${soles(m.salidas)}` +
+                      (saldo ? `; cerró con ${formatearImporte(saldo)}` : "")
+                }
                 onClick={() => elegir(m.clave)}
                 className={[
                   "flex h-full flex-col justify-end rounded-t-lg px-1 pt-2 sm:px-2",
                   activo ? "bg-azul-050" : "hover:bg-azul-050/60",
                 ].join(" ")}
               >
-                <span className="flex h-full items-end justify-center gap-1">
-                  <span
-                    className="w-full max-w-5 rounded-t bg-azul-700 transition-[height] duration-500 ease-out"
-                    style={{ height: `${altura(m.entradas, maximo)}%` }}
-                  />
-                  <span
-                    className="w-full max-w-5 rounded-t bg-azul-300 transition-[height] duration-500 ease-out"
-                    style={{ height: `${altura(m.salidas, maximo)}%` }}
-                  />
-                </span>
+                {vacio ? (
+                  <span aria-hidden="true" className="mx-auto mb-1 h-0.5 w-5 rounded bg-gris-300" />
+                ) : (
+                  <span className="flex h-full items-end justify-center gap-1">
+                    <span
+                      className="w-full max-w-5 rounded-t bg-azul-700 transition-[height] duration-500 ease-out"
+                      style={{ height: `${altura(m.entradas, maximo)}%` }}
+                    />
+                    <span
+                      className="w-full max-w-5 rounded-t bg-azul-300 transition-[height] duration-500 ease-out"
+                      style={{ height: `${altura(m.salidas, maximo)}%` }}
+                    />
+                  </span>
+                )}
               </button>
             );
           })}
@@ -125,29 +173,56 @@ export function ResumenDeMeses({
         </div>
       </div>
 
-      <div>
+      {/* En el celular se pliega: primero va el buscador del historial (hallazgo HU-01). */}
+      <details className="group lg:hidden">
+        <summary className="flex min-h-[44px] cursor-pointer items-center justify-between text-body font-bold text-azul-900 marker:content-none">
+          En qué se fue
+          <ChevronDown
+            aria-hidden="true"
+            className="h-5 w-5 text-azul-600 transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <Gastos gastos={gastos} nombre={nombre} salidas={delMes.salidas} />
+      </details>
+      <div className="hidden lg:block">
         <h3 className="text-body font-bold text-azul-900">En qué se fue</h3>
-        {gastos.length === 0 ? (
-          <p className="mt-2 text-small text-gris-700">No hubo salidas en {nombre}.</p>
-        ) : (
-          <ul className="mt-4 flex flex-col gap-4">
-            {gastos.map(({ categoria, centimos }) => (
-              <li key={categoria}>
-                <span className="flex justify-between gap-3 text-small">
-                  <span className="text-gris-900">{categoria}</span>
-                  <span className="cifra text-gris-900">{soles(centimos)}</span>
-                </span>
-                <span aria-hidden="true" className="mt-1.5 block h-2 rounded-full bg-azul-050">
-                  <span
-                    className="block h-2 rounded-full bg-dorado-500"
-                    style={{ width: `${altura(centimos, delMes.salidas)}%` }}
-                  />
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Gastos gastos={gastos} nombre={nombre} salidas={delMes.salidas} />
       </div>
     </section>
+  );
+}
+
+function Gastos({
+  gastos,
+  nombre,
+  salidas,
+}: {
+  gastos: ReturnType<typeof gastosPorCategoria>;
+  nombre: string;
+  salidas: bigint;
+}) {
+  return (
+    <div>
+      {gastos.length === 0 ? (
+        <p className="mt-2 text-small text-gris-700">No hubo salidas en {nombre}.</p>
+      ) : (
+        <ul className="mt-4 flex flex-col gap-4">
+          {gastos.map(({ categoria, centimos }) => (
+            <li key={categoria}>
+              <span className="flex justify-between gap-3 text-small">
+                <span className="text-gris-900">{categoria}</span>
+                <span className="cifra text-gris-900">{soles(centimos)}</span>
+              </span>
+              <span aria-hidden="true" className="mt-1.5 block h-2 rounded-full bg-azul-050">
+                <span
+                  className="block h-2 rounded-full bg-dorado-500"
+                  style={{ width: `${altura(centimos, salidas)}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

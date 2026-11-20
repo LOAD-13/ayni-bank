@@ -33,7 +33,8 @@ export function ListaDeMovimientos({
 
   const hoy = new Date();
   const dias = new Map<string, Movimiento[]>();
-  for (const m of movimientos) {
+  const ordenados = [...movimientos].sort((a, b) => b.registradoEn.localeCompare(a.registradoEn));
+  for (const m of ordenados) {
     const dia = claveDeDia(m.registradoEn);
     dias.set(dia, [...(dias.get(dia) ?? []), m]);
   }
@@ -79,14 +80,14 @@ function FilaDeMovimiento({ m, oculto }: { m: Movimiento; oculto: boolean }) {
           <Icono className="h-[18px] w-[18px]" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-body font-medium text-gris-900">
+          <span className="line-clamp-2 block text-body font-medium break-words text-gris-900">
             {conceptoLegible(m.concepto)}
           </span>
           <span className="block truncate text-small whitespace-nowrap text-gris-700">
             {categoriaDe(m.concepto)} · {HORA.format(new Date(m.registradoEn))}
           </span>
         </span>
-        <span className="shrink-0 text-right">
+        <span className="shrink-0 text-right whitespace-nowrap">
           <span className={`cifra block text-body ${abono ? "text-exito" : "text-gris-900"}`}>
             <span className="sr-only">{abono ? "Entrada de " : "Salida de "}</span>
             <span aria-hidden="true">{abono ? "+ " : "− "}</span>

@@ -1,17 +1,17 @@
 "use client";
 
 import { Bell, KeyRound, Mail, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { consultarTitular, type Titular } from "@/lib/api";
 
 /**
- * Configuración de la banca, versión preliminar. Muestra lo que el sistema ya sabe del
- * titular (nombre, correo enmascarado, segundo factor exigido en cada ingreso) y deja
- * visibles, rotulados como «Próximamente», los ajustes que llegan en sprints siguientes:
- * cambiar la contraseña (HU-21), el método de verificación (HU-22) y los avisos por
- * correo de cada movimiento (HU-13). Ningún control finge hacer algo que no hace.
+ * Configuración de la banca: lo que el sistema sabe del titular y cómo está protegido su
+ * acceso. Todo lo que muestra existe: el segundo factor se exige en cada ingreso y el método
+ * se elige ahí mismo; la contraseña se cambia con el enlace de un solo uso que llega al
+ * correo; y notification escribe por cada movimiento. Ningún control finge hacer algo.
  */
 export default function PaginaDeConfiguracion() {
   const { usuarioId } = useSesion();
@@ -49,12 +49,14 @@ export default function PaginaDeConfiguracion() {
           <Ajuste
             Icono={KeyRound}
             titulo="Cambiar contraseña"
-            texto="Podrás cambiarla desde aquí sin cerrar tu sesión."
+            texto="Te enviamos a tu correo un enlace de un solo uso para elegir una nueva."
+            accion={{ texto: "Cambiar", href: "/recuperar" }}
           />
           <Ajuste
             Icono={ShieldCheck}
             titulo="Método de verificación"
-            texto="Elige entre la app de autenticación o un código por correo."
+            texto="Lo eliges cada vez que ingresas: app de autenticación o código por correo."
+            estado="Activo"
           />
         </Seccion>
 
@@ -62,7 +64,8 @@ export default function PaginaDeConfiguracion() {
           <Ajuste
             Icono={Mail}
             titulo="Correo por cada movimiento"
-            texto="Te escribiremos cada vez que entre o salga dinero de tu cuenta."
+            texto="Te escribimos cada vez que entra o sale dinero de tu cuenta."
+            estado="Activo"
           />
         </Seccion>
       </div>
@@ -103,14 +106,15 @@ function Ajuste({
   Icono,
   titulo,
   texto,
-  estado = "Próximamente",
+  estado,
+  accion,
 }: {
   Icono: typeof Bell;
   titulo: string;
   texto: string;
   estado?: string;
+  accion?: { texto: string; href: string };
 }) {
-  const activo = estado !== "Próximamente";
   return (
     <div className="flex items-start gap-4 py-3">
       <span
@@ -123,13 +127,19 @@ function Ajuste({
         <span className="block text-body font-semibold text-gris-900">{titulo}</span>
         <span className="block text-small text-gris-700">{texto}</span>
       </span>
-      <span
-        className={`shrink-0 rounded-full px-3 py-1 text-caption font-semibold ${
-          activo ? "bg-exito/10 text-exito" : "bg-gris-100 text-gris-700"
-        }`}
-      >
-        {estado}
-      </span>
+      {estado && (
+        <span className="shrink-0 rounded-full bg-exito/10 px-3 py-1 text-caption font-semibold text-exito">
+          {estado}
+        </span>
+      )}
+      {accion && (
+        <Link
+          href={accion.href}
+          className="inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-azul-700 px-4 text-small font-semibold text-azul-700 hover:bg-azul-050"
+        >
+          {accion.texto}
+        </Link>
+      )}
     </div>
   );
 }
