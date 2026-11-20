@@ -19,9 +19,9 @@ import { LogotipoAyni } from "@/componentes/LogotipoAyni";
 const ENLACES = [
   { texto: "Cuentas", destino: "/#cuenta" },
   { texto: "Tarjetas", destino: "/#productos" },
-  { texto: "Préstamos", destino: "/pendiente" },
-  { texto: "Inversiones", destino: "/pendiente" },
-  { texto: "Negocios", destino: "/pendiente" },
+  { texto: "Préstamos", destino: "/prestamos" },
+  { texto: "Inversiones", destino: "/inversiones" },
+  { texto: "Negocios", destino: "/negocios" },
   { texto: "Ayuda", destino: "/ayuda" },
 ];
 

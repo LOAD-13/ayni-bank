@@ -14,19 +14,19 @@ const COLUMNAS = [
     titulo: "Productos",
     enlaces: [
       { texto: "Cuenta Ayni", destino: "/#cuenta" },
-      { texto: "Depósito a plazo", destino: "/pendiente" },
-      { texto: "Tarjeta de crédito", destino: "/pendiente" },
-      { texto: "Préstamo personal", destino: "/pendiente" },
-      { texto: "Seguros", destino: "/pendiente" },
+      { texto: "Depósito a plazo", destino: "/depositos-a-plazo" },
+      { texto: "Tarjeta de crédito", destino: "/tarjeta-de-credito" },
+      { texto: "Préstamo personal", destino: "/prestamos" },
+      { texto: "Seguros", destino: "/seguros" },
     ],
   },
   {
     titulo: "Negocios",
     enlaces: [
-      { texto: "Cuenta negocio", destino: "/pendiente" },
-      { texto: "Cobros con QR", destino: "/pendiente" },
-      { texto: "Facturación", destino: "/pendiente" },
-      { texto: "Préstamo pyme", destino: "/pendiente" },
+      { texto: "Cuenta negocio", destino: "/negocios#cuenta-negocio" },
+      { texto: "Cobros con QR", destino: "/negocios#cobros-con-qr" },
+      { texto: "Facturación", destino: "/negocios#facturacion" },
+      { texto: "Préstamo pyme", destino: "/negocios#prestamo-pyme" },
     ],
   },
   {
