@@ -7,6 +7,8 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,6 +26,7 @@ public class LibroDeReclamaciones {
 
     static final int DIAS_HABILES_PARA_RESPONDER = 15;
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
+    private static final Set<DayOfWeek> FIN_DE_SEMANA = EnumSet.of(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY);
 
     private final JdbcTemplate db;
     private final Clock reloj;
@@ -76,7 +79,7 @@ public class LibroDeReclamaciones {
         int contados = 0;
         while (contados < dias) {
             fecha = fecha.plusDays(1);
-            if (fecha.getDayOfWeek() != DayOfWeek.SATURDAY && fecha.getDayOfWeek() != DayOfWeek.SUNDAY) {
+            if (!FIN_DE_SEMANA.contains(fecha.getDayOfWeek())) {
                 contados++;
             }
         }
