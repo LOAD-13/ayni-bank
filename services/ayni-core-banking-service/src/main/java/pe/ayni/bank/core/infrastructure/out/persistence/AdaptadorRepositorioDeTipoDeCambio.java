@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.core.domain.model.TipoDeCambioConocido;
 import pe.ayni.bank.core.domain.model.TipoDeCambioOficial;
@@ -32,7 +33,10 @@ public class AdaptadorRepositorioDeTipoDeCambio implements RepositorioDeTipoDeCa
                 .map(AdaptadorRepositorioDeTipoDeCambio::aDominio);
     }
 
+    // Transaccion propia: el upsert es una consulta @Modifying y las de Spring Data corren en
+    // transacciones de solo lectura salvo que el metodo diga otra cosa.
     @Override
+    @Transactional
     public void guardar(TipoDeCambioOficial tipo, Instant obtenidoEn) {
         filas.guardar(tipo.fecha(), tipo.compra(), tipo.venta(), tipo.fuente(), obtenidoEn);
     }

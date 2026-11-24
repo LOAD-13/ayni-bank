@@ -139,6 +139,16 @@ resilience4j:
         waitDurationInOpenState: 15s
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
+      # Tipo de cambio del BCRP (HU-12): si la mitad de las ultimas cinco consultas fallan, el
+      # circuito se abre 60 s y se sirve el ultimo valor guardado sin esperar los timeouts. El
+      # valor cambia una vez al dia, asi que no hace falta reintentar con prisa.
+      bcrp:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 1
+        automaticTransitionFromOpenToHalfOpenEnabled: true
 
 # Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
 # compose local pone AYNI_API_DOCS=true. En produccion la ruta no existe (ADR-0033), y
