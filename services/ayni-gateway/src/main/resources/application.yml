@@ -193,6 +193,22 @@ ayni:
     # tambien al terminar el registro (ADR-0038).
     rutas-protegidas: >-
       /api/v1/cuentas,/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/conversiones,/api/v1/tipo-cambio/cotizacion,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
+    # Que permiso del token exige cada ruta (AYNI-281), con la forma [METODO:]patron=permiso. Gana
+    # la primera que case. Una ruta protegida sin regla solo exige sesion. Los permisos salen de
+    # los roles del catalogo de identity (V1) y viajan en el claim `permisos` del token.
+    permisos-por-ruta: >-
+      POST:/api/v1/transferencias=transferencia:iniciar,
+      POST:/api/v1/interbancarias=transferencia:iniciar,
+      POST:/api/v1/conversiones=transferencia:iniciar,
+      POST:/api/v1/cuentas/mia/depositos-simulados=transferencia:iniciar,
+      /api/v1/interbancarias/**=transferencia:iniciar,
+      /api/v1/transferencias/**=transferencia:iniciar,
+      /api/v1/tarjetas/**=tarjeta:administrar,
+      /api/v1/cuentas/**=cuenta:leer,
+      /api/v1/cuentas=cuenta:leer,
+      /api/v1/movimientos/**=cuenta:leer,
+      /api/v1/tipo-cambio/cotizacion=cuenta:leer,
+      /api/v1/conversiones=transferencia:iniciar
 
 # Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
 # defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de

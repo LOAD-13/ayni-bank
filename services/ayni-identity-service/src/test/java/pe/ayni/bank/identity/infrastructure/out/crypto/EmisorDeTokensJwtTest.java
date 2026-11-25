@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.nimbusds.jose.JOSEException;
@@ -27,8 +30,10 @@ class EmisorDeTokensJwtTest {
     private static final Instant AHORA = Instant.parse("2026-08-30T10:15:30Z");
     private static final byte[] CLAVE = "ayni-firma-de-pruebas-32-bytes!!".getBytes();
 
+    private static final Set<String> PERMISOS_DE_ANA = new LinkedHashSet<>(List.of("cuenta:leer", "tarjeta:administrar"));
+
     private final EmisorDeTokensJwt emisor =
-            new EmisorDeTokensJwt(Base64.getEncoder().encodeToString(CLAVE));
+            new EmisorDeTokensJwt(Base64.getEncoder().encodeToString(CLAVE), id -> PERMISOS_DE_ANA);
 
     private final Usuario ana = Usuario.registrar(
             UUID.randomUUID(),
@@ -46,6 +51,23 @@ class EmisorDeTokensJwtTest {
     @DisplayName("el token va firmado y la firma se verifica con la misma clave")
     void firmaVerificable() throws ParseException, JOSEException {
         assertThat(emitirYLeer().verify(new MACVerifier(CLAVE))).isTrue();
+    }
+
+    @Test
+    @DisplayName("los permisos de los roles del usuario viajan en el claim permisos (AYNI-281)")
+    void llevaLosPermisos() throws ParseException {
+        assertThat(emitirYLeer().getJWTClaimsSet().getStringListClaim("permisos"))
+                .containsExactlyInAnyOrder("cuenta:leer", "tarjeta:administrar");
+    }
+
+    @Test
+    @DisplayName("sin ningun rol el claim va vacio, no ausente: el gateway no lo toma por un token antiguo")
+    void sinRolesElClaimVaVacio() throws ParseException {
+        EmisorDeTokensJwt sinRoles = new EmisorDeTokensJwt(Base64.getEncoder().encodeToString(CLAVE), id -> Set.of());
+
+        SignedJWT jwt = SignedJWT.parse(sinRoles.emitir(ana, AHORA, AHORA.plusSeconds(900)));
+
+        assertThat(jwt.getJWTClaimsSet().getStringListClaim("permisos")).isEmpty();
     }
 
     @Test
@@ -118,7 +140,7 @@ class EmisorDeTokensJwtTest {
     void exigeUnaClaveDe256Bits() {
         String corta = Base64.getEncoder().encodeToString("demasiado-corta".getBytes());
 
-        assertThatThrownBy(() -> new EmisorDeTokensJwt(corta))
+        assertThatThrownBy(() -> new EmisorDeTokensJwt(corta, id -> Set.of()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("32 bytes");
     }

@@ -213,7 +213,7 @@ class FiltroDeAutenticacionTest {
     void laConfiguracionCreaElFiltroConLasRutasIndicadas() {
         ConfiguracionDeSeguridad configuracion = new ConfiguracionDeSeguridad();
         VerificadorDeTokens creado = configuracion.verificadorDeTokens(CLAVE_B64);
-        FiltroDeAutenticacion conRutas = configuracion.filtroDeAutenticacion(creado, List.of("/x"));
+        FiltroDeAutenticacion conRutas = configuracion.filtroDeAutenticacion(creado, List.of("/x"), List.of());
         assertThat(conRutas).isNotNull();
     }
 

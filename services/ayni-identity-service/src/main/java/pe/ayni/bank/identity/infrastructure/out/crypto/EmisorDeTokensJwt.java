@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
 import pe.ayni.bank.identity.domain.model.TokenDeRenovacion;
 import pe.ayni.bank.identity.domain.model.Usuario;
 import pe.ayni.bank.identity.domain.port.out.EmisorDeTokensDeAccesoPort;
+import pe.ayni.bank.identity.domain.port.out.LectorDePermisosPort;
 
 /**
  * Token de acceso como JWT firmado con HS256, y tokens de renovacion aleatorios.
@@ -35,6 +37,11 @@ import pe.ayni.bank.identity.domain.port.out.EmisorDeTokensDeAccesoPort;
  * poco mas. Ni el correo, ni el celular, ni el documento: un JWT no va cifrado, solo
  * firmado, y cualquiera que lo intercepte lee su contenido. Lo que sobra ahi es una fuga.
  *
+ * <p>Los permisos de sus roles tambien viajan, en el claim {@code permisos}: el gateway
+ * decide con ellos que rutas puede usar cada quien (AYNI-281). Son codigos de catalogo
+ * ({@code cuenta:leer}), no datos personales. El token dura quince minutos, asi que un cambio
+ * de rol se nota en la siguiente renovacion.
+ *
  * <p>El estado si viaja, y es deliberado: el panel necesita saber si mostrar «verificacion
  * pendiente» sin tener que preguntar por cada carga de pagina. No es un permiso —quien
  * decide si se puede operar es el servicio, no el token—, es informacion de presentacion.
@@ -48,9 +55,11 @@ public class EmisorDeTokensJwt implements EmisorDeTokensDeAccesoPort {
     private static final String EMISOR = "ayni-identity-service";
 
     private final byte[] clave;
+    private final LectorDePermisosPort permisos;
     private final SecureRandom aleatorio = new SecureRandom();
 
-    public EmisorDeTokensJwt(@Value("${ayni.jwt.clave}") String claveBase64) {
+    public EmisorDeTokensJwt(@Value("${ayni.jwt.clave}") String claveBase64, LectorDePermisosPort permisos) {
+        this.permisos = permisos;
         byte[] bytes = Base64.getDecoder().decode(claveBase64);
         // HS256 exige al menos 256 bits. Nimbus lo comprobaria al firmar, es decir en el
         // primer ingreso; comprobarlo aqui hace que el servicio no arranque siquiera.
@@ -68,6 +77,7 @@ public class EmisorDeTokensJwt implements EmisorDeTokensDeAccesoPort {
                     .issuer(EMISOR)
                     .subject(usuario.id().toString())
                     .claim("estado", usuario.estado().name())
+                    .claim("permisos", List.copyOf(permisos.permisosDe(usuario.id())))
                     .issueTime(Date.from(momento))
                     .expirationTime(Date.from(expiraEn))
                     // Identificador unico del token. Permite revocarlo uno a uno cuando
