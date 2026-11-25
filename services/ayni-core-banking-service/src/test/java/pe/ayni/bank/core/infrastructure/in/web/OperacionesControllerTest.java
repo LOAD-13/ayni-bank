@@ -39,6 +39,8 @@ import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
+import pe.ayni.bank.core.domain.model.CuentaDuplicadaException;
+import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -53,10 +55,11 @@ class OperacionesControllerTest {
     private final RepositorioDeCuentasPort cuentas = mock(RepositorioDeCuentasPort.class);
     private final LibroMayorPort libro = mock(LibroMayorPort.class);
     private final OperarCuentaUseCase operar = mock(OperarCuentaUseCase.class);
+    private final AbrirCuentaDeAhorroUseCase abrirCuenta = mock(AbrirCuentaDeAhorroUseCase.class);
     private final SimpleMeterRegistry registro = new SimpleMeterRegistry();
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new OperacionesController(cuentas, libro, operar,
-                    new MetricasDeOperaciones(registro))).build();
+                    new MetricasDeOperaciones(registro), abrirCuenta)).build();
 
     private final UUID titular = UUID.randomUUID();
     private final Cuenta cuenta = Cuenta.abrir(UUID.randomUUID(), titular, (short) 1,
@@ -81,6 +84,58 @@ class OperacionesControllerTest {
                 .andExpect(jsonPath("$.saldo").value("1000.00"))
                 .andExpect(jsonPath("$.trea").value("4.50"))
                 .andExpect(jsonPath("$.numero").value(cuenta.numero().valor()));
+    }
+
+    private final Cuenta dolares = Cuenta.abrir(UUID.randomUUID(), titular, (short) 2,
+            NumeroDeCuenta.de(Moneda.USD, 1_000_000_031L), Moneda.USD, AHORA);
+
+    @Test
+    @DisplayName("GET /cuentas/mia?moneda=USD: la cuenta en dolares, con su saldo en dolares")
+    void miCuentaEnDolares() throws Exception {
+        when(cuentas.buscarActivaDe(titular, Moneda.USD)).thenReturn(Optional.of(dolares));
+        when(libro.saldoDe(dolares.id(), Moneda.USD)).thenReturn(Dinero.de("100", Moneda.USD));
+
+        mvc.perform(get("/api/v1/cuentas/mia").param("moneda", "USD").header(USUARIO, titular))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.moneda").value("USD"))
+                .andExpect(jsonPath("$.saldo").value("100.00"));
+    }
+
+    @Test
+    @DisplayName("POST /cuentas/mia/dolares: abre la cuenta en dolares con la clave de idempotencia y responde 201")
+    void abrirCuentaEnDolares() throws Exception {
+        UUID clave = UUID.randomUUID();
+        when(cuentas.buscarActivaDe(titular, Moneda.PEN)).thenReturn(Optional.of(cuenta));
+        when(abrirCuenta.abrirPara(titular, clave, Moneda.USD)).thenReturn(dolares);
+        when(libro.saldoDe(dolares.id(), Moneda.USD)).thenReturn(Dinero.de("0", Moneda.USD));
+
+        mvc.perform(post("/api/v1/cuentas/mia/dolares").header(USUARIO, titular).header(CLAVE, clave))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/v1/cuentas/mia?moneda=USD"))
+                .andExpect(jsonPath("$.moneda").value("USD"))
+                .andExpect(jsonPath("$.saldo").value("0.00"));
+    }
+
+    @Test
+    @DisplayName("POST /cuentas/mia/dolares con una cuenta en dolares ya abierta: 409")
+    void cuentaEnDolaresDuplicada() throws Exception {
+        when(cuentas.buscarActivaDe(titular, Moneda.PEN)).thenReturn(Optional.of(cuenta));
+        when(abrirCuenta.abrirPara(any(), any(), eq(Moneda.USD))).thenThrow(new CuentaDuplicadaException(Moneda.USD));
+
+        mvc.perform(post("/api/v1/cuentas/mia/dolares").header(USUARIO, titular).header(CLAVE, UUID.randomUUID()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CUENTA_DUPLICADA"));
+    }
+
+    @Test
+    @DisplayName("POST /cuentas/mia/dolares sin la cuenta en soles del onboarding: 404 y no se abre nada")
+    void cuentaEnDolaresSinCuentaEnSoles() throws Exception {
+        when(cuentas.buscarActivaDe(titular, Moneda.PEN)).thenReturn(Optional.empty());
+
+        mvc.perform(post("/api/v1/cuentas/mia/dolares").header(USUARIO, titular).header(CLAVE, UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("SIN_CUENTA"));
+        verify(abrirCuenta, org.mockito.Mockito.never()).abrirPara(any(), any(), any());
     }
 
     @Test
