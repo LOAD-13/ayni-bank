@@ -38,6 +38,40 @@ async function conBancaCompleta(page: Page) {
       },
     }),
   );
+  // La cuenta en dólares (HU-12): la ruta de la cuenta en soles no casa con la consulta `?moneda=USD`.
+  await page.route(/\/api\/v1\/cuentas\/mia\?moneda=USD/, (ruta) =>
+    ruta.fulfill({
+      json: {
+        cuentaId: "c2",
+        numero: "00121000000032",
+        cci: "99900121000000003299",
+        cciFormateado: "999-001-2100-0000-0032-99",
+        numeroFormateado: "0012-1000000032",
+        moneda: "USD",
+        estado: "ACTIVA",
+        trea: "1.20",
+        comisionDeMantenimiento: "0.00",
+        saldo: "100.00",
+      },
+    }),
+  );
+  await page.route("**/api/v1/tipo-cambio/cotizacion**", (ruta) =>
+    ruta.fulfill({
+      json: {
+        origen: "PEN",
+        destino: "USD",
+        tipoAplicado: "3.761380",
+        tipoReferencia: "3.752000",
+        margen: "0.50",
+        segmento: "ESTANDAR",
+        fuente: "BCRP",
+        obtenidoEn: "2026-11-20T18:00:00Z",
+        enCache: true,
+        importeOrigen: "376.14",
+        importeDestino: "100.00",
+      },
+    }),
+  );
   await page.route("**/api/v1/tarjetas/mia", (ruta) =>
     ruta.fulfill({
       json: {
@@ -84,6 +118,7 @@ const RUTAS_DE_BANCA = [
   { ruta: "/banca/transferir", cargada: "Cuenta Ayni de destino" },
   { ruta: "/banca/interbancaria", cargada: "CCI de destino" },
   { ruta: "/banca/depositar", cargada: "el depósito es simulado" },
+  { ruta: "/banca/convertir", cargada: "Simular conversión" },
   { ruta: "/banca/tarjeta", cargada: "Estado de la tarjeta" },
   { ruta: "/banca/configuracion", cargada: "Segundo factor" },
   { ruta: "/banca/ayuda", cargada: "¿Cuánto puedo transferir?" },
@@ -104,6 +139,18 @@ test.describe("WCAG 2.1 AA en la banca", () => {
       expect(await violacionesWcag(page), `${ruta} incumple WCAG 2.1 AA`).toBe("");
     });
   }
+
+  test("la simulación de una conversión con el aviso de último tipo conocido tampoco las presenta", async ({
+    page,
+  }) => {
+    await page.goto("/banca/convertir");
+    await page.getByLabel("Importe en soles").fill("376.14");
+    await page.getByRole("button", { name: "Simular conversión" }).click();
+    await expect(page.getByRole("button", { name: "Confirmar conversión" })).toBeVisible();
+    await expect(page.getByText(/último tipo de cambio conocido/i)).toBeVisible();
+
+    expect(await violacionesWcag(page), "la simulación incumple WCAG 2.1 AA").toBe("");
+  });
 
   test("la transferencia con errores de validación tampoco presenta violaciones", async ({
     page,
