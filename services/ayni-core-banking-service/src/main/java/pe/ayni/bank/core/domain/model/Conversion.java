@@ -20,7 +20,7 @@ import java.util.UUID;
  * el tipo aplicado se recalcula el importe recibido (escenario 3).
  */
 public record Conversion(UUID id, UUID usuarioId, Movimiento salida, Movimiento entrada,
-                         TipoDeCambioAplicado tipo, Instant registradaEn) {
+                         TipoDeCambioAplicado tipo, CotizacionAplicada cotizacion, Instant registradaEn) {
 
     public Conversion {
         Objects.requireNonNull(id);
@@ -28,6 +28,7 @@ public record Conversion(UUID id, UUID usuarioId, Movimiento salida, Movimiento 
         Objects.requireNonNull(salida);
         Objects.requireNonNull(entrada);
         Objects.requireNonNull(tipo);
+        Objects.requireNonNull(cotizacion);
         Objects.requireNonNull(registradaEn);
         if (salida.importe().moneda() == entrada.importe().moneda()) {
             throw new IllegalArgumentException("Una conversion cambia de moneda.");
@@ -41,7 +42,8 @@ public record Conversion(UUID id, UUID usuarioId, Movimiento salida, Movimiento 
      */
     public static Conversion de(UUID id, Cuenta origen, Dinero saldoOrigen, Cuenta destino,
                                 Cuenta posicionOrigen, Cuenta posicionDestino, Dinero importe,
-                                TipoDeCambioAplicado tipo, Instant momento) {
+                                Cotizacion cotizacion, Instant momento) {
+        TipoDeCambioAplicado tipo = cotizacion.tipo();
         Movimiento.exigirOperativa(origen);
         Movimiento.exigirOperativa(destino);
         if (!origen.usuarioId().equals(destino.usuarioId())) {
@@ -74,7 +76,7 @@ public record Conversion(UUID id, UUID usuarioId, Movimiento salida, Movimiento 
                         Movimiento.recortar("Posicion cambiaria · " + detalle), momento),
                 new Asiento(UUID.randomUUID(), destino.id(), entradaId, TipoDeAsiento.ABONO, recibido,
                         Movimiento.recortar(detalle), momento));
-        return new Conversion(id, origen.usuarioId(), salida, entrada, tipo, momento);
+        return new Conversion(id, origen.usuarioId(), salida, entrada, tipo, cotizacion.aplicada(), momento);
     }
 
     public Dinero importeOrigen() {

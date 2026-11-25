@@ -20,6 +20,9 @@ class ConversionTest {
     private static final Cuenta POSICION_PEN = cuenta(UUID.randomUUID(), "00110000000004", Moneda.PEN);
     private static final Cuenta POSICION_USD = cuenta(UUID.randomUUID(), "00120000000004", Moneda.USD);
     private static final TipoDeCambioAplicado VENTA = new TipoDeCambioAplicado(new BigDecimal("3.70"), AHORA, false);
+    private static final SegmentoCambiario ESTANDAR =
+            new SegmentoCambiario("ESTANDAR", new BigDecimal("0.005000"), BigDecimal.ZERO);
+    private static final Cotizacion COTIZACION = new Cotizacion(VENTA, new BigDecimal("3.70"), ESTANDAR, "BCRP");
 
     private static Cuenta cuenta(UUID titular, String numero, Moneda moneda) {
         return Cuenta.abrir(UUID.randomUUID(), titular, (short) (moneda == Moneda.PEN ? 1 : 2),
@@ -28,7 +31,7 @@ class ConversionTest {
 
     private static Conversion soles(String importe, String saldo) {
         return Conversion.de(UUID.randomUUID(), SOLES, Dinero.de(saldo, Moneda.PEN), DOLARES,
-                POSICION_PEN, POSICION_USD, Dinero.de(importe, Moneda.PEN), VENTA, AHORA);
+                POSICION_PEN, POSICION_USD, Dinero.de(importe, Moneda.PEN), COTIZACION, AHORA);
     }
 
     @Test
@@ -71,10 +74,20 @@ class ConversionTest {
     void deDolaresASoles() {
         Conversion c = Conversion.de(UUID.randomUUID(), DOLARES, Dinero.de("50.00", Moneda.USD), SOLES,
                 POSICION_USD, POSICION_PEN, Dinero.de("10.00", Moneda.USD),
-                new TipoDeCambioAplicado(new BigDecimal("3.655"), AHORA, true), AHORA);
+                new Cotizacion(new TipoDeCambioAplicado(new BigDecimal("3.655"), AHORA, true),
+                        new BigDecimal("3.655"), ESTANDAR, "BCRP"), AHORA);
 
         assertThat(c.importeDestino()).isEqualTo(Dinero.de("36.55", Moneda.PEN));
         assertThat(c.tipo().enCache()).isTrue();
+    }
+
+    @Test
+    @DisplayName("La referencia, el margen, el segmento y la fuente quedan en la conversion")
+    void guardaLaCotizacion() {
+        Conversion c = soles("370.00", "500.00");
+
+        assertThat(c.cotizacion()).isEqualTo(
+                new CotizacionAplicada(new BigDecimal("3.70"), new BigDecimal("0.005000"), "ESTANDAR", "BCRP"));
     }
 
     @Test
@@ -90,7 +103,7 @@ class ConversionTest {
     @DisplayName("Entre dos cuentas de la misma moneda no hay conversion")
     void mismaMoneda() {
         assertThatThrownBy(() -> Conversion.de(UUID.randomUUID(), SOLES, Dinero.de("500.00", Moneda.PEN),
-                SOLES, POSICION_PEN, POSICION_PEN, Dinero.de("10.00", Moneda.PEN), VENTA, AHORA))
+                SOLES, POSICION_PEN, POSICION_PEN, Dinero.de("10.00", Moneda.PEN), COTIZACION, AHORA))
                 .isInstanceOf(OperacionRechazadaException.class);
     }
 
@@ -99,7 +112,7 @@ class ConversionTest {
     void otroTitular() {
         Cuenta ajena = cuenta(UUID.randomUUID(), "00120000000103", Moneda.USD);
         assertThatThrownBy(() -> Conversion.de(UUID.randomUUID(), SOLES, Dinero.de("500.00", Moneda.PEN),
-                ajena, POSICION_PEN, POSICION_USD, Dinero.de("10.00", Moneda.PEN), VENTA, AHORA))
+                ajena, POSICION_PEN, POSICION_USD, Dinero.de("10.00", Moneda.PEN), COTIZACION, AHORA))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

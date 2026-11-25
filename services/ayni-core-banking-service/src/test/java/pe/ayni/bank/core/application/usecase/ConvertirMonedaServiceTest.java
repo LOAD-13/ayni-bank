@@ -19,12 +19,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import pe.ayni.bank.core.domain.model.Conversion;
+import pe.ayni.bank.core.domain.model.Cotizacion;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
+import pe.ayni.bank.core.domain.model.SegmentoCambiario;
 import pe.ayni.bank.core.domain.model.TipoDeCambioAplicado;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
@@ -35,7 +37,9 @@ import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
 class ConvertirMonedaServiceTest {
 
     private static final Instant AHORA = Instant.parse("2026-11-13T15:00:00Z");
-    private static final TipoDeCambioAplicado VENTA = new TipoDeCambioAplicado(new BigDecimal("3.70"), AHORA, false);
+    private static final Cotizacion VENTA = new Cotizacion(
+            new TipoDeCambioAplicado(new BigDecimal("3.70"), AHORA, false), new BigDecimal("3.70"),
+            new SegmentoCambiario("ESTANDAR", new BigDecimal("0.005000"), BigDecimal.ZERO), "BCRP");
 
     private RepositorioDeCuentasPort cuentas;
     private LibroMayorPort libro;

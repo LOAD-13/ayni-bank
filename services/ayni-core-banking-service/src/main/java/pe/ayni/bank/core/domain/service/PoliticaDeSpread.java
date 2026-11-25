@@ -49,6 +49,6 @@ public final class PoliticaDeSpread {
         BigDecimal factor = clienteCompraDolares ? BigDecimal.ONE.add(mitad) : BigDecimal.ONE.subtract(mitad);
         TipoDeCambioAplicado tipo = new TipoDeCambioAplicado(referencia.multiply(factor),
                 vigente.obtenidoEn(), vigente.enCache());
-        return new Cotizacion(tipo, referencia, segmento);
+        return new Cotizacion(tipo, referencia, segmento, vigente.oficial().fuente());
     }
 }

@@ -9,12 +9,20 @@ import java.util.Objects;
  * auditoria los guarda junto a la conversion.
  *
  * @param referencia soles por dolar oficial, el de compra o el de venta segun el sentido
+ * @param fuente de donde salio la referencia oficial
  */
-public record Cotizacion(TipoDeCambioAplicado tipo, BigDecimal referencia, SegmentoCambiario segmento) {
+public record Cotizacion(TipoDeCambioAplicado tipo, BigDecimal referencia, SegmentoCambiario segmento,
+                         String fuente) {
 
     public Cotizacion {
         Objects.requireNonNull(tipo, "tipo");
         Objects.requireNonNull(referencia, "referencia");
         Objects.requireNonNull(segmento, "segmento");
+        Objects.requireNonNull(fuente, "fuente");
+    }
+
+    /** Lo que se guarda junto a la conversion. */
+    public CotizacionAplicada aplicada() {
+        return new CotizacionAplicada(referencia, segmento.spread(), segmento.codigo(), fuente);
     }
 }
