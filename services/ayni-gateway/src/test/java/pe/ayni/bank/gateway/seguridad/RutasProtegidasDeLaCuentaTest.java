@@ -44,7 +44,8 @@ class RutasProtegidasDeLaCuentaTest {
         "/api/v1/cuentas",
         "/api/v1/cuentas/mia/dolares",
         "/api/v1/tipo-cambio/cotizacion",
-        "/api/v1/conversiones"
+        "/api/v1/conversiones",
+        "/api/v1/auditoria/eventos"
     })
     void sinSesionNingunaConsultaDeCuentasLlegaAlServicio(String ruta) throws IOException {
         FiltroDeAutenticacion filtro = new FiltroDeAutenticacion(

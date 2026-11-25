@@ -97,6 +97,12 @@ class PermisosPorRolTest {
         "GET,  /api/v1/tarjetas/mia,                        OPERADOR,   403",
         "GET,  /api/v1/tarjetas/mia,                        AUDITOR,    403",
         "POST, /api/v1/interbancarias,                      OFICIAL,    403",
+        // La pista de auditoria la lee el auditor y nadie mas.
+        "GET,  /api/v1/auditoria/eventos,                   AUDITOR,    200",
+        "GET,  /api/v1/auditoria/eventos,                   CLIENTE,    403",
+        "GET,  /api/v1/auditoria/eventos,                   OPERADOR,   403",
+        "GET,  /api/v1/auditoria/eventos,                   SUPERVISOR, 403",
+        "GET,  /api/v1/auditoria/eventos,                   OFICIAL,    403",
     })
     void matriz(String metodo, String ruta, String rol, int esperado) throws Exception {
         MockServerWebExchange intercambio = MockServerWebExchange.from(
