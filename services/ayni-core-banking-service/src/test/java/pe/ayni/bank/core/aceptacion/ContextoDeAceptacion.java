@@ -22,10 +22,14 @@ import tools.jackson.databind.json.JsonMapper;
 import io.cucumber.spring.CucumberContextConfiguration;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.CierreDiarioService;
+import pe.ayni.bank.core.application.usecase.ConfirmarConversionService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
 import pe.ayni.bank.core.application.usecase.ConsultarTarjetaService;
 import pe.ayni.bank.core.application.usecase.ControlarTarjetaService;
+import pe.ayni.bank.core.application.usecase.ConvertirMonedaService;
+import pe.ayni.bank.core.application.usecase.CotizarConversionService;
 import pe.ayni.bank.core.application.usecase.EmitirTarjetaService;
+import pe.ayni.bank.core.application.usecase.ObtenerTipoDeCambioService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.port.out.VerificadorDeConfirmacionPort;
@@ -40,10 +44,13 @@ import pe.ayni.bank.core.infrastructure.out.messaging.PublicadorDeOutbox;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPistaDeAuditoria;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorPublicadorDeEventos;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeConversiones;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIdempotencia;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRegistroDeIntereses;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCuentas;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeTarjetas;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeTipoDeCambio;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorSegmentosCambiarios;
 import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
 
 /**
@@ -67,7 +74,10 @@ import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class, AdaptadorRegistroDeIdempotencia.class,
         JsonMapper.class, TransferenciaInterbancariaService.class, ResolucionInterbancariaService.class,
         ConciliadorInterbancario.class, EmitirTarjetaService.class, ConsultarTarjetaService.class,
-        ControlarTarjetaService.class,
+        ControlarTarjetaService.class, ConvertirMonedaService.class, CotizarConversionService.class,
+        ConfirmarConversionService.class, ObtenerTipoDeCambioService.class,
+        AdaptadorRegistroDeConversiones.class, AdaptadorRepositorioDeTipoDeCambio.class,
+        AdaptadorSegmentosCambiarios.class,
         AdaptadorRepositorioDeTarjetas.class, CifradorDePan.class, ConfiguracionDeTarjeta.class,
         ContextoDeAceptacion.Infraestructura.class})
 public class ContextoDeAceptacion {
@@ -106,6 +116,12 @@ public class ContextoDeAceptacion {
                     throw new ConfirmacionInvalidaException();
                 }
             };
+        }
+
+        /** El BCRP de HU-12: los pasos deciden que publica o si no responde. */
+        @Bean
+        FuenteDeTipoDeCambioDePrueba bcrp() {
+            return new FuenteDeTipoDeCambioDePrueba();
         }
 
         /** La camara de compensacion de HU-11: los pasos deciden que responde. */
