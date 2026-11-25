@@ -97,3 +97,27 @@ export async function tabularHasta(page: Page, destino: Locator, maximo = 40) {
   }
   throw new Error(`Con ${maximo} pulsaciones de Tab no se llega al elemento buscado`);
 }
+
+/**
+ * Si el elemento con foco se distingue a la vista: un contorno de al menos 2 px propio, o el
+ * halo del marco del campo que lo contiene (los campos de texto mueven el indicador al marco).
+ */
+export async function focoVisible(page: Page): Promise<{ nombre: string; visible: boolean }> {
+  return page.evaluate(() => {
+    const nodo = document.activeElement as HTMLElement | null;
+    if (!nodo || nodo === document.body) return { nombre: "(ninguno)", visible: false };
+    const propio = getComputedStyle(nodo);
+    const contorno =
+      propio.outlineStyle !== "none" &&
+      parseFloat(propio.outlineWidth) >= 2 &&
+      propio.outlineColor !== "rgba(0, 0, 0, 0)";
+    const marco = nodo.closest(".campo");
+    const halo = !!marco && getComputedStyle(marco).boxShadow !== "none";
+    const nombre =
+      nodo.getAttribute("aria-label") ??
+      (nodo as HTMLInputElement).labels?.[0]?.innerText ??
+      nodo.textContent?.trim().slice(0, 40) ??
+      nodo.tagName;
+    return { nombre: nombre.trim(), visible: contorno || halo };
+  });
+}
