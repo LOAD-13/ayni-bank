@@ -152,6 +152,39 @@ test.describe("WCAG 2.1 AA en la banca", () => {
     expect(await violacionesWcag(page), "la simulación incumple WCAG 2.1 AA").toBe("");
   });
 
+  test("el back-office de auditoría, con el permiso, no presenta violaciones de WCAG 2.1 AA", async ({
+    page,
+  }) => {
+    await conSesion(page, ["auditoria:leer"]);
+    await page.route("**/api/v1/auditoria/eventos**", (ruta) =>
+      ruta.fulfill({
+        json: {
+          eventos: [
+            {
+              id: 7,
+              tipo: "TRANSFERENCIA_REALIZADA",
+              usuarioId: "5d1f3c9e-1b2a-4c3d-8e9f-0a1b2c3d4e5f",
+              movimientoId: "m-1",
+              motivo: null,
+              resultado: "EXITO",
+              recurso: "POST /api/v1/transferencias",
+              ip: "203.0.113.5",
+              agente: "Firefox",
+              ocurridoEn: "2026-11-24T15:00:00Z",
+            },
+          ],
+          pagina: 0,
+          tamano: 20,
+          total: 1,
+        },
+      }),
+    );
+    await page.goto("/backoffice/auditoria");
+    await expect(page.getByRole("table")).toBeVisible();
+
+    expect(await violacionesWcag(page), "el back-office incumple WCAG 2.1 AA").toBe("");
+  });
+
   test("la transferencia con errores de validación tampoco presenta violaciones", async ({
     page,
   }) => {

@@ -9,14 +9,20 @@ import type { Locator, Page } from "@playwright/test";
 
 export const USUARIO = "6f1c0d2e-0000-4000-8000-000000000001";
 
-const TOKEN = [
-  "eyJhbGciOiJIUzI1NiJ9",
-  Buffer.from(JSON.stringify({ sub: USUARIO })).toString("base64url"),
-  "firma",
-].join(".");
+/** Un token como el que emite identity; con `permisos` lleva el claim de los roles (AYNI-281). */
+function tokenCon(permisos?: string[]): string {
+  return [
+    "eyJhbGciOiJIUzI1NiJ9",
+    Buffer.from(JSON.stringify({ sub: USUARIO, ...(permisos ? { permisos } : {}) })).toString(
+      "base64url",
+    ),
+    "firma",
+  ].join(".");
+}
 
-/** Una clienta con la sesión abierta y su cuenta en soles. */
-export async function conSesion(page: Page) {
+/** Una clienta con la sesión abierta y su cuenta en soles; con `permisos`, el token de otro rol. */
+export async function conSesion(page: Page, permisos?: string[]) {
+  const TOKEN = tokenCon(permisos);
   await page.route("**/api/v1/sesion/renovacion", (ruta) =>
     ruta.fulfill({
       json: { tokenDeAcceso: TOKEN, expiraEn: new Date(Date.now() + 15 * 60_000).toISOString() },

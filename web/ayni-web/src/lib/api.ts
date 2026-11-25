@@ -734,6 +734,57 @@ export async function transferir(
   );
 }
 
+// ─── Pista de auditoría · back-office · AYNI-284 ─────────────────────────
+
+/** Un registro de la pista: quién, qué, sobre qué, desde dónde, con qué resultado y cuándo. */
+export interface EventoDeAuditoria {
+  id: number;
+  tipo: string;
+  usuarioId: string;
+  movimientoId: string | null;
+  motivo: string | null;
+  resultado: "EXITO" | "RECHAZADO";
+  recurso: string | null;
+  ip: string | null;
+  agente: string | null;
+  ocurridoEn: string;
+}
+
+export interface PaginaDeAuditoria {
+  eventos: EventoDeAuditoria[];
+  pagina: number;
+  tamano: number;
+  total: number;
+}
+
+export interface FiltroDeAuditoria {
+  usuarioId?: string;
+  tipo?: string;
+  desde?: string;
+  hasta?: string;
+  pagina?: number;
+  tamano?: number;
+}
+
+/** Solo lectura: la pista es de solo inserción y el servidor no expone ninguna otra operación. */
+export async function consultarAuditoria(
+  token: string,
+  filtro: FiltroDeAuditoria,
+): Promise<PaginaDeAuditoria> {
+  const consulta = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(filtro)) {
+    if (valor !== undefined && valor !== "") consulta.set(clave, String(valor));
+  }
+  const texto = consulta.toString();
+  return pedir<PaginaDeAuditoria>(
+    `/api/v1/auditoria/eventos${texto ? `?${texto}` : ""}`,
+    undefined,
+    {
+      token,
+    },
+  );
+}
+
 // ─── Transferencia interbancaria · HU-11 ─────────────────────────────────
 
 export type EstadoInterbancario = "PENDIENTE" | "COMPLETADA" | "RECHAZADA";
