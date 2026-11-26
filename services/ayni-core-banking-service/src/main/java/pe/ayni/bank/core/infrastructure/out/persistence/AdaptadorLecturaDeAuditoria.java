@@ -26,36 +26,35 @@ public class AdaptadorLecturaDeAuditoria implements LecturaDeAuditoriaPort {
         this.jdbc = jdbc;
     }
 
+    // Un filtro nulo deja pasar todo: el texto del SQL es siempre el mismo y cada valor va dos veces.
+    private static final String DONDE = """
+             WHERE (CAST(? AS uuid) IS NULL OR usuario_id = ?)
+               AND (CAST(? AS varchar) IS NULL OR tipo = ?)
+               AND (CAST(? AS timestamptz) IS NULL OR ocurrido_en >= ?)
+               AND (CAST(? AS timestamptz) IS NULL OR ocurrido_en < ?)""";
+
+    private static final String CONTAR = "SELECT count(*) FROM core.evento_auditoria" + DONDE;
+
+    private static final String LISTAR = """
+            SELECT id, tipo, usuario_id, movimiento_id, motivo, resultado, recurso, ip, agente, ocurrido_en
+              FROM core.evento_auditoria""" + DONDE + " ORDER BY ocurrido_en DESC, id DESC LIMIT ? OFFSET ?";
+
     @Override
     public PaginaDeAuditoria buscar(FiltroDeAuditoria filtro, int pagina, int tamano) {
-        StringBuilder donde = new StringBuilder(" WHERE TRUE");
+        Timestamp desde = filtro.desde() == null ? null : Timestamp.from(filtro.desde());
+        Timestamp hasta = filtro.hasta() == null ? null : Timestamp.from(filtro.hasta());
         List<Object> parametros = new ArrayList<>();
-        if (filtro.usuarioId() != null) {
-            donde.append(" AND usuario_id = ?");
-            parametros.add(filtro.usuarioId());
-        }
-        if (filtro.tipo() != null) {
-            donde.append(" AND tipo = ?");
-            parametros.add(filtro.tipo());
-        }
-        if (filtro.desde() != null) {
-            donde.append(" AND ocurrido_en >= ?");
-            parametros.add(Timestamp.from(filtro.desde()));
-        }
-        if (filtro.hasta() != null) {
-            donde.append(" AND ocurrido_en < ?");
-            parametros.add(Timestamp.from(filtro.hasta()));
+        for (Object valor : new Object[] {filtro.usuarioId(), filtro.tipo(), desde, hasta}) {
+            parametros.add(valor);
+            parametros.add(valor);
         }
 
-        Long total = jdbc.queryForObject("SELECT count(*) FROM core.evento_auditoria" + donde,
-                Long.class, parametros.toArray());
+        Long total = jdbc.queryForObject(CONTAR, Long.class, parametros.toArray());
 
         List<Object> conPagina = new ArrayList<>(parametros);
         conPagina.add(tamano);
         conPagina.add((long) pagina * tamano);
-        List<EventoDeAuditoria> eventos = jdbc.query("""
-                SELECT id, tipo, usuario_id, movimiento_id, motivo, resultado, recurso, ip, agente, ocurrido_en
-                  FROM core.evento_auditoria""" + donde + " ORDER BY ocurrido_en DESC, id DESC LIMIT ? OFFSET ?",
+        List<EventoDeAuditoria> eventos = jdbc.query(LISTAR,
                 (fila, n) -> new EventoDeAuditoria(fila.getLong("id"), fila.getString("tipo"),
                         fila.getObject("usuario_id", UUID.class), fila.getObject("movimiento_id", UUID.class),
                         fila.getString("motivo"), fila.getString("resultado"), fila.getString("recurso"),
