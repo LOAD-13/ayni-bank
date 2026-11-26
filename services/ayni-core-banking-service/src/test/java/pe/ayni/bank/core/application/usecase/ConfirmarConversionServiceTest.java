@@ -89,8 +89,11 @@ class ConfirmarConversionServiceTest {
     void rechazaCacheNoAvisada() {
         when(cotizar.cotizar(TITULAR, Moneda.PEN)).thenReturn(cotizacion("3.761380", true));
 
-        assertThatThrownBy(() -> servicio.confirmar(TITULAR, IMPORTE, new BigDecimal("3.761380"), false,
-                UUID.randomUUID())).isInstanceOf(TipoDeCambioCambioException.class);
+        BigDecimal visto = new BigDecimal("3.761380");
+        UUID clave = UUID.randomUUID();
+
+        assertThatThrownBy(() -> servicio.confirmar(TITULAR, IMPORTE, visto, false, clave))
+                .isInstanceOf(TipoDeCambioCambioException.class);
         verify(convertir, never()).convertir(any(), any(), any(), any());
     }
 

@@ -50,8 +50,11 @@ class ConsultarAuditoriaServiceTest {
     @Test
     @DisplayName("Un rango al reves se rechaza antes de leer")
     void rangoAlReves() {
-        assertThatThrownBy(() -> servicio.consultar(null, null, LocalDate.parse("2026-11-24"),
-                LocalDate.parse("2026-11-01"), 0, 20)).isInstanceOf(IllegalArgumentException.class);
+        LocalDate despues = LocalDate.parse("2026-11-24");
+        LocalDate antes = LocalDate.parse("2026-11-01");
+
+        assertThatThrownBy(() -> servicio.consultar(null, null, despues, antes, 0, 20))
+                .isInstanceOf(IllegalArgumentException.class);
         verifyNoInteractions(lectura);
     }
 }

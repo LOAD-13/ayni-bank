@@ -16,7 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Los cinco roles y sus permisos contra PostgreSQL real (AYNI-281): la migracion V13, el trigger
- * que hace cliente a todo usuario nuevo y la lectura de permisos que alimenta el token.
+ * que hace cliente a cada usuario nuevo y la lectura de permisos que alimenta el token.
  */
 @Testcontainers
 class RolesDeUsuarioEnPostgresTest {

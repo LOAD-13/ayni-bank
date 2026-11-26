@@ -15,7 +15,7 @@ import pe.ayni.bank.core.domain.port.out.LecturaDeAuditoriaPort;
 
 /**
  * Implementa {@link LecturaDeAuditoriaPort} con SQL de solo lectura. El filtro se compone con
- * condiciones fijas y todo valor viaja como parametro, nunca pegado al texto.
+ * condiciones fijas y cada valor viaja como parametro, nunca pegado al texto.
  */
 @Repository
 public class AdaptadorLecturaDeAuditoria implements LecturaDeAuditoriaPort {

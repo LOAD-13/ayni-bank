@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Lo que un auditor puede pedir a la pista (AYNI-284). Todo es opcional; el rango es
+ * Lo que un auditor puede pedir a la pista (AYNI-284). Cada filtro es opcional; el rango es
  * {@code [desde, hasta)}.
  */
 public record FiltroDeAuditoria(UUID usuarioId, String tipo, Instant desde, Instant hasta) {

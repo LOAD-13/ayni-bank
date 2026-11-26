@@ -187,9 +187,11 @@ class PermisosPorRolTest {
     @Test
     @DisplayName("Una regla mal escrita impide arrancar en lugar de dejar una ruta sin proteger")
     void reglaMalEscrita() {
-        assertThatThrownBy(() -> new PermisosPorRuta(List.of("/api/v1/x")))
+        List<String> sinPermiso = List.of("/api/v1/x");
+        List<String> sinMetodoValido = List.of("POST/api/v1/x=a:b");
+        assertThatThrownBy(() -> new PermisosPorRuta(sinPermiso))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new PermisosPorRuta(List.of("POST/api/v1/x=a:b")))
+        assertThatThrownBy(() -> new PermisosPorRuta(sinMetodoValido))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -46,7 +46,7 @@ public class AuditoriaController {
     }
 
     @GetMapping("/api/v1/auditoria/eventos")
-    public ResponseEntity<?> eventos(
+    public PaginaDto eventos(
             @RequestHeader(OperacionesController.CABECERA_USUARIO) UUID auditor,
             @RequestHeader(value = CABECERA_PERMISOS, required = false) String permisos,
             @RequestParam(required = false) UUID usuarioId,
@@ -57,16 +57,26 @@ public class AuditoriaController {
             @RequestParam(defaultValue = "20") int tamano) {
         if (permisos == null || !Arrays.asList(permisos.split(",")).contains(PERMISO)) {
             log.warn("Lectura de la pista denegada: sin el permiso {}. usuarioId={}", PERMISO, auditor);
-            ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
-                    "Tu rol no permite leer la pista de auditoria.");
-            problema.setTitle("Permiso insuficiente");
-            problema.setProperty("codigo", "PERMISO_INSUFICIENTE");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problema);
+            throw new PermisoInsuficienteException();
         }
         PaginaDeAuditoria resultado = consultar.consultar(usuarioId, tipo, desde, hasta,
                 Math.max(0, pagina), Math.clamp(tamano, 1, MAXIMO_POR_PAGINA));
         log.info("Pista de auditoria leida. auditorId={} filas={}", auditor, resultado.eventos().size());
-        return ResponseEntity.ok(PaginaDto.desde(resultado));
+        return PaginaDto.desde(resultado);
+    }
+
+    /** El gateway ya exige el permiso; esto es la segunda barrera. */
+    @ExceptionHandler(PermisoInsuficienteException.class)
+    public ResponseEntity<ProblemDetail> alFaltarElPermiso() {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+                "Tu rol no permite leer la pista de auditoria.");
+        problema.setTitle("Permiso insuficiente");
+        problema.setProperty("codigo", "PERMISO_INSUFICIENTE");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problema);
+    }
+
+    private static final class PermisoInsuficienteException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

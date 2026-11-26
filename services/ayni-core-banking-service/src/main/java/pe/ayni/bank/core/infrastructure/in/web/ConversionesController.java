@@ -45,6 +45,7 @@ import pe.ayni.bank.core.domain.port.in.CotizarConversionUseCase;
 @RestController
 public class ConversionesController {
 
+    private static final String CODIGO = "codigo";
     private static final String CABECERA_USUARIO = OperacionesController.CABECERA_USUARIO;
     private static final String CABECERA_IDEMPOTENCIA = OperacionesController.CABECERA_IDEMPOTENCIA;
     private static final String IMPORTE = "^\\d{1,7}(\\.\\d{1,2})?$";
@@ -88,7 +89,7 @@ public class ConversionesController {
         Cotizacion nueva = cambio.nueva();
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, cambio.getMessage());
         problema.setTitle("El tipo de cambio cambio");
-        problema.setProperty("codigo", "TIPO_DE_CAMBIO_CAMBIO");
+        problema.setProperty(CODIGO, "TIPO_DE_CAMBIO_CAMBIO");
         problema.setProperty("cotizacion", CotizacionDto.desde(nueva, cambio.origen(), null, null));
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problema);
     }
@@ -99,7 +100,7 @@ public class ConversionesController {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
                 "No hay un tipo de cambio disponible ahora. Intenta de nuevo en unos minutos.");
         problema.setTitle("Tipo de cambio no disponible");
-        problema.setProperty("codigo", "TIPO_DE_CAMBIO_NO_DISPONIBLE");
+        problema.setProperty(CODIGO, "TIPO_DE_CAMBIO_NO_DISPONIBLE");
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problema);
     }
 
@@ -110,7 +111,7 @@ public class ConversionesController {
                 ? HttpStatus.NOT_FOUND : HttpStatus.UNPROCESSABLE_ENTITY;
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, motivo.detalle());
         problema.setTitle(motivo.titulo());
-        problema.setProperty("codigo", motivo.name());
+        problema.setProperty(CODIGO, motivo.name());
         return ResponseEntity.status(estado).body(problema);
     }
 

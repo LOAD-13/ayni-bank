@@ -60,6 +60,7 @@ import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
 @RestController
 public class OperacionesController {
 
+    private static final String CODIGO = "codigo";
     static final String CABECERA_USUARIO = "X-Ayni-Usuario";
     static final String CABECERA_IDEMPOTENCIA = "Idempotency-Key";
     /** Token de confirmacion con segundo factor que emite identity (HU-07, ADR-0031). */
@@ -193,7 +194,7 @@ public class OperacionesController {
                 : HttpStatus.UNPROCESSABLE_ENTITY;
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, motivo.detalle());
         problema.setTitle(motivo.titulo());
-        problema.setProperty("codigo", motivo.name());
+        problema.setProperty(CODIGO, motivo.name());
         return ResponseEntity.status(estado).body(problema);
     }
 
@@ -206,7 +207,7 @@ public class OperacionesController {
     public ResponseEntity<ProblemDetail> alFaltarConfirmacion(ConfirmacionInvalidaException falta) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, falta.getMessage());
         problema.setTitle("Confirmacion requerida");
-        problema.setProperty("codigo", "CONFIRMACION_REQUERIDA");
+        problema.setProperty(CODIGO, "CONFIRMACION_REQUERIDA");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problema);
     }
 
@@ -235,7 +236,7 @@ public class OperacionesController {
     public ResponseEntity<ProblemDetail> alDuplicarCuenta(CuentaDuplicadaException duplicada) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, duplicada.getMessage());
         problema.setTitle("Cuenta ya abierta");
-        problema.setProperty("codigo", "CUENTA_DUPLICADA");
+        problema.setProperty(CODIGO, "CUENTA_DUPLICADA");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problema);
     }
 

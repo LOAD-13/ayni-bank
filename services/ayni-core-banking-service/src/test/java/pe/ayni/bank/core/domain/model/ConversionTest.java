@@ -102,8 +102,11 @@ class ConversionTest {
     @Test
     @DisplayName("Entre dos cuentas de la misma moneda no hay conversion")
     void mismaMoneda() {
-        assertThatThrownBy(() -> Conversion.de(UUID.randomUUID(), SOLES, Dinero.de("500.00", Moneda.PEN),
-                SOLES, POSICION_PEN, POSICION_PEN, Dinero.de("10.00", Moneda.PEN), COTIZACION, AHORA))
+        UUID id = UUID.randomUUID();
+        Dinero saldo = Dinero.de("500.00", Moneda.PEN);
+        Dinero diez = Dinero.de("10.00", Moneda.PEN);
+        assertThatThrownBy(() -> Conversion.de(id, SOLES, saldo, SOLES, POSICION_PEN, POSICION_PEN, diez,
+                COTIZACION, AHORA))
                 .isInstanceOf(OperacionRechazadaException.class);
     }
 
@@ -111,8 +114,11 @@ class ConversionTest {
     @DisplayName("Solo entre cuentas del mismo titular")
     void otroTitular() {
         Cuenta ajena = cuenta(UUID.randomUUID(), "00120000000103", Moneda.USD);
-        assertThatThrownBy(() -> Conversion.de(UUID.randomUUID(), SOLES, Dinero.de("500.00", Moneda.PEN),
-                ajena, POSICION_PEN, POSICION_USD, Dinero.de("10.00", Moneda.PEN), COTIZACION, AHORA))
+        UUID id = UUID.randomUUID();
+        Dinero saldo = Dinero.de("500.00", Moneda.PEN);
+        Dinero diez = Dinero.de("10.00", Moneda.PEN);
+        assertThatThrownBy(() -> Conversion.de(id, SOLES, saldo, ajena, POSICION_PEN, POSICION_USD, diez,
+                COTIZACION, AHORA))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

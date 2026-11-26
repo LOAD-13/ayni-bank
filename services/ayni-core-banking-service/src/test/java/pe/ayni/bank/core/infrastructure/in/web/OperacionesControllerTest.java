@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -135,7 +136,7 @@ class OperacionesControllerTest {
         mvc.perform(post("/api/v1/cuentas/mia/dolares").header(USUARIO, titular).header(CLAVE, UUID.randomUUID()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.codigo").value("SIN_CUENTA"));
-        verify(abrirCuenta, org.mockito.Mockito.never()).abrirPara(any(), any(), any());
+        verify(abrirCuenta, never()).abrirPara(any(), any(), any());
     }
 
     @Test

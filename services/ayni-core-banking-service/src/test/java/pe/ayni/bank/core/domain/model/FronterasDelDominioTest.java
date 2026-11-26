@@ -33,7 +33,10 @@ class FronterasDelDominioTest {
     @Test
     @DisplayName("Restar importes de monedas distintas lanza, no devuelve una cifra sin sentido")
     void restarMonedasDistintas() {
-        assertThatThrownBy(() -> Dinero.de("10.00", Moneda.PEN).menos(Dinero.de("1.00", Moneda.USD)))
+        Dinero soles = Dinero.de("10.00", Moneda.PEN);
+        Dinero dolares = Dinero.de("1.00", Moneda.USD);
+
+        assertThatThrownBy(() -> soles.menos(dolares))
                 .isInstanceOf(MonedasIncompatiblesException.class);
     }
 
@@ -77,8 +80,10 @@ class FronterasDelDominioTest {
         UUID id = UUID.randomUUID();
         assertThatCode(() -> new Asiento(id, id, id, TipoDeAsiento.CARGO, Dinero.de("1.00", Moneda.PEN), justo, AHORA))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> new Asiento(id, id, id, TipoDeAsiento.CARGO, Dinero.de("1.00", Moneda.PEN),
-                justo + "x", AHORA)).isInstanceOf(IllegalArgumentException.class);
+        Dinero uno = Dinero.de("1.00", Moneda.PEN);
+        String largo = justo + "x";
+        assertThatThrownBy(() -> new Asiento(id, id, id, TipoDeAsiento.CARGO, uno, largo, AHORA))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     // ── Cuenta ────────────────────────────────────────────────────────────
@@ -106,7 +111,7 @@ class FronterasDelDominioTest {
                 EstadoCuenta.BLOQUEADA, AHORA);
 
         assertThat(una).isEqualTo(otra).hasSameHashCodeAs(otra);
-        assertThat(una.hashCode()).isEqualTo(id.hashCode());
+        assertThat(una).hasSameHashCodeAs(id);
         assertThat(una).isNotEqualTo(cuenta(Moneda.PEN, 301));
     }
 
@@ -128,7 +133,7 @@ class FronterasDelDominioTest {
 
         assertThat(numero.formateado()).isEqualTo("001-1987654-3-210");
         assertThat(numero.enmascarado()).isEqualTo("**********3210");
-        assertThat(numero.toString()).isEqualTo("00119876543210");
+        assertThat(numero).hasToString("00119876543210");
     }
 
     @Test
@@ -166,9 +171,11 @@ class FronterasDelDominioTest {
                 .doesNotThrowAnyException();
         assertThatCode(() -> new SegmentoCambiario("CASI", new BigDecimal("0.999999"), BigDecimal.ZERO))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> new SegmentoCambiario("X", BigDecimal.ZERO, new BigDecimal("-0.01")))
+        BigDecimal saldoNegativo = new BigDecimal("-0.01");
+        BigDecimal margenNegativo = new BigDecimal("-0.000001");
+        assertThatThrownBy(() -> new SegmentoCambiario("X", BigDecimal.ZERO, saldoNegativo))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new SegmentoCambiario("X", new BigDecimal("-0.000001"), BigDecimal.ZERO))
+        assertThatThrownBy(() -> new SegmentoCambiario("X", margenNegativo, BigDecimal.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -178,7 +185,9 @@ class FronterasDelDominioTest {
         LocalDate dia = LocalDate.parse("2026-11-20");
         assertThatCode(() -> new TipoDeCambioOficial(dia, new BigDecimal("3.75"), new BigDecimal("3.75"), "BCRP"))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> new TipoDeCambioOficial(dia, new BigDecimal("3.75"), new BigDecimal("3.7499"), "BCRP"))
+        BigDecimal compra = new BigDecimal("3.75");
+        BigDecimal ventaMenor = new BigDecimal("3.7499");
+        assertThatThrownBy(() -> new TipoDeCambioOficial(dia, compra, ventaMenor, "BCRP"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -227,11 +236,16 @@ class FronterasDelDominioTest {
     @Test
     @DisplayName("Si el consumo está en otra moneda, la excepción nombra esa moneda y no la del límite")
     void controlesNombranLaMonedaQueFalla() {
+        Dinero limitePen = Dinero.de("300.00", Moneda.PEN);
+        Dinero limiteUsd = Dinero.de("300.00", Moneda.USD);
+        Dinero consumoPen = Dinero.de("1.00", Moneda.PEN);
+        Dinero consumoUsd = Dinero.de("1.00", Moneda.USD);
+
         assertThatThrownBy(() -> new ControlesDeTarjeta(EstadoDeTarjeta.ACTIVA, "4821", Moneda.PEN,
-                Dinero.de("300.00", Moneda.PEN), Dinero.de("1.00", Moneda.USD), true))
+                limitePen, consumoUsd, true))
                 .isInstanceOf(MonedasIncompatiblesException.class).hasMessageContaining("USD");
         assertThatThrownBy(() -> new ControlesDeTarjeta(EstadoDeTarjeta.ACTIVA, "4821", Moneda.PEN,
-                Dinero.de("300.00", Moneda.USD), Dinero.de("1.00", Moneda.PEN), true))
+                limiteUsd, consumoPen, true))
                 .isInstanceOf(MonedasIncompatiblesException.class).hasMessageContaining("USD");
     }
 
@@ -264,9 +278,11 @@ class FronterasDelDominioTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new FiltroDeMovimientos(null, null, null, null, null, 0, 51))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new FiltroDeMovimientos(null, null, null, new BigDecimal("100.01"), cien, 0, 20))
+        BigDecimal cienYUnCentimo = new BigDecimal("100.01");
+        assertThatThrownBy(() -> new FiltroDeMovimientos(null, null, null, cienYUnCentimo, cien, 0, 20))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new FiltroDeMovimientos(dia.plusDays(1), dia, null, null, null, 0, 20))
+        LocalDate despues = dia.plusDays(1);
+        assertThatThrownBy(() -> new FiltroDeMovimientos(despues, dia, null, null, null, 0, 20))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

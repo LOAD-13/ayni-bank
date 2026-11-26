@@ -110,7 +110,8 @@ class CuentaEnDolaresEnPostgresTest {
         assertThat(libro.saldoDe(dolares.id(), Moneda.USD)).isEqualTo(Dinero.de("0.00", Moneda.USD));
         // Un reintento con la misma clave devuelve la misma cuenta; otra clave, una segunda cuenta: no.
         assertThat(abrir.abrirPara(titular, clave, Moneda.USD).id()).isEqualTo(dolares.id());
-        assertThatThrownBy(() -> abrir.abrirPara(titular, UUID.randomUUID(), Moneda.USD))
+        UUID otraClave = UUID.randomUUID();
+        assertThatThrownBy(() -> abrir.abrirPara(titular, otraClave, Moneda.USD))
                 .isInstanceOf(CuentaDuplicadaException.class);
     }
 

@@ -101,14 +101,16 @@ class PoliticaDeSpreadTest {
     @Test
     @DisplayName("Sin ningun segmento aplicable es un error de datos, no un margen inventado")
     void sinSegmento() {
-        assertThatThrownBy(() -> PoliticaDeSpread.segmentoPara(List.of(PREFERENCIAL), BigDecimal.ONE))
+        List<SegmentoCambiario> soloPreferencial = List.of(PREFERENCIAL);
+        assertThatThrownBy(() -> PoliticaDeSpread.segmentoPara(soloPreferencial, BigDecimal.ONE))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     @DisplayName("Un segmento no admite un margen negativo ni del cien por cien")
     void segmentoValido() {
-        assertThatThrownBy(() -> new SegmentoCambiario("X", new BigDecimal("-0.01"), BigDecimal.ZERO))
+        BigDecimal negativo = new BigDecimal("-0.01");
+        assertThatThrownBy(() -> new SegmentoCambiario("X", negativo, BigDecimal.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new SegmentoCambiario("X", BigDecimal.ONE, BigDecimal.ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
