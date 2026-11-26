@@ -26,7 +26,7 @@ public class AdaptadorLecturaDeAuditoria implements LecturaDeAuditoriaPort {
         this.jdbc = jdbc;
     }
 
-    // Un filtro nulo deja pasar todo: el texto del SQL es siempre el mismo y cada valor va dos veces.
+    // Un filtro nulo no descarta ninguna fila: el texto del SQL es siempre el mismo y cada valor va dos veces.
     private static final String DONDE = """
              WHERE (CAST(? AS uuid) IS NULL OR usuario_id = ?)
                AND (CAST(? AS varchar) IS NULL OR tipo = ?)

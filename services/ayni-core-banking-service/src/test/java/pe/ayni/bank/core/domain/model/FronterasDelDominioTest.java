@@ -110,9 +110,8 @@ class FronterasDelDominioTest {
                 Cci.para(NumeroDeCuenta.de(Moneda.PEN, 301)), Moneda.PEN,
                 EstadoCuenta.BLOQUEADA, AHORA);
 
-        assertThat(una).isEqualTo(otra).hasSameHashCodeAs(otra);
-        assertThat(una).hasSameHashCodeAs(id);
-        assertThat(una).isNotEqualTo(cuenta(Moneda.PEN, 301));
+        assertThat(una).isEqualTo(otra).hasSameHashCodeAs(otra).hasSameHashCodeAs(id)
+                .isNotEqualTo(cuenta(Moneda.PEN, 301));
     }
 
     @Test
