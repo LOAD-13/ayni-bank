@@ -33,11 +33,11 @@ public class AdaptadorLecturaDeAuditoria implements LecturaDeAuditoriaPort {
                AND (CAST(? AS timestamptz) IS NULL OR ocurrido_en >= ?)
                AND (CAST(? AS timestamptz) IS NULL OR ocurrido_en < ?)""";
 
-    private static final String CONTAR = "SELECT count(*) FROM core.evento_auditoria" + DONDE;
+    private static final String CONTAR = "SELECT count(*) FROM core.evento_auditoria " + DONDE;
 
     private static final String LISTAR = """
             SELECT id, tipo, usuario_id, movimiento_id, motivo, resultado, recurso, ip, agente, ocurrido_en
-              FROM core.evento_auditoria""" + DONDE + " ORDER BY ocurrido_en DESC, id DESC LIMIT ? OFFSET ?";
+              FROM core.evento_auditoria""" + " " + DONDE + " ORDER BY ocurrido_en DESC, id DESC LIMIT ? OFFSET ?";
 
     @Override
     public PaginaDeAuditoria buscar(FiltroDeAuditoria filtro, int pagina, int tamano) {
