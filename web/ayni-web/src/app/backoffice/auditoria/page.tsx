@@ -211,7 +211,13 @@ export default function PaginaDeAuditoria() {
           {resultado.eventos.length === 0 ? (
             <p className="text-body text-gris-700">No hay registros con esos filtros.</p>
           ) : (
-            <div className="overflow-x-auto rounded-[16px] border border-azul-200 bg-blanco">
+            <div
+              role="region"
+              aria-label="Registros de la pista de auditoría"
+              // En el celular la tabla se desplaza de lado: sin foco no se recorre con teclado.
+              tabIndex={0}
+              className="overflow-x-auto rounded-[16px] border border-azul-200 bg-blanco"
+            >
               <table className="w-full text-left text-small">
                 <caption className="sr-only">Registros de la pista de auditoría</caption>
                 <thead className="bg-azul-050 text-gris-700">
