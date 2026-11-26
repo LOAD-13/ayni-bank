@@ -244,4 +244,57 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Pruebas de mutacion con PIT (AYNI-304). Fuera del build normal: tardan, y lo que miden
+             es la calidad de las pruebas del dominio, no si el codigo compila o pasa.
+
+             mvn -Pmutacion -pl services/ayni-core-banking-service -am test-compile                  org.pitest:pitest-maven:mutationCoverage -Djacoco.skip=true
+
+             El informe queda en target/pit-reports/index.html. La interpretacion y los mutantes
+             que se aceptan estan en docs/calidad/pruebas-de-mutacion.md. -->
+        <profile>
+            <id>mutacion</id>
+            <properties>
+                <pitest.version>1.30.2</pitest.version>
+                <pitest.junit5.version>1.2.3</pitest.junit5.version>
+                <!-- Alcance inicial: el dominio del core, donde esta el dinero. Se amplia aqui. -->
+                <pit.clases>pe.ayni.bank.core.domain.*</pit.clases>
+                <pit.pruebas>pe.ayni.bank.core.domain.*</pit.pruebas>
+                <pit.umbral>0</pit.umbral>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>${pitest.version}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>${pitest.junit5.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <targetClasses>
+                                <param>${pit.clases}</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>${pit.pruebas}</param>
+                            </targetTests>
+                            <outputFormats>
+                                <outputFormat>HTML</outputFormat>
+                                <outputFormat>XML</outputFormat>
+                            </outputFormats>
+                            <timestampedReports>false</timestampedReports>
+                            <threads>4</threads>
+                            <mutationThreshold>${pit.umbral}</mutationThreshold>
+                            <failWhenNoMutations>false</failWhenNoMutations>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -34,6 +34,7 @@ import pe.ayni.bank.core.domain.model.AsientoConSaldo;
 import pe.ayni.bank.core.domain.model.Comprobante;
 import pe.ayni.bank.core.domain.model.ConfirmacionInvalidaException;
 import pe.ayni.bank.core.domain.model.Cuenta;
+import pe.ayni.bank.core.domain.model.CuentaDuplicadaException;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.FiltroDeMovimientos;
 import pe.ayni.bank.core.domain.model.Moneda;
@@ -41,6 +42,7 @@ import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
+import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -58,6 +60,7 @@ import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
 @RestController
 public class OperacionesController {
 
+    private static final String CODIGO = "codigo";
     static final String CABECERA_USUARIO = "X-Ayni-Usuario";
     static final String CABECERA_IDEMPOTENCIA = "Idempotency-Key";
     /** Token de confirmacion con segundo factor que emite identity (HU-07, ADR-0031). */
@@ -69,26 +72,43 @@ public class OperacionesController {
     private final LibroMayorPort libro;
     private final OperarCuentaUseCase operar;
     private final MetricasDeOperaciones metricas;
+    private final AbrirCuentaDeAhorroUseCase abrirCuenta;
 
     public OperacionesController(RepositorioDeCuentasPort cuentas, LibroMayorPort libro,
-                                 OperarCuentaUseCase operar, MetricasDeOperaciones metricas) {
+                                 OperarCuentaUseCase operar, MetricasDeOperaciones metricas,
+                                 AbrirCuentaDeAhorroUseCase abrirCuenta) {
         this.cuentas = cuentas;
         this.libro = libro;
         this.operar = operar;
         this.metricas = metricas;
+        this.abrirCuenta = abrirCuenta;
     }
 
+    /** La cuenta en soles por defecto; con {@code moneda=USD}, la cuenta en dolares (HU-12). */
     @GetMapping("/api/v1/cuentas/mia")
-    public CuentaDto miCuenta(@RequestHeader(CABECERA_USUARIO) UUID usuarioId) {
-        Cuenta cuenta = cuentaDe(usuarioId);
-        return CuentaDto.desde(cuenta,
-                libro.saldoDe(cuenta.id(), cuenta.moneda()),
-                cuentas.treaVigenteDe(cuenta.productoId()).orElse(null));
+    public CuentaDto miCuenta(@RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+                              @RequestParam(defaultValue = "PEN") Moneda moneda) {
+        return datosDe(cuentaDe(usuarioId, moneda));
+    }
+
+    /**
+     * HU-12: el titular abre su cuenta de ahorro en dolares. Exige que ya tenga la de soles, que es
+     * la que abre el onboarding. Idempotente por {@code Idempotency-Key}; una segunda cuenta en
+     * dolares es 409.
+     */
+    @PostMapping("/api/v1/cuentas/mia/dolares")
+    public ResponseEntity<CuentaDto> abrirCuentaEnDolares(
+            @RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+            @RequestHeader(CABECERA_IDEMPOTENCIA) UUID clave) {
+        cuentaDe(usuarioId, Moneda.PEN);
+        Cuenta cuenta = abrirCuenta.abrirPara(usuarioId, clave, Moneda.USD);
+        return ResponseEntity.created(URI.create("/api/v1/cuentas/mia?moneda=USD")).body(datosDe(cuenta));
     }
 
     @GetMapping("/api/v1/cuentas/mia/movimientos")
     public List<MovimientoDto> misMovimientos(
             @RequestHeader(CABECERA_USUARIO) UUID usuarioId,
+            @RequestParam(defaultValue = "PEN") Moneda moneda,
             @RequestParam(defaultValue = "20") int limite,
             @RequestParam(required = false) LocalDate desde,
             @RequestParam(required = false) LocalDate hasta,
@@ -96,7 +116,7 @@ public class OperacionesController {
             @RequestParam(required = false) BigDecimal importeMinimo,
             @RequestParam(required = false) BigDecimal importeMaximo,
             @RequestParam(required = false) Integer pagina) {
-        Cuenta cuenta = cuentaDe(usuarioId);
+        Cuenta cuenta = cuentaDe(usuarioId, moneda);
         int acotado = Math.clamp(limite, 1, MAXIMO_DE_MOVIMIENTOS);
         if (desde == null && hasta == null && tipo == null
                 && importeMinimo == null && importeMaximo == null && pagina == null) {
@@ -174,7 +194,7 @@ public class OperacionesController {
                 : HttpStatus.UNPROCESSABLE_ENTITY;
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, motivo.detalle());
         problema.setTitle(motivo.titulo());
-        problema.setProperty("codigo", motivo.name());
+        problema.setProperty(CODIGO, motivo.name());
         return ResponseEntity.status(estado).body(problema);
     }
 
@@ -187,7 +207,7 @@ public class OperacionesController {
     public ResponseEntity<ProblemDetail> alFaltarConfirmacion(ConfirmacionInvalidaException falta) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, falta.getMessage());
         problema.setTitle("Confirmacion requerida");
-        problema.setProperty("codigo", "CONFIRMACION_REQUERIDA");
+        problema.setProperty(CODIGO, "CONFIRMACION_REQUERIDA");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problema);
     }
 
@@ -211,9 +231,24 @@ public class OperacionesController {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(problema);
     }
 
-    private Cuenta cuentaDe(UUID usuarioId) {
-        return cuentas.buscarActivaDe(usuarioId, Moneda.PEN)
+    /** 409: el titular ya tiene cuenta activa en esa moneda. */
+    @ExceptionHandler(CuentaDuplicadaException.class)
+    public ResponseEntity<ProblemDetail> alDuplicarCuenta(CuentaDuplicadaException duplicada) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, duplicada.getMessage());
+        problema.setTitle("Cuenta ya abierta");
+        problema.setProperty(CODIGO, "CUENTA_DUPLICADA");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problema);
+    }
+
+    private Cuenta cuentaDe(UUID usuarioId, Moneda moneda) {
+        return cuentas.buscarActivaDe(usuarioId, moneda)
                 .orElseThrow(() -> new OperacionRechazadaException(MotivoDeRechazo.SIN_CUENTA));
+    }
+
+    private CuentaDto datosDe(Cuenta cuenta) {
+        return CuentaDto.desde(cuenta,
+                libro.saldoDe(cuenta.id(), cuenta.moneda()),
+                cuentas.treaVigenteDe(cuenta.productoId()).orElse(null));
     }
 
     private static Dinero soles(String importe) {

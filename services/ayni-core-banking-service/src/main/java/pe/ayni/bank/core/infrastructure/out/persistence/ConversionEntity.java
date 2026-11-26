@@ -46,6 +46,18 @@ public class ConversionEntity {
     @Column(name = "tipo_en_cache", nullable = false)
     private boolean tipoEnCache;
 
+    @Column(name = "tipo_referencia", nullable = false)
+    private BigDecimal tipoReferencia;
+
+    @Column(name = "spread", nullable = false)
+    private BigDecimal spread;
+
+    @Column(name = "segmento", nullable = false, length = 24)
+    private String segmento;
+
+    @Column(name = "fuente", nullable = false, length = 32)
+    private String fuente;
+
     @Column(name = "registrada_en", nullable = false)
     private Instant registradaEn;
 
@@ -56,7 +68,8 @@ public class ConversionEntity {
     ConversionEntity(UUID id, UUID usuarioId, UUID movimientoSalidaId, UUID movimientoEntradaId,
                      String monedaOrigen, BigDecimal importeOrigen, String monedaDestino,
                      BigDecimal importeDestino, BigDecimal tipoAplicado, Instant tipoObtenidoEn,
-                     boolean tipoEnCache, Instant registradaEn) {
+                     boolean tipoEnCache, BigDecimal tipoReferencia, BigDecimal spread, String segmento,
+                     String fuente, Instant registradaEn) {
         this.id = id;
         this.usuarioId = usuarioId;
         this.movimientoSalidaId = movimientoSalidaId;
@@ -68,6 +81,10 @@ public class ConversionEntity {
         this.tipoAplicado = tipoAplicado;
         this.tipoObtenidoEn = tipoObtenidoEn;
         this.tipoEnCache = tipoEnCache;
+        this.tipoReferencia = tipoReferencia;
+        this.spread = spread;
+        this.segmento = segmento;
+        this.fuente = fuente;
         this.registradaEn = registradaEn;
     }
 
@@ -97,6 +114,22 @@ public class ConversionEntity {
 
     boolean isTipoEnCache() {
         return tipoEnCache;
+    }
+
+    BigDecimal getTipoReferencia() {
+        return tipoReferencia;
+    }
+
+    BigDecimal getSpread() {
+        return spread;
+    }
+
+    String getSegmento() {
+        return segmento;
+    }
+
+    String getFuente() {
+        return fuente;
     }
 
     Instant getRegistradaEn() {

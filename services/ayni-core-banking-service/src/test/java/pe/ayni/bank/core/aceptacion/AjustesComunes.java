@@ -25,6 +25,8 @@ public class AjustesComunes {
     private JdbcTemplate jdbc;
     @Autowired
     private CamaraDePrueba camara;
+    @Autowired
+    private FuenteDeTipoDeCambioDePrueba bcrp;
 
     @ParameterType("\\d{4}-\\d{2}-\\d{2}")
     public LocalDate fecha(String texto) {
@@ -44,6 +46,7 @@ public class AjustesComunes {
     @Before(order = 0)
     public void limpiar() {
         camara.reiniciar();
+        bcrp.reiniciar();
         jdbc.update("DELETE FROM core.devengo_interes");
         jdbc.update("DELETE FROM core.capitalizacion_interes");
         jdbc.update("DELETE FROM core.cierre_diario");
@@ -52,6 +55,11 @@ public class AjustesComunes {
         jdbc.execute("ALTER TABLE core.evento_auditoria DISABLE TRIGGER USER");
         jdbc.update("DELETE FROM core.evento_auditoria");
         jdbc.execute("ALTER TABLE core.evento_auditoria ENABLE TRIGGER USER");
+        // La conversion tambien es de solo insercion (V16): se vacia igual que la pista.
+        jdbc.execute("ALTER TABLE core.conversion DISABLE TRIGGER USER");
+        jdbc.update("DELETE FROM core.conversion");
+        jdbc.execute("ALTER TABLE core.conversion ENABLE TRIGGER USER");
+        jdbc.update("DELETE FROM core.tipo_cambio");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
         jdbc.update("DELETE FROM core.consumo_tarjeta");

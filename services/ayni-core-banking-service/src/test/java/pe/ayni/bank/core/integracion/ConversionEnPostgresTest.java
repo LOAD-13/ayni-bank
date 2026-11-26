@@ -24,9 +24,11 @@ import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.ConvertirMonedaService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
 import pe.ayni.bank.core.domain.model.Conversion;
+import pe.ayni.bank.core.domain.model.Cotizacion;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
+import pe.ayni.bank.core.domain.model.SegmentoCambiario;
 import pe.ayni.bank.core.domain.model.TipoDeCambioAplicado;
 import pe.ayni.bank.core.infrastructure.config.ConfiguracionDeTiempo;
 import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorLibroMayor;
@@ -53,11 +55,15 @@ class ConversionEnPostgresTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    private static final TipoDeCambioAplicado VENTA =
-            new TipoDeCambioAplicado(new BigDecimal("3.70"), Instant.parse("2026-11-13T14:00:00Z"), false);
+    private static final Cotizacion VENTA = new Cotizacion(
+            new TipoDeCambioAplicado(new BigDecimal("3.70"), Instant.parse("2026-11-13T14:00:00Z"), false),
+            new BigDecimal("3.681592"),
+            new SegmentoCambiario("ESTANDAR", new BigDecimal("0.005000"), BigDecimal.ZERO), "BCRP");
 
     @Autowired
     private ConvertirMonedaService convertir;
+    @Autowired
+    private AdaptadorRegistroDeConversiones registro;
     @Autowired
     private OperarCuentaService operar;
     @Autowired
@@ -86,15 +92,37 @@ class ConversionEnPostgresTest {
 
         // Escenario 3: el tipo aplicado y su momento quedan junto a la operacion.
         assertThat(jdbc.queryForMap("SELECT importe_origen, importe_destino, tipo_aplicado, tipo_obtenido_en,"
-                + " tipo_en_cache FROM core.conversion WHERE id = ?", c.id()))
+                + " tipo_en_cache, tipo_referencia, spread, segmento, fuente FROM core.conversion WHERE id = ?",
+                c.id()))
                 .containsEntry("importe_origen", new BigDecimal("370.00"))
                 .containsEntry("importe_destino", new BigDecimal("100.00"))
                 .containsEntry("tipo_aplicado", new BigDecimal("3.700000"))
-                .containsEntry("tipo_en_cache", false);
+                .containsEntry("tipo_en_cache", false)
+                .containsEntry("tipo_referencia", new BigDecimal("3.681592"))
+                .containsEntry("spread", new BigDecimal("0.005000"))
+                .containsEntry("segmento", "ESTANDAR")
+                .containsEntry("fuente", "BCRP");
         assertThat(jdbc.queryForObject("SELECT count(DISTINCT moneda) FROM core.asiento WHERE movimiento_id = ?",
                 Integer.class, c.salida().id())).isOne();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM core.evento_auditoria WHERE tipo = 'CONVERSION_REALIZADA'"
                 + " AND usuario_id = ?", Integer.class, titular)).isOne();
+    }
+
+    @Test
+    @DisplayName("Al releerla, la conversion trae su referencia, margen, segmento y fuente")
+    void relecturaConSuCotizacion() {
+        UUID titular = UUID.randomUUID();
+        abrir.abrirPara(titular, UUID.randomUUID(), Moneda.PEN);
+        abrir.abrirPara(titular, UUID.randomUUID(), Moneda.USD);
+        operar.depositarSimulado(titular, Dinero.de("500.00", Moneda.PEN), UUID.randomUUID());
+        Conversion c = convertir.convertir(titular, Dinero.de("37.00", Moneda.PEN), VENTA, UUID.randomUUID());
+
+        Conversion leida = registro.buscarPorSalida(c.salida().id()).orElseThrow();
+
+        assertThat(leida.cotizacion().segmento()).isEqualTo("ESTANDAR");
+        assertThat(leida.cotizacion().referencia()).isEqualByComparingTo("3.681592");
+        assertThat(leida.cotizacion().spread()).isEqualByComparingTo("0.005");
+        assertThat(leida.cotizacion().fuente()).isEqualTo("BCRP");
     }
 
     @Test

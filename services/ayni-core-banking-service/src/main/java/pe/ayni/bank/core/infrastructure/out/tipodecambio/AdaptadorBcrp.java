@@ -8,6 +8,9 @@ import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -59,7 +62,13 @@ public class AdaptadorBcrp implements FuenteDeTipoDeCambioPort {
         this.json = json;
     }
 
+    /**
+     * Con el circuito abierto no se llama al BCRP: el aspecto lanza {@code CallNotPermittedException}
+     * y el respaldo la convierte en la excepcion del dominio, para que quien consulta el tipo de
+     * cambio no conozca Resilience4j y use el ultimo valor guardado.
+     */
     @Override
+    @CircuitBreaker(name = "bcrp", fallbackMethod = "alEstarAbierto")
     public TipoDeCambioOficial ultimoPublicado(LocalDate hasta) {
         String cuerpo;
         try {
@@ -85,6 +94,11 @@ public class AdaptadorBcrp implements FuenteDeTipoDeCambioPort {
         }
         throw new FuenteDeTipoDeCambioNoDisponibleException(
                 "El BCRP no publico tipo de cambio entre " + hasta.minusDays(DIAS_HACIA_ATRAS) + " y " + hasta);
+    }
+
+    @SuppressWarnings("unused") // Lo invoca Resilience4j por su nombre, desde fallbackMethod.
+    private TipoDeCambioOficial alEstarAbierto(LocalDate hasta, CallNotPermittedException abierto) {
+        throw new FuenteDeTipoDeCambioNoDisponibleException("Circuito del BCRP abierto", abierto);
     }
 
     /** Un periodo sin los dos valores numericos ({@code n.d.}) no sirve: se salta. */

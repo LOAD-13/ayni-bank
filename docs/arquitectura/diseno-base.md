@@ -247,11 +247,14 @@ el margen es su ingreso por el servicio. Ayni define su política así:
 | Tarifa preferencial | **0.25 %** de spread para clientes con saldo promedio mensual ≥ S/ 5 000 |
 | Transparencia | La interfaz muestra siempre el tipo aplicado, el de referencia y el margen, antes de confirmar |
 | Registro | Cada conversión guarda el tipo de referencia, el spread aplicado, el tipo final y su timestamp |
+| Si la fuente falla | Se usa el último tipo guardado y la interfaz avisa de su fecha antes de confirmar; sin ninguno, no se convierte |
+| Confirmación | El servidor vuelve a cotizar al confirmar; si el tipo cambió, responde 409 con el nuevo y no convierte |
+| Inalterabilidad | La conversión es de solo inserción: ni `UPDATE` ni `DELETE` ni `TRUNCATE` |
 
 El **segmento preferencial** replica lo que hacen los bancos peruanos con sus clientes de mayor
 saldo. Introduce una regla de negocio real, con su condición evaluable, y da material de prueba:
 un mismo importe convertido por dos clientes distintos debe dar resultados distintos y ambos deben
-ser auditables.
+ser auditables. Las decisiones de detalle están en el [ADR-0040](adr/0040-tipo-de-cambio-con-cache-spread-y-conversion-inalterable.md).
 
 ---
 

@@ -24,6 +24,8 @@ export interface Problema {
   codigo?: string;
   /** Intentos que le quedan a una confirmación con segundo factor (HU-07). */
   intentosRestantes?: number;
+  /** La cotización nueva cuando el tipo de cambio cambió al confirmar (409, HU-12). */
+  cotizacion?: CotizacionDeConversion;
 }
 
 export class ErrorDeApi extends Error {
@@ -523,8 +525,94 @@ export async function descargarComprobante(token: string, movimientoId: string):
   return respuesta.blob();
 }
 
-export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
-  return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
+/**
+ * La cuenta del titular en soles; con `USD`, la de dólares (HU-12). Sin cuenta en esa moneda el
+ * servidor responde 404 (`SIN_CUENTA`).
+ */
+export async function consultarMiCuenta(
+  token: string,
+  moneda: MonedaDeCuenta = "PEN",
+): Promise<CuentaAbierta> {
+  const consulta = moneda === "PEN" ? "" : `?moneda=${moneda}`;
+  return pedir<CuentaAbierta>(`/api/v1/cuentas/mia${consulta}`, undefined, { token });
+}
+
+/** Abre la cuenta de ahorro en dólares del titular. La clave hace seguro el reintento. */
+export async function abrirCuentaEnDolares(token: string, clave: string): Promise<CuentaAbierta> {
+  return pedir<CuentaAbierta>("/api/v1/cuentas/mia/dolares", {}, { token, idempotencia: clave });
+}
+
+// ─── Conversión entre soles y dólares · HU-12 ────────────────────────────
+
+export type MonedaDeCuenta = "PEN" | "USD";
+
+/** Lo que se le ofrece al cliente antes de convertir. Todo llega como texto, nunca como número. */
+export interface CotizacionDeConversion {
+  origen: MonedaDeCuenta;
+  destino: MonedaDeCuenta;
+  /** Soles por dólar que se le aplicaría, ya con el margen del banco. */
+  tipoAplicado: string;
+  /** Soles por dólar oficial del que sale. */
+  tipoReferencia: string;
+  /** Margen total del segmento, en porcentaje: «0.50». */
+  margen: string;
+  segmento: string;
+  fuente: string;
+  obtenidoEn: string;
+  /** El tipo es el último conocido y no el de hoy: la pantalla debe avisarlo antes de confirmar. */
+  enCache: boolean;
+  importeOrigen: string | null;
+  importeDestino: string | null;
+}
+
+export interface ConversionRealizada {
+  conversionId: string;
+  movimientoId: string;
+  importeOrigen: string;
+  monedaOrigen: MonedaDeCuenta;
+  importeDestino: string;
+  monedaDestino: MonedaDeCuenta;
+  tipoAplicado: string;
+  tipoReferencia: string;
+  margen: string;
+  segmento: string;
+  fuente: string;
+  tipoObtenidoEn: string;
+  enCache: boolean;
+  registradaEn: string;
+}
+
+/** No mueve dinero: es la simulación que se enseña antes de confirmar. */
+export async function cotizarConversion(
+  token: string,
+  origen: MonedaDeCuenta,
+  importe: string,
+): Promise<CotizacionDeConversion> {
+  return pedir<CotizacionDeConversion>(
+    `/api/v1/tipo-cambio/cotizacion?origen=${origen}&importe=${importe}`,
+    undefined,
+    { token },
+  );
+}
+
+/**
+ * Confirma con el tipo que el cliente vio. Si cambió, el servidor responde 409 con
+ * `codigo = TIPO_DE_CAMBIO_CAMBIO` y no convierte: la pantalla debe volver a mostrar el tipo.
+ */
+export async function convertirMoneda(
+  token: string,
+  solicitud: {
+    origen: MonedaDeCuenta;
+    importe: string;
+    tipoMostrado: string;
+    enCacheMostrado: boolean;
+  },
+  clave: string,
+): Promise<ConversionRealizada> {
+  return pedir<ConversionRealizada>("/api/v1/conversiones", solicitud, {
+    token,
+    idempotencia: clave,
+  });
 }
 
 /** Un dia de interes: con que saldo y a que tasa se calculo (HU-06, escenario 3). */
@@ -643,6 +731,57 @@ export async function transferir(
     "/api/v1/transferencias",
     { cuentaDestino, importe, concepto },
     { token, idempotencia: clave, confirmacion },
+  );
+}
+
+// ─── Pista de auditoría · back-office · AYNI-284 ─────────────────────────
+
+/** Un registro de la pista: quién, qué, sobre qué, desde dónde, con qué resultado y cuándo. */
+export interface EventoDeAuditoria {
+  id: number;
+  tipo: string;
+  usuarioId: string;
+  movimientoId: string | null;
+  motivo: string | null;
+  resultado: "EXITO" | "RECHAZADO";
+  recurso: string | null;
+  ip: string | null;
+  agente: string | null;
+  ocurridoEn: string;
+}
+
+export interface PaginaDeAuditoria {
+  eventos: EventoDeAuditoria[];
+  pagina: number;
+  tamano: number;
+  total: number;
+}
+
+export interface FiltroDeAuditoria {
+  usuarioId?: string;
+  tipo?: string;
+  desde?: string;
+  hasta?: string;
+  pagina?: number;
+  tamano?: number;
+}
+
+/** Solo lectura: la pista es de solo inserción y el servidor no expone ninguna otra operación. */
+export async function consultarAuditoria(
+  token: string,
+  filtro: FiltroDeAuditoria,
+): Promise<PaginaDeAuditoria> {
+  const consulta = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(filtro)) {
+    if (valor !== undefined && valor !== "") consulta.set(clave, String(valor));
+  }
+  const texto = consulta.toString();
+  return pedir<PaginaDeAuditoria>(
+    `/api/v1/auditoria/eventos${texto ? `?${texto}` : ""}`,
+    undefined,
+    {
+      token,
+    },
   );
 }
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import pe.ayni.bank.core.domain.model.Asiento;
 import pe.ayni.bank.core.domain.model.Conversion;
+import pe.ayni.bank.core.domain.model.CotizacionAplicada;
 import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeCambioAplicado;
@@ -35,7 +36,9 @@ public class AdaptadorRegistroDeConversiones implements RegistroDeConversionesPo
         filas.save(new ConversionEntity(c.id(), c.usuarioId(), c.salida().id(), c.entrada().id(),
                 c.importeOrigen().moneda().name(), c.importeOrigen().importe(),
                 c.importeDestino().moneda().name(), c.importeDestino().importe(),
-                c.tipo().solesPorDolar(), c.tipo().obtenidoEn(), c.tipo().enCache(), c.registradaEn()));
+                c.tipo().solesPorDolar(), c.tipo().obtenidoEn(), c.tipo().enCache(),
+                c.cotizacion().referencia(), c.cotizacion().spread(), c.cotizacion().segmento(),
+                c.cotizacion().fuente(), c.registradaEn()));
     }
 
     @Override
@@ -43,6 +46,7 @@ public class AdaptadorRegistroDeConversiones implements RegistroDeConversionesPo
         return filas.findByMovimientoSalidaId(movimientoSalidaId).map(f -> new Conversion(f.getId(),
                 f.getUsuarioId(), pata(f.getMovimientoSalidaId()), pata(f.getMovimientoEntradaId()),
                 new TipoDeCambioAplicado(f.getTipoAplicado(), f.getTipoObtenidoEn(), f.isTipoEnCache()),
+                new CotizacionAplicada(f.getTipoReferencia(), f.getSpread(), f.getSegmento(), f.getFuente()),
                 f.getRegistradaEn()));
     }
 

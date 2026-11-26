@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftRight,
+  ArrowRightLeft,
   CircleHelp,
   CreditCard,
   Landmark,
@@ -28,6 +29,7 @@ const NAVEGACION = [
   { href: "/banca/transferir", texto: "Transferir", Icono: ArrowLeftRight },
   { href: "/banca/interbancaria", texto: "A otro banco", Icono: Landmark },
   { href: "/banca/depositar", texto: "Depositar", Icono: PiggyBank },
+  { href: "/banca/convertir", texto: "Convertir", Icono: ArrowRightLeft },
   { href: "/banca/cuentas", texto: "Cuentas", Icono: Wallet },
   { href: "/banca/movimientos", texto: "Movimientos", Icono: ReceiptText },
   { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },

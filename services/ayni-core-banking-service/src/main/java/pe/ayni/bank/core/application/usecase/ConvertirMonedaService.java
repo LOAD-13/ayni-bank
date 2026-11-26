@@ -12,12 +12,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import pe.ayni.bank.core.domain.model.Conversion;
+import pe.ayni.bank.core.domain.model.Cotizacion;
 import pe.ayni.bank.core.domain.model.Cuenta;
 import pe.ayni.bank.core.domain.model.Dinero;
 import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.MotivoDeRechazo;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
-import pe.ayni.bank.core.domain.model.TipoDeCambioAplicado;
 import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
 import pe.ayni.bank.core.domain.port.in.ConvertirMonedaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
@@ -60,7 +60,7 @@ public class ConvertirMonedaService implements ConvertirMonedaUseCase {
 
     @Override
     @Transactional
-    public Conversion convertir(UUID usuarioId, Dinero importe, TipoDeCambioAplicado tipo, UUID clave) {
+    public Conversion convertir(UUID usuarioId, Dinero importe, Cotizacion cotizacion, UUID clave) {
         try {
             Optional<Conversion> repetida = repetida(clave, usuarioId);
             if (repetida.isPresent()) {
@@ -83,7 +83,7 @@ public class ConvertirMonedaService implements ConvertirMonedaUseCase {
             Conversion conversion = Conversion.de(UUID.randomUUID(), origen,
                     libro.saldoDe(origen.id(), origen.moneda()), destino,
                     libro.cuentaDePosicionCambiaria(importe.moneda()),
-                    libro.cuentaDePosicionCambiaria(monedaDestino), importe, tipo, reloj.instant());
+                    libro.cuentaDePosicionCambiaria(monedaDestino), importe, cotizacion, reloj.instant());
             libro.registrar(conversion.salida());
             libro.registrar(conversion.entrada());
             conversiones.registrar(conversion);

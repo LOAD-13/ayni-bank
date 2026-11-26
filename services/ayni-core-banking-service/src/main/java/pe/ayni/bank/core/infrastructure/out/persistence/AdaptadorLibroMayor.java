@@ -31,6 +31,7 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     private final AsientoJpaRepository asientos;
     private final UUID fondeoPen;
     private final UUID interesesPen;
+    private final UUID interesesUsd;
     private final UUID posicionPen;
     private final UUID posicionUsd;
     private final boolean historialEnBase;
@@ -44,6 +45,7 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
     AdaptadorLibroMayor(CuentaJpaRepository cuentas, AsientoJpaRepository asientos,
                         @Value("${ayni.cuentas.fondeo-pen}") UUID fondeoPen,
                         @Value("${ayni.cuentas.intereses-pen}") UUID interesesPen,
+                        @Value("${ayni.cuentas.intereses-usd}") UUID interesesUsd,
                         @Value("${ayni.cuentas.posicion-cambiaria-pen}") UUID posicionPen,
                         @Value("${ayni.cuentas.posicion-cambiaria-usd}") UUID posicionUsd,
                         @Value("${ayni.funciones.historial-en-base:true}") boolean historialEnBase) {
@@ -51,6 +53,7 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
         this.asientos = asientos;
         this.fondeoPen = fondeoPen;
         this.interesesPen = interesesPen;
+        this.interesesUsd = interesesUsd;
         this.posicionPen = posicionPen;
         this.posicionUsd = posicionUsd;
         this.historialEnBase = historialEnBase;
@@ -88,11 +91,9 @@ public class AdaptadorLibroMayor implements LibroMayorPort {
 
     @Override
     public Cuenta cuentaDeIntereses(Moneda moneda) {
-        if (moneda != Moneda.PEN) {
-            throw new IllegalStateException("No hay cuenta de intereses para " + moneda);
-        }
-        return buscarPorId(interesesPen).orElseThrow(() -> new IllegalStateException(
-                "Falta la cuenta tecnica de intereses: la siembra la migracion V5."));
+        return buscarPorId(moneda == Moneda.PEN ? interesesPen : interesesUsd).orElseThrow(() ->
+                new IllegalStateException("Falta la cuenta tecnica de intereses en " + moneda
+                        + ": la siembra la migracion " + (moneda == Moneda.PEN ? "V5" : "V17") + "."));
     }
 
     @Override

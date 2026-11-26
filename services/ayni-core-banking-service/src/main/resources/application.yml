@@ -77,6 +77,8 @@ ayni:
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
     # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
     intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+    # Lo mismo para las cuentas en dolares (HU-12). La siembra V17.
+    intereses-usd: 1e7e0000-0000-4000-8000-000000000002
     # Posiciones cambiarias del banco, contrapartida de las conversiones (HU-12). Las siembra V13.
     posicion-cambiaria-pen: ca4b0000-0000-4000-8000-000000000001
     posicion-cambiaria-usd: ca4b0000-0000-4000-8000-000000000002
@@ -138,6 +140,16 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 15s
         permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      # Tipo de cambio del BCRP (HU-12): si la mitad de las ultimas cinco consultas fallan, el
+      # circuito se abre 60 s y se sirve el ultimo valor guardado sin esperar los timeouts. El
+      # valor cambia una vez al dia, asi que no hace falta reintentar con prisa.
+      bcrp:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 1
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
 # Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
