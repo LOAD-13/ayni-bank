@@ -35,5 +35,12 @@ public enum TipoDeEventoDeOperacion {
     /** HU-10: el titular actualizo el limite diario o las compras por internet. */
     CONTROL_TARJETA_ACTUALIZADO,
     /** HU-10: un consumo con tarjeta fue aprobado y cargado en la cuenta. */
-    CONSUMO_TARJETA_REALIZADO
+    CONSUMO_TARJETA_REALIZADO,
+    CONVERSION_REALIZADA,
+    /** HU-15, AYNI-282: un operador pidio bloquear una cuenta. */
+    BLOQUEO_SOLICITADO,
+    /** HU-15, AYNI-282: un supervisor distinto aprobo el bloqueo y la cuenta quedo bloqueada. */
+    CUENTA_BLOQUEADA,
+    /** HU-15, AYNI-282: quien inicio el bloqueo intento aprobarlo y se le denego. */
+    CUATRO_OJOS_DENEGADO
 }

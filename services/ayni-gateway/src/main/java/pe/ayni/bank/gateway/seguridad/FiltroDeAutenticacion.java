@@ -3,11 +3,13 @@ package pe.ayni.bank.gateway.seguridad;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.TreeSet;
 
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -30,23 +32,40 @@ import reactor.core.publisher.Mono;
  * {@value #CABECERA_USUARIO} igual al {@code sub} del token. Los servicios toman la
  * identidad de esa cabecera y nunca de la URL ni del cuerpo, de modo que nadie puede
  * consultar ni mover el dinero de otro cambiando un identificador. La cabecera se borra
- * siempre de la peticion entrante: un cliente no puede fabricarsela.
+ * siempre de la peticion entrante: un cliente no puede fabricarsela. Lo mismo con
+ * {@value #CABECERA_PERMISOS}, que lleva los permisos del token.
+ *
+ * <p>Los permisos del token deciden por ruta (AYNI-281, {@link PermisosPorRuta}): una sesion
+ * valida sin el permiso que la ruta exige recibe 403 aqui mismo.
  */
 public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
 
     public static final String CABECERA_USUARIO = "X-Ayni-Usuario";
+    /** Los permisos del token, como informacion para los servicios. Se borra de lo que llega. */
+    public static final String CABECERA_PERMISOS = "X-Ayni-Permisos";
     private static final String PREFIJO = "Bearer ";
     private static final byte[] CUERPO_401 = ("{\"type\":\"about:blank\",\"title\":\"Sesion requerida\","
             + "\"status\":401,\"detail\":\"Inicia sesion para continuar.\"}")
             .getBytes(StandardCharsets.UTF_8);
 
+    private static final byte[] CUERPO_403 = ("{\"type\":\"about:blank\",\"title\":\"Permiso insuficiente\","
+            + "\"status\":403,\"detail\":\"Tu rol no permite esta operacion.\"}")
+            .getBytes(StandardCharsets.UTF_8);
+
     private final VerificadorDeTokens verificador;
     private final List<String> rutasProtegidas;
+    private final PermisosPorRuta permisosPorRuta;
     private final AntPathMatcher comparador = new AntPathMatcher();
 
     public FiltroDeAutenticacion(VerificadorDeTokens verificador, List<String> rutasProtegidas) {
+        this(verificador, rutasProtegidas, new PermisosPorRuta(List.of()));
+    }
+
+    public FiltroDeAutenticacion(VerificadorDeTokens verificador, List<String> rutasProtegidas,
+                                 PermisosPorRuta permisosPorRuta) {
         this.verificador = verificador;
         this.rutasProtegidas = List.copyOf(rutasProtegidas);
+        this.permisosPorRuta = permisosPorRuta;
     }
 
     @Override
@@ -54,20 +73,32 @@ public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
         aplicarCabecerasDeSeguridad(intercambio.getResponse());
 
         ServerHttpRequest peticion = intercambio.getRequest().mutate()
-                .headers(cabeceras -> cabeceras.remove(CABECERA_USUARIO))
+                .headers(cabeceras -> {
+                    cabeceras.remove(CABECERA_USUARIO);
+                    cabeceras.remove(CABECERA_PERMISOS);
+                })
                 .build();
 
         if (!esProtegida(peticion)) {
             return cadena.filter(intercambio.mutate().request(peticion).build());
         }
+        // Lo que va detras de la sesion son datos del cliente (saldo, numero de cuenta,
+        // movimientos): no se guarda en ninguna cache, ni del navegador ni intermedia
+        // (AYNI-313). Si el servicio de destino manda su propia Cache-Control, prevalece.
+        intercambio.getResponse().getHeaders().setCacheControl(CacheControl.noStore());
 
-        Optional<String> usuario = tokenDe(peticion).flatMap(verificador::usuarioDe);
-        if (usuario.isEmpty()) {
+        Optional<VerificadorDeTokens.Identidad> identidad = tokenDe(peticion).flatMap(verificador::identidadDe);
+        if (identidad.isEmpty()) {
             return rechazar(intercambio.getResponse());
+        }
+        Optional<String> exigido = permisosPorRuta.exigidoPara(peticion.getMethod(), peticion.getPath().value());
+        if (exigido.isPresent() && !identidad.get().permisos().contains(exigido.get())) {
+            return prohibir(intercambio.getResponse());
         }
 
         ServerHttpRequest autenticada = peticion.mutate()
-                .header(CABECERA_USUARIO, usuario.get())
+                .header(CABECERA_USUARIO, identidad.get().usuario())
+                .header(CABECERA_PERMISOS, String.join(",", new TreeSet<>(identidad.get().permisos())))
                 .build();
         return cadena.filter(intercambio.mutate().request(autenticada).build());
     }
@@ -102,6 +133,14 @@ public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
         respuesta.getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
         respuesta.getHeaders().set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         DataBuffer buffer = respuesta.bufferFactory().wrap(CUERPO_401);
+        return respuesta.writeWith(Mono.just(buffer));
+    }
+
+    /** 403: la sesion es valida, pero el rol del usuario no permite esta operacion. */
+    private static Mono<Void> prohibir(ServerHttpResponse respuesta) {
+        respuesta.setStatusCode(HttpStatus.FORBIDDEN);
+        respuesta.getHeaders().setContentType(MediaType.APPLICATION_PROBLEM_JSON);
+        DataBuffer buffer = respuesta.bufferFactory().wrap(CUERPO_403);
         return respuesta.writeWith(Mono.just(buffer));
     }
 

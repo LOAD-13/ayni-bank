@@ -1,6 +1,7 @@
 package pe.ayni.bank.core.application.usecase;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -107,10 +108,13 @@ public class OperarCuentaService implements OperarCuentaUseCase {
     @Transactional(readOnly = true)
     public Optional<Comprobante> comprobante(UUID usuarioId, UUID movimientoId) {
         List<Asiento> asientos = libro.asientosDelMovimiento(movimientoId);
-        Optional<Comprobante> visto = cuentas.buscarActivaDe(usuarioId, Moneda.PEN).flatMap(cuenta -> {
-            boolean esSuyo = asientos.stream().anyMatch(a -> a.cuentaId().equals(cuenta.id()));
-            return esSuyo ? Optional.of(comprobanteDe(asientos, cuenta)) : Optional.<Comprobante>empty();
-        });
+        // El titular puede tener una cuenta por moneda (HU-12): el movimiento es suyo si toca cualquiera.
+        Optional<Comprobante> visto = Arrays.stream(Moneda.values())
+                .map(moneda -> cuentas.buscarActivaDe(usuarioId, moneda))
+                .flatMap(Optional::stream)
+                .filter(cuenta -> asientos.stream().anyMatch(a -> a.cuentaId().equals(cuenta.id())))
+                .findFirst()
+                .map(cuenta -> comprobanteDe(asientos, cuenta));
         // HU-08 escenario 2 (AYNI-328): pedir el movimiento de otra persona es un evento de
         // seguridad. La pista se escribe en su propia transaccion: esta es de solo lectura.
         if (visto.isEmpty() && esAjeno(usuarioId, asientos)) {
@@ -272,6 +276,7 @@ public class OperarCuentaService implements OperarCuentaUseCase {
         String contraparte = switch (tipo) {
             case DEPOSITO_SIMULADO -> "Deposito simulado";
             case INTERES -> "Intereses Ayni";
+            case CONVERSION -> "Cambio de moneda";
             case TRANSFERENCIA -> libro.buscarPorId(contraparteId)
                     .map(c -> c.numero().enmascarado())
                     .orElse("Cuenta Ayni");
@@ -283,11 +288,16 @@ public class OperarCuentaService implements OperarCuentaUseCase {
                 pago ? propia : contraparte,
                 pago ? contraparte : propia,
                 propio.concepto(), propio.registradoEn(),
-                libro.saldoDe(delTitular.id(), delTitular.moneda()));
+                libro.saldoDe(delTitular.id(), delTitular.moneda()),
+                pago ? TipoDeAsiento.CARGO : TipoDeAsiento.ABONO);
     }
 
     /** Las cuentas tecnicas delatan el tipo: fondeo es un deposito; intereses, una capitalizacion. */
     private TipoDeMovimiento tipoSegunContraparte(UUID contraparteId, Moneda moneda) {
+        // Primero la posicion cambiaria: es la unica cuenta tecnica que existe tambien en dolares.
+        if (libro.cuentaDePosicionCambiaria(moneda).id().equals(contraparteId)) {
+            return TipoDeMovimiento.CONVERSION;
+        }
         if (libro.cuentaDeFondeo(moneda).id().equals(contraparteId)) {
             return TipoDeMovimiento.DEPOSITO_SIMULADO;
         }

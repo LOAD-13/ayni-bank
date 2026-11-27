@@ -42,6 +42,8 @@ test.describe("Usabilidad · Inclusividad", () => {
   // Faltaba la banca con la sesión abierta, que es donde el cliente pasa su tiempo.
   for (const ruta of [
     "/banca",
+    "/banca/movimientos",
+    "/banca/cuentas",
     "/banca/transferir",
     "/banca/interbancaria",
     "/banca/depositar",

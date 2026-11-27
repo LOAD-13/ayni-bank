@@ -13,39 +13,39 @@ const COLUMNAS = [
   {
     titulo: "Productos",
     enlaces: [
-      { texto: "Cuenta Ayni", destino: "#cuenta" },
-      { texto: "Depósito a plazo", destino: "/pendiente" },
-      { texto: "Tarjeta de crédito", destino: "/pendiente" },
-      { texto: "Préstamo personal", destino: "/pendiente" },
-      { texto: "Seguros", destino: "/pendiente" },
+      { texto: "Cuenta Ayni", destino: "/#cuenta" },
+      { texto: "Depósito a plazo", destino: "/depositos-a-plazo" },
+      { texto: "Tarjeta de crédito", destino: "/tarjeta-de-credito" },
+      { texto: "Préstamo personal", destino: "/prestamos" },
+      { texto: "Seguros", destino: "/seguros" },
     ],
   },
   {
     titulo: "Negocios",
     enlaces: [
-      { texto: "Cuenta negocio", destino: "/pendiente" },
-      { texto: "Cobros con QR", destino: "/pendiente" },
-      { texto: "Facturación", destino: "/pendiente" },
-      { texto: "Préstamo pyme", destino: "/pendiente" },
+      { texto: "Cuenta negocio", destino: "/negocios#cuenta-negocio" },
+      { texto: "Cobros con QR", destino: "/negocios#cobros-con-qr" },
+      { texto: "Facturación", destino: "/negocios#facturacion" },
+      { texto: "Préstamo pyme", destino: "/negocios#prestamo-pyme" },
     ],
   },
   {
     titulo: "Ayni Bank",
     enlaces: [
-      { texto: "Quiénes somos", destino: "/pendiente" },
-      { texto: "Trabaja con nosotros", destino: "/pendiente" },
-      { texto: "Sala de prensa", destino: "/pendiente" },
-      { texto: "Blog Ayni", destino: "/pendiente" },
+      { texto: "Quiénes somos", destino: "/nosotros" },
+      { texto: "Trabaja con nosotros", destino: "/trabaja-con-nosotros" },
+      { texto: "Sala de prensa", destino: "/prensa" },
+      { texto: "Blog Ayni", destino: "/blog" },
     ],
   },
   {
     titulo: "Ayuda",
     enlaces: [
-      { texto: "Centro de ayuda", destino: "/pendiente" },
-      { texto: "Canales de atención", destino: "/pendiente" },
-      { texto: "Libro de reclamaciones", destino: "/pendiente" },
-      { texto: "Tarifario", destino: "/pendiente" },
-      { texto: "Transparencia", destino: "/pendiente" },
+      { texto: "Centro de ayuda", destino: "/ayuda" },
+      { texto: "Canales de atención", destino: "/canales" },
+      { texto: "Libro de reclamaciones", destino: "/libro-de-reclamaciones" },
+      { texto: "Tarifario", destino: "/tarifario" },
+      { texto: "Transparencia", destino: "/transparencia" },
     ],
   },
 ];
@@ -99,7 +99,7 @@ export function CierreFinal() {
               Abrir mi cuenta gratis <span aria-hidden="true">→</span>
             </Link>
             <Link
-              href="/pendiente"
+              href="/canales"
               className="inline-flex min-h-[44px] items-center justify-center gap-2.5 rounded-full border border-azul-900/25 px-7 py-4 text-[16px] font-semibold text-azul-900 hover:bg-blanco/25"
             >
               <MessageCircle aria-hidden="true" className="h-4 w-4" />
@@ -145,7 +145,7 @@ export function PiePagina() {
               {REDES.map(({ red, nombre }) => (
                 <li key={nombre}>
                   <Link
-                    href="/pendiente"
+                    href="/canales#redes"
                     aria-label={nombre}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blanco/6 text-texto-franja hover:bg-blanco/12 hover:text-blanco"
                   >

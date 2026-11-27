@@ -61,3 +61,22 @@ export function usuarioDelToken(token: string): string | null {
     return null;
   }
 }
+
+/**
+ * Los permisos del token, leídos del claim `permisos` (AYNI-281).
+ *
+ * Solo para decidir qué enseñar: lo que se puede hacer lo decide el gateway con la firma, y
+ * el servicio vuelve a comprobarlo. Un token antiguo sin el claim devuelve una lista vacía.
+ */
+export function permisosDelToken(token: string): string[] {
+  try {
+    const carga = token.split(".")[1];
+    const json = atob(carga.replace(/-/g, "+").replace(/_/g, "/"));
+    const permisos = (JSON.parse(json) as { permisos?: unknown }).permisos;
+    return Array.isArray(permisos)
+      ? permisos.filter((p): p is string => typeof p === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}

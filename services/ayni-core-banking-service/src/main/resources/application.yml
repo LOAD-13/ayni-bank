@@ -77,6 +77,16 @@ ayni:
     fondeo-pen: f0de0000-0000-4000-8000-000000000001
     # Cuenta tecnica que paga los intereses capitalizados (HU-06). La siembra V5.
     intereses-pen: 1e7e0000-0000-4000-8000-000000000001
+    # Lo mismo para las cuentas en dolares (HU-12). La siembra V17.
+    intereses-usd: 1e7e0000-0000-4000-8000-000000000002
+    # Posiciones cambiarias del banco, contrapartida de las conversiones (HU-12). Las siembra V13.
+    posicion-cambiaria-pen: ca4b0000-0000-4000-8000-000000000001
+    posicion-cambiaria-usd: ca4b0000-0000-4000-8000-000000000002
+  funciones:
+    # Feature flags (12-Factor, factor III): se cambian por variable de entorno y un reinicio,
+    # sin reconstruir la imagen. AYNI-319.
+    # true: el historial filtrado se pagina en PostgreSQL. false: vuelve al calculo en memoria.
+    historial-en-base: ${AYNI_FUNCIONES_HISTORIAL_EN_BASE:true}
   devengo:
     # Cada hora, a los 5 minutos, en hora de Lima. Solo trabaja si hay dias sin cerrar:
     # si el servicio estuvo caido a medianoche, el siguiente disparo recupera lo pendiente.
@@ -94,6 +104,15 @@ ayni:
     # AHORRO_PEN, sembrado por la migracion V1. Va en configuracion y no como
     # constante en el codigo porque es un dato del catalogo, no una regla.
     ahorro-soles: ${AYNI_PRODUCTO_AHORRO_PEN:1}
+    # AHORRO_USD, sembrado por V1: la cuenta en dolares de HU-12.
+    ahorro-dolares: ${AYNI_PRODUCTO_AHORRO_USD:2}
+  tipo-de-cambio:
+    # Fuente oficial del tipo de cambio (HU-12): API publica de series del BCRP, sin credenciales.
+    # La cache diaria y el respaldo al ultimo valor conocido van aparte (AYNI-267 y AYNI-268).
+    bcrp:
+      url: ${AYNI_BCRP_URL:https://estadisticas.bcrp.gob.pe/estadisticas/series/api}
+      timeout-de-conexion: 2s
+      timeout-de-lectura: 5s
   camara:
     # Camara de compensacion interbancaria (HU-11). En el entorno academico es el simulador
     # que vive en este mismo servicio (CamaraSimuladaController) y cumple el contrato
@@ -121,6 +140,16 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 15s
         permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      # Tipo de cambio del BCRP (HU-12): si la mitad de las ultimas cinco consultas fallan, el
+      # circuito se abre 60 s y se sirve el ultimo valor guardado sin esperar los timeouts. El
+      # valor cambia una vez al dia, asi que no hace falta reintentar con prisa.
+      bcrp:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 3
+        failureRateThreshold: 50
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 1
         automaticTransitionFromOpenToHalfOpenEnabled: true
 
 # Contrato OpenAPI generado del codigo, en /v3/api-docs. APAGADO por defecto: solo el
@@ -162,6 +191,16 @@ management:
       enabled: true
     readinessState:
       enabled: true
+
+
+# HU-15 · AYNI-283: red de seguridad sobre lo que llega a Loki. El codigo ya registra todo
+# enmascarado; si algun dia se escapa un dato sensible en un mensaje o en una excepcion, el
+# patron lo tapa antes de escribirlo: tokens JWT y Bearer, contrasenas en clave=valor, DNI
+# etiquetado y cualquier numero de 13 a 19 cifras (PAN). LogsSinDatosSensiblesTest lo comprueba.
+logging:
+  pattern:
+    console: |-
+      %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %-40.40logger{39} : %replace(%replace(%replace(%replace(%replace(%m%n%wEx){'eyJ[\w-]+\.[\w-]+\.[\w-]+', '[TOKEN]'}){'(?i)(bearer\s+)[\w.~+/=-]+', '$1[TOKEN]'}){'(?i)(contrasena|password|clave)(\W{1,3})[^\s,;]+', '$1$2***'}){'(?i)(dni|documento)(\D{1,3})\d{8}', '$1$2********'}){'\b(\d{4})\d{5,11}(\d{4})\b', '$1****$2'}
 
 ---
 # El seed solo existe en desarrollo. En staging y produccion los datos de

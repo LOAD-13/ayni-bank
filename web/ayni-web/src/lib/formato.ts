@@ -81,12 +81,21 @@ export function dividirHalfEven(dividendo: bigint, divisor: bigint): bigint {
 }
 
 /** 1250n → «12.50». */
-function deCentimos(centimos: bigint): string {
+export function deCentimos(centimos: bigint): string {
   const cien = BigInt(100);
   const negativo = centimos < BigInt(0);
   const absoluto = negativo ? -centimos : centimos;
   const decimales = String(absoluto % cien).padStart(2, "0");
   return `${negativo ? "-" : ""}${absoluto / cien}.${decimales}`;
+}
+
+/** «12.5» → 1250n, sin coma flotante; más de dos decimales se redondean con HALF_EVEN. */
+export function centimosDe(texto: string): bigint {
+  const d = leerDecimal(texto);
+  if (!d) throw new RangeError(`Importe no válido: «${texto}»`);
+  return d.escala <= 2
+    ? d.unidades * potenciaDeDiez(2 - d.escala)
+    : dividirHalfEven(d.unidades, potenciaDeDiez(d.escala - 2));
 }
 
 /**
@@ -101,6 +110,20 @@ export function rendimientoMensualEstimado(saldo: string, trea: string): string 
   // saldo × (trea / 100) / 12, expresado en céntimos (× 100): saldo × trea / 12.
   const divisor = potenciaDeDiez(s.escala + t.escala) * BigInt(12);
   return deCentimos(dividirHalfEven(s.unidades * t.unidades, divisor));
+}
+
+/**
+ * `true` si `importe` es mayor que `tope`, comparando los decimales exactos: «850.01» supera
+ * a «850.00» y «850.0» no supera a «850.00». Sirve para avisar de un saldo insuficiente
+ * antes de pedir el segundo factor (HU-17, escenario 3). Si alguno no es un importe, `false`:
+ * la decisión final la toma siempre el servidor.
+ */
+export function superaA(importe: string, tope: string): boolean {
+  const i = leerDecimal(importe);
+  const t = leerDecimal(tope);
+  if (!i || !t) return false;
+  // Los dos a la misma escala antes de comparar.
+  return i.unidades * potenciaDeDiez(t.escala) > t.unidades * potenciaDeDiez(i.escala);
 }
 
 /**

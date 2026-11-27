@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 /**
  * Verifica que **todo lo que parece pulsable, lo es y lleva a alguna parte**.
  *
- * El diseño de la landing tiene decenas de enlaces y varios apuntan a pantallas que
- * todavía no existen. La regla del proyecto es que ninguno devuelva 404: lo que aún no
- * está construido lleva a la página de pendientes, que dice la verdad.
+ * El diseño de la landing tiene decenas de enlaces y todos llevan a una pantalla completa.
+ * La regla del proyecto es que ninguno devuelva 404. Lo único que aún lleva a la página de
+ * pendientes es el ingreso con biometría, que se dejó así a propósito.
  */
 const RUTAS = ["/", "/registro", "/pendiente"] as const;
 
@@ -47,22 +47,41 @@ test.describe("Enlaces", () => {
   });
 
   test("ningún destino devuelve 404", async ({ page, request }) => {
-    await page.goto("/");
-    const destinos = await page
-      .locator("a[href^='/']")
-      .evaluateAll((nodos) => [...new Set(nodos.map((n) => n.getAttribute("href") ?? ""))]);
-
-    for (const destino of destinos) {
-      const respuesta = await request.get(destino);
-      expect(respuesta.status(), `${destino} responde ${respuesta.status()}`).toBe(200);
+    const vistos = new Set<string>();
+    // La portada y las páginas públicas a las que lleva, un nivel más abajo.
+    for (const origen of [
+      "/",
+      "/ayuda",
+      "/canales",
+      "/nosotros",
+      "/prensa",
+      "/blog",
+      "/productos",
+      "/negocios",
+    ]) {
+      await page.goto(origen);
+      const destinos = await page
+        .locator("a[href^='/']")
+        .evaluateAll((nodos) => nodos.map((n) => (n.getAttribute("href") ?? "").split("#")[0]));
+      for (const destino of destinos) {
+        if (!destino || vistos.has(destino)) continue;
+        vistos.add(destino);
+        const respuesta = await request.get(destino);
+        expect(
+          respuesta.status(),
+          `${destino} (desde ${origen}) responde ${respuesta.status()}`,
+        ).toBe(200);
+      }
     }
   });
 
   // `:visible` y no `.first()` a secas: en móvil los enlaces de la barra están recogidos
   // en el menú desplegable y los del escritorio siguen en el DOM, ocultos. `.first()`
   // elegiría uno de esos y el clic esperaría para siempre a algo que nadie puede pulsar.
-  test("lo que aún no existe lleva a la página de pendientes", async ({ page }) => {
+  test("la portada ya no lleva a pendientes y la biometría sí lo dice", async ({ page }) => {
     await page.goto("/");
+    await expect(page.locator("a[href='/pendiente']")).toHaveCount(0);
+    await page.goto("/ingresar");
     await page.locator("a[href='/pendiente']:visible").first().click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/todavía no está lista/i);
   });

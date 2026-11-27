@@ -22,10 +22,15 @@ interface Props {
  * El paso en curso se marca además con `aria-current`: sin eso, quien navega con lector de
  * pantalla oye cinco etiquetas seguidas sin saber en cuál está, que es justo la información
  * que la barra existe para dar.
+ *
+ * En un celular la barra no cabe y se desplaza en horizontal. Una región desplazable sin
+ * nada enfocable dentro solo se mueve con el ratón o el dedo: con `tabIndex={0}` también se
+ * alcanza con Tab y se recorre con las flechas (WCAG 2.1.1, regla `scrollable-region-focusable`
+ * de axe, AYNI-287).
  */
 export function PasosDelOnboarding({ actual, completado = false }: Props) {
   return (
-    <nav aria-label="Progreso del registro" className="overflow-x-auto">
+    <nav aria-label="Progreso del registro" className="overflow-x-auto" tabIndex={0}>
       <ol className="mx-auto flex w-full min-w-[560px] items-start">
         {PASOS.map((texto, indice) => {
           const numero = indice + 1;
@@ -71,6 +76,9 @@ export function PasosDelOnboarding({ actual, completado = false }: Props) {
                 }`}
               >
                 {texto}
+                {/* El check de arriba es decorativo: sin esto, un paso cumplido y uno
+                    pendiente suenan igual en el lector de pantalla. */}
+                {cumplido && <span className="sr-only"> (completado)</span>}
               </span>
             </li>
           );

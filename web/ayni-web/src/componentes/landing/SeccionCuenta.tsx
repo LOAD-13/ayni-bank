@@ -50,8 +50,8 @@ export function SeccionCuenta() {
               los días —no a fin de mes—. Tu plata siempre disponible.
             </p>
             <Link
-              href="/pendiente"
-              className="mt-4 inline-flex items-center gap-1.5 text-[15px] font-bold text-azul-600 hover:underline"
+              href="/tarifario"
+              className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-azul-600 hover:underline"
             >
               Ver tarifario completo <span aria-hidden="true">↗</span>
             </Link>

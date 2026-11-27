@@ -25,6 +25,7 @@ type Estado = "validando" | "invalido" | "formulario" | "listo";
 export function FormularioDeContrasenaNueva() {
   const idNueva = useId();
   const idRepetida = useId();
+  const idError = useId();
 
   const [estado, setEstado] = useState<Estado>("validando");
   const [token, setToken] = useState<string | null>(null);
@@ -86,7 +87,7 @@ export function FormularioDeContrasenaNueva() {
 
   if (estado === "validando") {
     return (
-      <p role="status" className="text-[14.5px] text-gris-700">
+      <p role="status" aria-live="polite" className="text-[14.5px] text-gris-700">
         Comprobando el enlace…
       </p>
     );
@@ -124,7 +125,11 @@ export function FormularioDeContrasenaNueva() {
         <h2 className="mt-5 text-[28px] leading-tight font-bold text-azul-700">
           Listo, tu contraseña cambió
         </h2>
-        <p role="status" className="mt-3 text-[14.5px] leading-[1.6] text-gris-700">
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-3 text-[14.5px] leading-[1.6] text-gris-700"
+        >
           Por seguridad cerramos todas tus sesiones abiertas. Para entrar usa tu contraseña nueva y
           tu segundo factor, como siempre.
         </p>
@@ -149,7 +154,9 @@ export function FormularioDeContrasenaNueva() {
 
       {error && (
         <p
+          id={idError}
           role="alert"
+          aria-live="assertive"
           className="mt-6 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -165,6 +172,8 @@ export function FormularioDeContrasenaNueva() {
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idNueva}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
               type={visible ? "text" : "password"}
               autoComplete="new-password"
               value={nueva}
@@ -196,6 +205,8 @@ export function FormularioDeContrasenaNueva() {
           <div className="campo flex min-h-[48px] items-center rounded-[12px] border border-gris-300 bg-blanco">
             <input
               id={idRepetida}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? idError : undefined}
               type={visible ? "text" : "password"}
               autoComplete="new-password"
               value={repetida}

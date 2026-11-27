@@ -36,17 +36,6 @@ public class SeleccionarSegundoFactorService implements SeleccionarSegundoFactor
     private final RepositorioDeUsuariosPort usuarios;
     private final GenerarDesafioCodigoUseCase generarDesafioCodigo;
 
-    public SeleccionarSegundoFactorService(RepositorioDeMetodoSegundoFactorPort repositorioMetodos,
-                                          GeneradorDeTotpPort generadorTotp) {
-        this(repositorioMetodos, generadorTotp, Clock.systemUTC(), null, null, null, null);
-    }
-
-    public SeleccionarSegundoFactorService(RepositorioDeMetodoSegundoFactorPort repositorioMetodos,
-                                          GeneradorDeTotpPort generadorTotp,
-                                          Clock reloj) {
-        this(repositorioMetodos, generadorTotp, reloj, null, null, null, null);
-    }
-
     @Autowired
     public SeleccionarSegundoFactorService(RepositorioDeMetodoSegundoFactorPort repositorioMetodos,
                                           GeneradorDeTotpPort generadorTotp,
@@ -68,58 +57,53 @@ public class SeleccionarSegundoFactorService implements SeleccionarSegundoFactor
     public MetodoDeSegundoFactor seleccionarMetodo(UUID usuarioId, TipoDeSegundoFactor tipo) {
         Objects.requireNonNull(usuarioId, "usuarioId no puede ser nulo");
         Objects.requireNonNull(tipo, "tipo no puede ser nulo");
-
         if (tipo == TipoDeSegundoFactor.SMS) {
             throw new IllegalArgumentException(
                     "El segundo factor por SMS estará disponible próximamente. "
                             + "Elige App Autenticadora o Correo Electrónico.");
         }
-
-        java.util.Optional<UUID> titularDeSolicitud = solicitudes != null
-                ? solicitudes.titularDe(usuarioId)
-                : java.util.Optional.empty();
-        UUID usuarioIdReal = titularDeSolicitud.orElse(usuarioId);
         Instant ahora = reloj.instant();
+        TitularDeLaSolicitud titular = TitularDeLaSolicitud.de(usuarioId, solicitudes, usuarios);
 
-        // OWASP A04 / ADR-0008 (Antienumeración): una solicitud señuelo (correo ya registrado)
-        // no tiene titular en BD. Devolver respuesta efímera indistinguible en vez de fallar con 500 por FK.
-        if (solicitudes != null && titularDeSolicitud.isEmpty()
-                && usuarios != null && usuarios.buscarPorId(usuarioIdReal).isEmpty()) {
-            String secretoSenuelo = tipo == TipoDeSegundoFactor.APP_AUTENTICADORA
-                    ? generadorTotp.generarSecreto().valor()
-                    : null;
-            return MetodoDeSegundoFactor.inscribir(
-                    UUID.randomUUID(), usuarioId, tipo, secretoSenuelo, ahora);
+        // OWASP A04 / ADR-0008 (antienumeración): una solicitud señuelo no tiene titular en la base;
+        // se responde con un método efímero indistinguible en vez de fallar con 500 por la FK.
+        if (titular.senuelo()) {
+            return MetodoDeSegundoFactor.inscribir(UUID.randomUUID(), usuarioId, tipo, secretoPara(tipo), ahora);
         }
-
-        MetodoDeSegundoFactor metodo = repositorioMetodos.buscarPorUsuarioYTipo(usuarioIdReal, tipo)
-                .orElseGet(() -> {
-                    String secreto = null;
-                    if (tipo == TipoDeSegundoFactor.APP_AUTENTICADORA) {
-                        secreto = generadorTotp.generarSecreto().valor();
-                    }
-                    MetodoDeSegundoFactor nuevo = MetodoDeSegundoFactor.inscribir(
-                            UUID.randomUUID(), usuarioIdReal, tipo, secreto, ahora
-                    );
-                    return repositorioMetodos.guardar(nuevo);
-                });
-
-        if (tipo == TipoDeSegundoFactor.APP_AUTENTICADORA && segundosFactores != null && metodo.secreto() != null) {
-            if (segundosFactores.buscarPorUsuario(usuarioIdReal).isEmpty()) {
-                segundosFactores.guardar(SegundoFactor.inscribir(
-                        usuarioIdReal, new SecretoTotp(metodo.secreto()), ahora));
-            }
-        }
-
-        if (tipo == TipoDeSegundoFactor.CORREO_ELECTRONICO
-                && !metodo.estaConfirmado()
-                && generarDesafioCodigo != null
-                && usuarios != null
-                && usuarios.buscarPorId(usuarioIdReal).isPresent()) {
-            generarDesafioCodigo.generar(usuarioIdReal, TipoDeSegundoFactor.CORREO_ELECTRONICO);
-        }
-
+        MetodoDeSegundoFactor metodo = buscarOInscribir(titular.usuarioId(), tipo, ahora);
+        inscribirSegundoFactorTotp(titular.usuarioId(), metodo, ahora);
+        enviarCodigoDeConfirmacion(titular.usuarioId(), metodo);
         return metodo;
+    }
+
+    /** Solo la App Autenticadora necesita un secreto TOTP; los demás métodos no guardan ninguno. */
+    private String secretoPara(TipoDeSegundoFactor tipo) {
+        return tipo == TipoDeSegundoFactor.APP_AUTENTICADORA ? generadorTotp.generarSecreto().valor() : null;
+    }
+
+    private MetodoDeSegundoFactor buscarOInscribir(UUID usuarioId, TipoDeSegundoFactor tipo, Instant ahora) {
+        return repositorioMetodos.buscarPorUsuarioYTipo(usuarioId, tipo)
+                .orElseGet(() -> repositorioMetodos.guardar(MetodoDeSegundoFactor.inscribir(
+                        UUID.randomUUID(), usuarioId, tipo, secretoPara(tipo), ahora)));
+    }
+
+    /** La App Autenticadora deja además su {@link SegundoFactor}, una sola vez por usuario. */
+    private void inscribirSegundoFactorTotp(UUID usuarioId, MetodoDeSegundoFactor metodo, Instant ahora) {
+        if (metodo.tipo() != TipoDeSegundoFactor.APP_AUTENTICADORA || segundosFactores == null
+                || metodo.secreto() == null || segundosFactores.buscarPorUsuario(usuarioId).isPresent()) {
+            return;
+        }
+        segundosFactores.guardar(SegundoFactor.inscribir(usuarioId, new SecretoTotp(metodo.secreto()), ahora));
+    }
+
+    /** El correo sin confirmar recibe su código en el momento de elegirlo. */
+    private void enviarCodigoDeConfirmacion(UUID usuarioId, MetodoDeSegundoFactor metodo) {
+        if (metodo.tipo() != TipoDeSegundoFactor.CORREO_ELECTRONICO || metodo.estaConfirmado()
+                || generarDesafioCodigo == null || usuarios == null
+                || usuarios.buscarPorId(usuarioId).isEmpty()) {
+            return;
+        }
+        generarDesafioCodigo.generar(usuarioId, TipoDeSegundoFactor.CORREO_ELECTRONICO);
     }
 }
 

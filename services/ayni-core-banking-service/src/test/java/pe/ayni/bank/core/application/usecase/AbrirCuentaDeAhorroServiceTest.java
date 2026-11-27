@@ -35,6 +35,7 @@ class AbrirCuentaDeAhorroServiceTest {
 
     private static final Instant AHORA = Instant.parse("2026-08-30T10:15:30Z");
     private static final short PRODUCTO_AHORRO_PEN = 1;
+    private static final short PRODUCTO_AHORRO_USD = 2;
 
     private final UUID titular = UUID.randomUUID();
     private final UUID solicitud = UUID.randomUUID();
@@ -52,7 +53,7 @@ class AbrirCuentaDeAhorroServiceTest {
         idempotencia = new IdempotenciaFalsa();
         auditoria = new AuditoriaFalsa();
         servicio = new AbrirCuentaDeAhorroService(cuentas, eventos, idempotencia, auditoria,
-                PRODUCTO_AHORRO_PEN, Clock.fixed(AHORA, ZoneOffset.UTC));
+                PRODUCTO_AHORRO_PEN, PRODUCTO_AHORRO_USD, Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
     @Nested
@@ -98,6 +99,13 @@ class AbrirCuentaDeAhorroServiceTest {
         void usaElProductoConfigurado() {
             assertThat(servicio.abrirPara(titular, solicitud, Moneda.PEN).productoId())
                     .isEqualTo(PRODUCTO_AHORRO_PEN);
+        }
+
+        @Test
+        @DisplayName("la cuenta en dólares usa el producto de ahorro en dólares (HU-12)")
+        void usaElProductoEnDolares() {
+            assertThat(servicio.abrirPara(titular, solicitud, Moneda.USD).productoId())
+                    .isEqualTo(PRODUCTO_AHORRO_USD);
         }
     }
 

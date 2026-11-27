@@ -5,12 +5,12 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Las colas de HU-13 sobre el exchange comun {@code ayni.eventos}.
@@ -105,9 +105,9 @@ public class ConfiguracionDeMensajeria {
     }
 
     @Bean
-    public MessageConverter conversorDeMensajes(ObjectMapper mapeador) {
+    public MessageConverter conversorDeMensajes(JsonMapper mapeador) {
         // El contrato entre servicios es el JSON: cada escuchador declara su propio record y
         // el conversor lo deduce del parametro, sin depender de clases de otro servicio.
-        return new Jackson2JsonMessageConverter(mapeador);
+        return new JacksonJsonMessageConverter(mapeador);
     }
 }

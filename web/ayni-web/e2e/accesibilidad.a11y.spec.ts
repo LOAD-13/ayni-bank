@@ -15,10 +15,38 @@ const RUTAS = [
   "/registro",
   "/ingresar",
   "/pendiente",
+  // Páginas públicas de la landing (AYNI-342).
+  "/ayuda",
+  "/canales",
+  "/tarifario",
+  "/transparencia",
+  "/nosotros",
+  "/trabaja-con-nosotros",
+  "/prensa",
+  "/blog",
+  "/blog/tea-o-trea-que-comparar",
+  "/libro-de-reclamaciones",
+  "/productos",
+  "/depositos-a-plazo",
+  "/tarjeta-de-credito",
+  "/prestamos",
+  "/seguros",
+  "/inversiones",
+  "/negocios",
   // Sin `solicitudId` a propósito: es el estado con el que responde cualquier visita
   // directa a esta ruta, y tiene que ser tan accesible como el resto.
   "/registro/dni-anverso",
   "/registro/dni-reverso",
+  // AYNI-286: el resto del onboarding y la recuperación de contraseña. En celular, la barra
+  // de pasos de «listo» y «en revisión» era una región desplazable inalcanzable con teclado
+  // y no lo detectaba nadie porque estas rutas no se analizaban.
+  "/registro/segundo-factor",
+  "/registro/confirmar-datos",
+  "/registro/prueba-de-vida",
+  "/registro/en-revision",
+  "/registro/listo",
+  "/recuperar",
+  "/recuperar/nueva",
 ] as const;
 
 for (const ruta of RUTAS) {

@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -29,7 +29,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
 import pe.ayni.bank.core.application.usecase.OperarCuentaService;
@@ -67,7 +67,7 @@ import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorRepositorioDeCu
 @Import({OperarCuentaService.class, AbrirCuentaDeAhorroService.class, AdaptadorLibroMayor.class,
         AdaptadorRepositorioDeCuentas.class, AdaptadorRegistroDeIdempotencia.class,
         AdaptadorPublicadorDeEventos.class, AdaptadorPistaDeAuditoria.class,
-        ConfiguracionDeTiempo.class, ObjectMapper.class,
+        ConfiguracionDeTiempo.class, JsonMapper.class,
         ConcurrenciaDeTransferenciasTest.ConfirmacionDePrueba.class})
 class ConcurrenciaDeTransferenciasTest {
 

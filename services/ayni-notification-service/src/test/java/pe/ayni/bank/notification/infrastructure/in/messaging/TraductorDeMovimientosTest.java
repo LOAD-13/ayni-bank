@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import pe.ayni.bank.notification.domain.model.AvisoDeMovimiento;
 import pe.ayni.bank.notification.domain.model.Titular;
@@ -51,7 +51,7 @@ class TraductorDeMovimientosTest {
     @Test
     @DisplayName("una transferencia avisa a quien envia y a quien recibe, cada uno con su saldo")
     void transferencia() throws Exception {
-        var e = new ObjectMapper().readValue(transferenciaJson(), TransferenciaRealizada.class);
+        var e = new JsonMapper().readValue(transferenciaJson(), TransferenciaRealizada.class);
 
         List<AvisoDeMovimiento> avisos = TraductorDeMovimientos.deTransferencia(EVENTO, e);
 
@@ -90,7 +90,7 @@ class TraductorDeMovimientosTest {
     @Test
     @DisplayName("HU-11: la interbancaria aceptada avisa al titular con el CCI recortado")
     void interbancariaCompletada() throws Exception {
-        var e = new ObjectMapper().readValue(interbancariaJson("COMPLETADA", null),
+        var e = new JsonMapper().readValue(interbancariaJson("COMPLETADA", null),
                 TransferenciaInterbancariaResuelta.class);
 
         List<AvisoDeMovimiento> avisos = TraductorDeMovimientos.deInterbancaria(EVENTO, e);
@@ -110,9 +110,9 @@ class TraductorDeMovimientosTest {
     @Test
     @DisplayName("HU-11: la interbancaria rechazada explica el motivo en palabras del cliente")
     void interbancariaRechazada() throws Exception {
-        var rechazo = new ObjectMapper().readValue(interbancariaJson("RECHAZADA", "RECHAZO_CAMARA"),
+        var rechazo = new JsonMapper().readValue(interbancariaJson("RECHAZADA", "RECHAZO_CAMARA"),
                 TransferenciaInterbancariaResuelta.class);
-        var vencida = new ObjectMapper().readValue(interbancariaJson("RECHAZADA", "SIN_RESPUESTA_EN_PLAZO"),
+        var vencida = new JsonMapper().readValue(interbancariaJson("RECHAZADA", "SIN_RESPUESTA_EN_PLAZO"),
                 TransferenciaInterbancariaResuelta.class);
 
         AvisoDeMovimiento porRechazo = TraductorDeMovimientos.deInterbancaria(EVENTO, rechazo).get(0);
@@ -161,7 +161,7 @@ class TraductorDeMovimientosTest {
     @Test
     @DisplayName("HU-06: el interes capitalizado avisa al titular con el mes en castellano y el saldo")
     void interes() throws Exception {
-        var e = new ObjectMapper().readValue("""
+        var e = new JsonMapper().readValue("""
                 {"movimientoId":"%s","cuentaId":"%s","usuarioId":"%s","cuenta":"****4321","importe":"4.20",
                  "moneda":"PEN","saldo":"1004.20","periodo":"2026-10","registradoEn":"2026-11-01T05:00:00Z"}
                 """.formatted(MOVIMIENTO, UUID.randomUUID(), ANA), InteresCapitalizado.class);
@@ -203,7 +203,7 @@ class TraductorDeMovimientosTest {
         props.setInferredArgumentType(metodo.getGenericParameterTypes()[0]);
         var mensaje = new Message(transferenciaJson().getBytes(StandardCharsets.UTF_8), props);
 
-        Object leido = new Jackson2JsonMessageConverter(new ObjectMapper()).fromMessage(mensaje);
+        Object leido = new JacksonJsonMessageConverter(new JsonMapper()).fromMessage(mensaje);
 
         assertThat(leido).isInstanceOf(TransferenciaRealizada.class);
         assertThat(((TransferenciaRealizada) leido).saldoDestino()).isEqualTo("2234.50");
@@ -215,13 +215,13 @@ class TraductorDeMovimientosTest {
     void escuchadores() throws Exception {
         RegistrarAvisosUseCase avisos = mock(RegistrarAvisosUseCase.class);
         var escuchador = new EscuchadorDeMovimientos(avisos);
-        var e = new ObjectMapper().readValue(transferenciaJson(), TransferenciaRealizada.class);
+        var e = new JsonMapper().readValue(transferenciaJson(), TransferenciaRealizada.class);
 
         escuchador.alRealizarseUnaTransferencia(e, EVENTO.toString());
         escuchador.alRegistrarseUnDeposito(new DepositoSimuladoRegistrado(MOVIMIENTO, UUID.randomUUID(), "1.00",
                 "PEN", ANA, "****4321", "2.00", "2026-10-11T03:30:00Z"), null);
 
-        escuchador.alResolverseUnaInterbancaria(new ObjectMapper().readValue(interbancariaJson("COMPLETADA", null),
+        escuchador.alResolverseUnaInterbancaria(new JsonMapper().readValue(interbancariaJson("COMPLETADA", null),
                 TransferenciaInterbancariaResuelta.class), EVENTO.toString());
 
         ArgumentCaptor<List<AvisoDeMovimiento>> captor = ArgumentCaptor.forClass(List.class);

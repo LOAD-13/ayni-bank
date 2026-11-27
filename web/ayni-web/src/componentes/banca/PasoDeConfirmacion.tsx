@@ -37,6 +37,7 @@ export function PasoDeConfirmacion({
   textoDeConfirmar = "Confirmar y transferir",
 }: Props) {
   const idCodigo = useId();
+  const idError = useId();
   const [codigo, setCodigo] = useState("");
   const completo = /^\d{6}$/.test(codigo);
 
@@ -63,7 +64,9 @@ export function PasoDeConfirmacion({
 
       {error && (
         <p
+          id={idError}
           role="alert"
+          aria-live="assertive"
           className="mt-4 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}
@@ -76,12 +79,14 @@ export function PasoDeConfirmacion({
         </label>
         <input
           id={idCodigo}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? idError : undefined}
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          className="min-h-[48px] rounded-[12px] border border-gris-300 px-4 text-center text-[22px] tracking-[0.4em] text-gris-900 outline-none focus:border-azul-600"
+          className="min-h-[48px] rounded-[12px] border border-gris-300 px-4 text-center text-[22px] tracking-[0.4em] text-gris-900"
         />
         <div className="flex flex-col gap-3 sm:flex-row">
           <Boton type="submit" cargando={enviando} disabled={!completo}>

@@ -38,7 +38,7 @@ export default async function PaginaDeCuentaLista({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[1440px] px-6 pt-9 lg:px-16">
+      <div className="mx-auto w-full max-w-[1440px] px-6 pt-9 lg:px-16 print:hidden">
         <PasosDelOnboarding actual={6} completado />
       </div>
 
@@ -61,7 +61,7 @@ export default async function PaginaDeCuentaLista({
         )}
       </main>
 
-      <footer className="px-5 pb-10 text-center text-[12px] text-gris-500">
+      <footer className="px-5 pb-10 text-center print:hidden text-[12px] text-gris-500">
         Ayni Bank · Banca 100 % digital para personas naturales en Perú. Diseñado conforme al marco
         normativo de la SBS.
       </footer>

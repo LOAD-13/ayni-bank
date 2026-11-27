@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftRight,
+  ArrowRightLeft,
   CircleHelp,
   CreditCard,
   Landmark,
@@ -28,9 +29,10 @@ const NAVEGACION = [
   { href: "/banca/transferir", texto: "Transferir", Icono: ArrowLeftRight },
   { href: "/banca/interbancaria", texto: "A otro banco", Icono: Landmark },
   { href: "/banca/depositar", texto: "Depositar", Icono: PiggyBank },
-  { href: "/pendiente", texto: "Cuentas", Icono: Wallet },
+  { href: "/banca/convertir", texto: "Convertir", Icono: ArrowRightLeft },
+  { href: "/banca/cuentas", texto: "Cuentas", Icono: Wallet },
+  { href: "/banca/movimientos", texto: "Movimientos", Icono: ReceiptText },
   { href: "/banca/tarjeta", texto: "Tarjetas", Icono: CreditCard },
-  { href: "/pendiente", texto: "Estados de cuenta", Icono: ReceiptText },
   { href: "/banca/configuracion", texto: "Configuración", Icono: Settings },
   { href: "/banca/ayuda", texto: "Ayuda", Icono: CircleHelp },
 ];
@@ -38,8 +40,6 @@ const NAVEGACION = [
 /**
  * El marco de la banca por internet: barra lateral, cabecera con el titular y el
  * contenido. Sigue el lienzo «7 · Banca por Internet · Panel» del prototipo.
- *
- * Lo que el prototipo dibuja y aún no existe enlaza a `/pendiente`, que lo dice tal cual.
  */
 export function MarcoDeBanca({ children }: { children: ReactNode }) {
   const ruta = usePathname();
@@ -47,6 +47,13 @@ export function MarcoDeBanca({ children }: { children: ReactNode }) {
   const { usuarioId } = useSesion();
   const [nombre, setNombre] = useState<string | null>(null);
   const [saliendo, setSaliendo] = useState(false);
+
+  // En el celular el menú se desplaza de lado: la opción activa tiene que quedar a la vista.
+  useEffect(() => {
+    document
+      .querySelector('nav[aria-label="Banca por internet"] [aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [ruta]);
 
   useEffect(() => {
     consultarTitular(usuarioId)
@@ -92,7 +99,8 @@ export function MarcoDeBanca({ children }: { children: ReactNode }) {
           className="flex gap-1 overflow-x-auto border-b border-azul-100 bg-blanco p-3 lg:min-h-[calc(100vh-61px)] lg:flex-col lg:border-r lg:border-b-0 lg:p-4"
         >
           {NAVEGACION.map(({ href, texto, Icono }) => {
-            const activa = href === ruta;
+            // El detalle de un movimiento sigue dentro de «Movimientos».
+            const activa = href === ruta || (href !== "/banca" && ruta.startsWith(`${href}/`));
             return (
               <Link
                 key={texto}

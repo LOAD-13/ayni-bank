@@ -51,16 +51,22 @@ export function PanelDeRendimiento({
       aria-labelledby="titulo-rendimiento"
       className="rounded-[20px] border border-exito/30 bg-[#EAF4EF] p-7"
     >
-      <p id="titulo-rendimiento" className="flex items-center gap-3 text-body font-bold text-exito">
+      <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-exito text-blanco"
+          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-exito text-blanco"
         >
           <TrendingUp className="h-5 w-5" />
         </span>
-        {hayDevengos ? "Rendimiento del mes" : "Rendimiento estimado del mes"}
-      </p>
-      <p className="mt-4 text-h2 font-bold text-azul-900">{titular}</p>
+        <div>
+          <h2 id="titulo-rendimiento" className="text-h2 font-bold text-balance text-azul-900">
+            {titular}
+          </h2>
+          <p className="text-small font-semibold text-exito">
+            {hayDevengos ? "Rendimiento del mes" : "Rendimiento estimado del mes"}
+          </p>
+        </div>
+      </div>
 
       {trea && (
         <p className="mt-2 text-small text-gris-800">

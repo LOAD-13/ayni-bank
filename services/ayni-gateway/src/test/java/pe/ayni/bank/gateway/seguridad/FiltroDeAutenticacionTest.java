@@ -86,7 +86,7 @@ class FiltroDeAutenticacionTest {
         StepVerifier.create(filtro.filter(intercambio, cadena)).verifyComplete();
 
         assertThat(reenviada.get().getRequest().getHeaders()
-                .containsKey(FiltroDeAutenticacion.CABECERA_USUARIO)).isFalse();
+                .containsHeader(FiltroDeAutenticacion.CABECERA_USUARIO)).isFalse();
     }
 
     @Test
@@ -99,6 +99,29 @@ class FiltroDeAutenticacionTest {
 
         assertThat(intercambio.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(reenviada.get()).isNull();
+    }
+
+    @Test
+    void lasRespuestasConDatosDelClienteNoSeGuardanEnCache() {
+        MockServerWebExchange intercambio = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/cuentas/mia")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(CLAVE, "ayni-identity-service",
+                                AHORA.plusSeconds(600), USUARIO)));
+
+        StepVerifier.create(filtro.filter(intercambio, cadena)).verifyComplete();
+
+        assertThat(intercambio.getResponse().getHeaders().getCacheControl()).isEqualTo("no-store");
+    }
+
+    @Test
+    void elRechazoPorFaltaDeSesionTampocoSeGuardaEnCache() {
+        MockServerWebExchange intercambio = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/cuentas/mia"));
+
+        StepVerifier.create(filtro.filter(intercambio, cadena)).verifyComplete();
+
+        assertThat(intercambio.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(intercambio.getResponse().getHeaders().getCacheControl()).isEqualTo("no-store");
     }
 
     @Test
@@ -116,6 +139,7 @@ class FiltroDeAutenticacionTest {
                 .isEqualTo("DENY");
         assertThat(intercambio.getResponse().getHeaders().getFirst("Referrer-Policy"))
                 .isEqualTo("strict-origin-when-cross-origin");
+        assertThat(intercambio.getResponse().getHeaders().getCacheControl()).isNull();
     }
 
     @Test
@@ -213,7 +237,7 @@ class FiltroDeAutenticacionTest {
     void laConfiguracionCreaElFiltroConLasRutasIndicadas() {
         ConfiguracionDeSeguridad configuracion = new ConfiguracionDeSeguridad();
         VerificadorDeTokens creado = configuracion.verificadorDeTokens(CLAVE_B64);
-        FiltroDeAutenticacion conRutas = configuracion.filtroDeAutenticacion(creado, List.of("/x"));
+        FiltroDeAutenticacion conRutas = configuracion.filtroDeAutenticacion(creado, List.of("/x"), List.of());
         assertThat(conRutas).isNotNull();
     }
 

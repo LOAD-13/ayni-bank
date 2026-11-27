@@ -24,6 +24,8 @@ export interface Problema {
   codigo?: string;
   /** Intentos que le quedan a una confirmación con segundo factor (HU-07). */
   intentosRestantes?: number;
+  /** La cotización nueva cuando el tipo de cambio cambió al confirmar (409, HU-12). */
+  cotizacion?: CotizacionDeConversion;
 }
 
 export class ErrorDeApi extends Error {
@@ -481,12 +483,14 @@ export interface Movimiento {
   moneda: string;
   concepto: string;
   registradoEn: string;
+  /** Saldo tras el movimiento; solo llega en las búsquedas con filtro o página. */
+  saldoPosterior?: string | null;
 }
 
 /** Lo que devuelve una operación terminada. Las cuentas llegan enmascaradas. */
 export interface Comprobante {
   movimientoId: string;
-  tipo: "TRANSFERENCIA" | "DEPOSITO_SIMULADO";
+  tipo: "TRANSFERENCIA" | "DEPOSITO_SIMULADO" | "INTERES" | "CONVERSION";
   importe: string;
   moneda: string;
   cuentaOrigen: string;
@@ -494,6 +498,8 @@ export interface Comprobante {
   concepto: string;
   registradoEn: string;
   saldoDisponible: string;
+  /** Para quien lo pide: CARGO si el dinero salió, ABONO si entró. */
+  sentido?: "CARGO" | "ABONO";
 }
 
 /**
@@ -519,8 +525,94 @@ export async function descargarComprobante(token: string, movimientoId: string):
   return respuesta.blob();
 }
 
-export async function consultarMiCuenta(token: string): Promise<CuentaAbierta> {
-  return pedir<CuentaAbierta>("/api/v1/cuentas/mia", undefined, { token });
+/**
+ * La cuenta del titular en soles; con `USD`, la de dólares (HU-12). Sin cuenta en esa moneda el
+ * servidor responde 404 (`SIN_CUENTA`).
+ */
+export async function consultarMiCuenta(
+  token: string,
+  moneda: MonedaDeCuenta = "PEN",
+): Promise<CuentaAbierta> {
+  const consulta = moneda === "PEN" ? "" : `?moneda=${moneda}`;
+  return pedir<CuentaAbierta>(`/api/v1/cuentas/mia${consulta}`, undefined, { token });
+}
+
+/** Abre la cuenta de ahorro en dólares del titular. La clave hace seguro el reintento. */
+export async function abrirCuentaEnDolares(token: string, clave: string): Promise<CuentaAbierta> {
+  return pedir<CuentaAbierta>("/api/v1/cuentas/mia/dolares", {}, { token, idempotencia: clave });
+}
+
+// ─── Conversión entre soles y dólares · HU-12 ────────────────────────────
+
+export type MonedaDeCuenta = "PEN" | "USD";
+
+/** Lo que se le ofrece al cliente antes de convertir. Todo llega como texto, nunca como número. */
+export interface CotizacionDeConversion {
+  origen: MonedaDeCuenta;
+  destino: MonedaDeCuenta;
+  /** Soles por dólar que se le aplicaría, ya con el margen del banco. */
+  tipoAplicado: string;
+  /** Soles por dólar oficial del que sale. */
+  tipoReferencia: string;
+  /** Margen total del segmento, en porcentaje: «0.50». */
+  margen: string;
+  segmento: string;
+  fuente: string;
+  obtenidoEn: string;
+  /** El tipo es el último conocido y no el de hoy: la pantalla debe avisarlo antes de confirmar. */
+  enCache: boolean;
+  importeOrigen: string | null;
+  importeDestino: string | null;
+}
+
+export interface ConversionRealizada {
+  conversionId: string;
+  movimientoId: string;
+  importeOrigen: string;
+  monedaOrigen: MonedaDeCuenta;
+  importeDestino: string;
+  monedaDestino: MonedaDeCuenta;
+  tipoAplicado: string;
+  tipoReferencia: string;
+  margen: string;
+  segmento: string;
+  fuente: string;
+  tipoObtenidoEn: string;
+  enCache: boolean;
+  registradaEn: string;
+}
+
+/** No mueve dinero: es la simulación que se enseña antes de confirmar. */
+export async function cotizarConversion(
+  token: string,
+  origen: MonedaDeCuenta,
+  importe: string,
+): Promise<CotizacionDeConversion> {
+  return pedir<CotizacionDeConversion>(
+    `/api/v1/tipo-cambio/cotizacion?origen=${origen}&importe=${importe}`,
+    undefined,
+    { token },
+  );
+}
+
+/**
+ * Confirma con el tipo que el cliente vio. Si cambió, el servidor responde 409 con
+ * `codigo = TIPO_DE_CAMBIO_CAMBIO` y no convierte: la pantalla debe volver a mostrar el tipo.
+ */
+export async function convertirMoneda(
+  token: string,
+  solicitud: {
+    origen: MonedaDeCuenta;
+    importe: string;
+    tipoMostrado: string;
+    enCacheMostrado: boolean;
+  },
+  clave: string,
+): Promise<ConversionRealizada> {
+  return pedir<ConversionRealizada>("/api/v1/conversiones", solicitud, {
+    token,
+    idempotencia: clave,
+  });
 }
 
 /** Un dia de interes: con que saldo y a que tasa se calculo (HU-06, escenario 3). */
@@ -556,6 +648,58 @@ export async function consultarMovimientos(token: string, limite = 10): Promise<
   });
 }
 
+/** Una página del historial desde una fecha (AAAA-MM-DD), con el saldo tras cada movimiento. */
+export async function buscarMovimientos(
+  token: string,
+  desde: string,
+  pagina: number,
+  limite = 50,
+): Promise<Movimiento[]> {
+  return pedir<Movimiento[]>(
+    `/api/v1/cuentas/mia/movimientos?desde=${desde}&pagina=${pagina}&limite=${limite}`,
+    undefined,
+    { token },
+  );
+}
+
+/** HU-07: el detalle de un movimiento propio. 404 si no existe o es de otra persona. */
+export async function consultarMovimiento(
+  token: string,
+  movimientoId: string,
+): Promise<Comprobante> {
+  return pedir<Comprobante>(`/api/v1/movimientos/${encodeURIComponent(movimientoId)}`, undefined, {
+    token,
+  });
+}
+
+/** Una hoja del libro de reclamaciones. Es pública: no lleva token. */
+export interface HojaDeReclamacion {
+  tipo: "RECLAMO" | "QUEJA";
+  nombre: string;
+  tipoDocumento: "DNI" | "CE";
+  numeroDocumento: string;
+  correo: string;
+  telefono: string;
+  bien: "PRODUCTO" | "SERVICIO";
+  descripcionDelBien: string;
+  montoReclamado: string;
+  detalle: string;
+  pedido: string;
+}
+
+export interface ConstanciaDeReclamacion {
+  codigo: string;
+  tipo: "RECLAMO" | "QUEJA";
+  registradaEn: string;
+  responderAntesDe: string;
+}
+
+export async function registrarReclamacion(
+  hoja: HojaDeReclamacion,
+): Promise<ConstanciaDeReclamacion> {
+  return pedir<ConstanciaDeReclamacion>("/api/v1/reclamaciones", hoja);
+}
+
 /**
  * Deposita dinero de prueba en la cuenta propia.
  *
@@ -587,6 +731,57 @@ export async function transferir(
     "/api/v1/transferencias",
     { cuentaDestino, importe, concepto },
     { token, idempotencia: clave, confirmacion },
+  );
+}
+
+// ─── Pista de auditoría · back-office · AYNI-284 ─────────────────────────
+
+/** Un registro de la pista: quién, qué, sobre qué, desde dónde, con qué resultado y cuándo. */
+export interface EventoDeAuditoria {
+  id: number;
+  tipo: string;
+  usuarioId: string;
+  movimientoId: string | null;
+  motivo: string | null;
+  resultado: "EXITO" | "RECHAZADO";
+  recurso: string | null;
+  ip: string | null;
+  agente: string | null;
+  ocurridoEn: string;
+}
+
+export interface PaginaDeAuditoria {
+  eventos: EventoDeAuditoria[];
+  pagina: number;
+  tamano: number;
+  total: number;
+}
+
+export interface FiltroDeAuditoria {
+  usuarioId?: string;
+  tipo?: string;
+  desde?: string;
+  hasta?: string;
+  pagina?: number;
+  tamano?: number;
+}
+
+/** Solo lectura: la pista es de solo inserción y el servidor no expone ninguna otra operación. */
+export async function consultarAuditoria(
+  token: string,
+  filtro: FiltroDeAuditoria,
+): Promise<PaginaDeAuditoria> {
+  const consulta = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(filtro)) {
+    if (valor !== undefined && valor !== "") consulta.set(clave, String(valor));
+  }
+  const texto = consulta.toString();
+  return pedir<PaginaDeAuditoria>(
+    `/api/v1/auditoria/eventos${texto ? `?${texto}` : ""}`,
+    undefined,
+    {
+      token,
+    },
   );
 }
 

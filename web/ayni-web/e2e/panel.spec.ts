@@ -90,7 +90,10 @@ test.describe("Panel de la banca", () => {
     await expect(page.getByText("TREA 4.50 %").first()).toBeVisible();
     // 850 × 4.50 % / 12 = 3.1875, que con HALF_EVEN son 3.19 (truncando salía 3.18).
     await expect(page.getByText(/unos S\/ 3\.19 al mes/)).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Depósito" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Depósito simulado Depósito/ })).toHaveAttribute(
+      "href",
+      "/banca/movimientos/m1",
+    );
 
     await expect(page.getByTestId("version-de-la-aplicacion")).toContainText("Ayni Bank · versión");
 

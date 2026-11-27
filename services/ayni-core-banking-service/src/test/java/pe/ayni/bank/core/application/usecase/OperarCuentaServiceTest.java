@@ -32,6 +32,7 @@ import pe.ayni.bank.core.domain.model.Movimiento;
 import pe.ayni.bank.core.domain.model.NumeroDeCuenta;
 import pe.ayni.bank.core.domain.model.OperacionRechazadaException;
 import pe.ayni.bank.core.domain.model.TipoDeEventoDeOperacion;
+import pe.ayni.bank.core.domain.model.TipoDeAsiento;
 import pe.ayni.bank.core.domain.model.TipoDeMovimiento;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
@@ -135,6 +136,7 @@ class OperarCuentaServiceTest {
         assertThat(deposito.cuentaOrigen()).isEqualTo("Deposito simulado");
         assertThat(deposito.cuentaDestino()).isEqualTo(deAna.numero().enmascarado());
         assertThat(deposito.saldoDisponible()).isEqualTo(soles("1000.00"));
+        assertThat(deposito.sentido()).isEqualTo(TipoDeAsiento.ABONO);
 
         Comprobante transferencia = servicio.transferir(ana, deBeto.numero().formateado(),
                 soles("250.75"), "Cena", UUID.randomUUID(), CONFIRMADA);
@@ -143,6 +145,9 @@ class OperarCuentaServiceTest {
         assertThat(transferencia.cuentaOrigen()).isEqualTo(deAna.numero().enmascarado());
         assertThat(transferencia.cuentaDestino()).isEqualTo(deBeto.numero().enmascarado());
         assertThat(transferencia.saldoDisponible()).isEqualTo(soles("749.25"));
+        assertThat(transferencia.sentido()).isEqualTo(TipoDeAsiento.CARGO);
+        assertThat(servicio.comprobante(beto, transferencia.movimientoId()))
+                .get().extracting(Comprobante::sentido).isEqualTo(TipoDeAsiento.ABONO);
         assertThat(libro.saldoDe(deBeto.id(), Moneda.PEN)).isEqualTo(soles("250.75"));
         // El fondeo refleja exactamente el dinero que entro.
         assertThat(libro.saldoDe(libro.fondeo.id(), Moneda.PEN)).isEqualTo(soles("-1000.00"));
@@ -370,6 +375,9 @@ class OperarCuentaServiceTest {
         final Cuenta intereses = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
                 new NumeroDeCuenta("00110000000003"), new Cci("99900101000000000309"), Moneda.PEN,
                 EstadoCuenta.ACTIVA, AHORA);
+        final Cuenta posicion = Cuenta.reconstituir(UUID.randomUUID(), UUID.randomUUID(), AHORRO,
+                new NumeroDeCuenta("00110000000004"), new Cci("99900101000000000412"), Moneda.PEN,
+                EstadoCuenta.ACTIVA, AHORA);
 
         Libro() {
             porId.put(fondeo.id(), fondeo);
@@ -402,6 +410,11 @@ class OperarCuentaServiceTest {
         @Override
         public Cuenta cuentaDeIntereses(Moneda moneda) {
             return intereses;
+        }
+
+        @Override
+        public Cuenta cuentaDePosicionCambiaria(Moneda moneda) {
+            return posicion;
         }
 
         @Override

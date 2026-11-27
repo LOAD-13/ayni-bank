@@ -4,6 +4,14 @@ La landing es la puerta de entrada del producto: **cada enlace suyo es una prome
 registra qué destinos anuncia el diseño aprobado en el prototipo, cuáles tienen ya una Historia de
 Usuario detrás y cuáles no, para poder ir sacando sus pantallas en orden y sin sorpresas.
 
+> **Estado al 19-nov-2026 (AYNI-342 y AYNI-343):** todos los destinos de la landing tienen su
+> pantalla. Las páginas institucionales y de ayuda, el tarifario y la transparencia muestran datos
+> reales del catálogo; el libro de reclamaciones guarda cada hoja en core-banking; los productos
+> fuera del alcance (depósito a plazo, tarjeta de crédito, préstamos, seguros, inversiones y
+> negocios) tienen página con un simulador de tasas **referenciales**, rotulado como tal, y llevan
+> a abrir la Cuenta Ayni. Lo único que sigue en `/pendiente` es el ingreso con biometría, por
+> decisión del equipo. Las tablas de abajo quedan como historia del inventario.
+
 Se mantiene actualizado a medida que se implementan las historias. **Un enlace no se activa en la
 landing hasta que su pantalla existe**: un enlace que no lleva a ninguna parte enseña al visitante
 que la web está rota.
