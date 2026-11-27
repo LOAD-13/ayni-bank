@@ -154,7 +154,7 @@ spring:
             - id: core-banking
               uri: *core
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/conversiones,/api/v1/auditoria/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/reclamaciones
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/conversiones,/api/v1/auditoria/**,/api/v1/backoffice/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/reclamaciones
 
             # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
@@ -192,12 +192,15 @@ ayni:
     # muestra o mueve el dinero del titular. Toda consulta de cuentas exige sesion,
     # tambien al terminar el registro (ADR-0038).
     rutas-protegidas: >-
-      /api/v1/cuentas,/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/conversiones,/api/v1/tipo-cambio/cotizacion,/api/v1/auditoria/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
+      /api/v1/cuentas,/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/conversiones,/api/v1/tipo-cambio/cotizacion,/api/v1/auditoria/**,/api/v1/backoffice/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
     # Que permiso del token exige cada ruta (AYNI-281), con la forma [METODO:]patron=permiso. Gana
     # la primera que case. Una ruta protegida sin regla solo exige sesion. Los permisos salen de
     # los roles del catalogo de identity (V1) y viajan en el claim `permisos` del token.
     permisos-por-ruta: >-
       /api/v1/auditoria/**=auditoria:leer,
+      POST:/api/v1/backoffice/bloqueos=cliente:bloquear_iniciar,
+      /api/v1/backoffice/bloqueos/**=cliente:bloquear_aprobar,
+      /api/v1/backoffice/bloqueos=cliente:bloquear_aprobar,
       POST:/api/v1/transferencias=transferencia:iniciar,
       POST:/api/v1/interbancarias=transferencia:iniciar,
       POST:/api/v1/conversiones=transferencia:iniciar,
