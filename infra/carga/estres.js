@@ -10,6 +10,11 @@
 //
 //   k6 run -e BASE_URL=http://localhost:8080 -e TOKEN=<token de acceso> infra/carga/estres.js
 //
+// Con varios clientes (más realista: cada usuario virtual consulta su propia cuenta), los
+// tokens separados por comas, tal como los escribe infra/carga/preparar-clientes.py:
+//
+//   k6 run -e BASE_URL=http://localhost:8080 -e TOKENS="$(cat tokens.txt)" infra/carga/estres.js
+//
 // Con Docker, sin instalar k6:
 //
 //   docker run --rm -i -v "$PWD:/w" -w /w grafana/k6:1.4.2 run \
@@ -28,6 +33,7 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 
 const BASE = __ENV.BASE_URL || "http://localhost:8080";
+const TOKENS = (__ENV.TOKENS || __ENV.TOKEN || "").split(",").filter(Boolean);
 const NIVELES = (__ENV.NIVELES || "50,100,200,300,400,500").split(",").map(Number);
 const DURACION = __ENV.DURACION || "2m";
 const UMBRAL_QUIEBRE_MS = 1000; // HU-14: «cuando la latencia p95 supera 1 s»
@@ -74,7 +80,9 @@ export const options = {
 };
 
 export default function () {
-  const cabeceras = { headers: { Authorization: `Bearer ${__ENV.TOKEN}` } };
+  // Cada usuario virtual es siempre el mismo cliente, repartidos en rueda entre los tokens.
+  const token = TOKENS[(__VU - 1) % TOKENS.length];
+  const cabeceras = { headers: { Authorization: `Bearer ${token}` } };
   for (const [consulta, ruta] of Object.entries(CONSULTAS)) {
     const r = http.get(BASE + ruta, { ...cabeceras, tags: { consulta } });
     check(r, { [`${consulta} 200`]: (x) => x.status === 200 });
@@ -108,7 +116,7 @@ export function handleSummary(datos) {
   const md = [
     `# Prueba de estrés · ${new Date().toISOString()}`,
     "",
-    `Objetivo: ${BASE} · escalones de ${DURACION} · HU-14, escenario 2 (AYNI-300).`,
+    `Objetivo: ${BASE} · escalones de ${DURACION} · ${TOKENS.length} clientes distintos · HU-14, escenario 2 (AYNI-300).`,
     "",
     "Latencias solo de respuestas correctas; los fallos se cuentan en «Errores».",
     "",
