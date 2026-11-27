@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -24,9 +25,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import pe.ayni.bank.core.domain.model.EstadoCuenta;
 import pe.ayni.bank.core.domain.model.EventoDeAuditoria;
+import pe.ayni.bank.core.domain.model.HistorialDeCuenta;
+import pe.ayni.bank.core.domain.model.Moneda;
 import pe.ayni.bank.core.domain.model.PaginaDeAuditoria;
+import pe.ayni.bank.core.domain.model.VersionDeCuenta;
 import pe.ayni.bank.core.domain.port.in.ConsultarAuditoriaUseCase;
+import pe.ayni.bank.core.domain.port.in.ConsultarHistorialDeCuentaUseCase;
 
 /** El contrato HTTP de la lectura de la pista · AYNI-284. */
 class AuditoriaControllerTest {
@@ -35,7 +41,8 @@ class AuditoriaControllerTest {
     private static final String PERMISOS = AuditoriaController.CABECERA_PERMISOS;
 
     private final ConsultarAuditoriaUseCase consultar = mock(ConsultarAuditoriaUseCase.class);
-    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new AuditoriaController(consultar)).build();
+    private final ConsultarHistorialDeCuentaUseCase historial = mock(ConsultarHistorialDeCuentaUseCase.class);
+    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new AuditoriaController(consultar, historial)).build();
     private final UUID auditor = UUID.randomUUID();
     private final UUID cliente = UUID.randomUUID();
 
@@ -137,5 +144,41 @@ class AuditoriaControllerTest {
                 .andExpect(status().isMethodNotAllowed());
         mvc.perform(delete("/api/v1/auditoria/eventos").header(USUARIO, auditor).header(PERMISOS, "auditoria:leer"))
                 .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @DisplayName("HU-15 escenario 2: el estado de la cuenta en una fecha y quien hizo cada cambio")
+    void historialDeLaCuenta() throws Exception {
+        UUID supervisor = UUID.randomUUID();
+        Instant alta = Instant.parse("2026-11-20T10:00:00Z");
+        Instant bloqueo = Instant.parse("2026-11-25T10:00:00Z");
+        List<VersionDeCuenta> versiones = List.of(
+                new VersionDeCuenta(1, alta, null, VersionDeCuenta.Tipo.ALTA, "00110000000101", EstadoCuenta.ACTIVA, Moneda.PEN),
+                new VersionDeCuenta(5, bloqueo, supervisor, VersionDeCuenta.Tipo.CAMBIO, "00110000000101",
+                        EstadoCuenta.BLOQUEADA, Moneda.PEN));
+        Instant fecha = Instant.parse("2026-11-22T00:00:00Z");
+        when(historial.consultar("00110000000101", fecha)).thenReturn(HistorialDeCuenta.en(fecha, versiones));
+
+        mvc.perform(get("/api/v1/auditoria/cuentas/00110000000101/historial").param("en", fecha.toString())
+                        .header(USUARIO, auditor).header(PERMISOS, "auditoria:leer"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vigente.estado").value("ACTIVA"))
+                .andExpect(jsonPath("$.versiones.length()").value(2))
+                .andExpect(jsonPath("$.versiones[1].actor").value(supervisor.toString()))
+                .andExpect(jsonPath("$.versiones[1].estado").value("BLOQUEADA"));
+    }
+
+    @Test
+    @DisplayName("El historial exige auditoria:leer y una cuenta que no existe da 404")
+    void historialSinPermisoONoEncontrado() throws Exception {
+        mvc.perform(get("/api/v1/auditoria/cuentas/00110000000101/historial").header(USUARIO, auditor)
+                        .header(PERMISOS, "cuenta:leer"))
+                .andExpect(status().isForbidden());
+        verify(historial, never()).consultar(any(), any());
+
+        when(historial.consultar(eq("00110000009999"), any())).thenThrow(new NoSuchElementException("no existe"));
+        mvc.perform(get("/api/v1/auditoria/cuentas/00110000009999/historial").header(USUARIO, auditor)
+                        .header(PERMISOS, "auditoria:leer"))
+                .andExpect(status().isNotFound());
     }
 }
