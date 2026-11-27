@@ -3,7 +3,7 @@ groups:
     interval: 30s
     rules:
       - alert: HU14ConsultaSaldoP95Sobre500ms
-        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia"}[5m]))) > 0.5
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-core-banking-service", uri="/api/v1/cuentas/mia"}[5m]))) > 0.5
         for: 2m
         labels:
           severity: warning
@@ -13,7 +13,7 @@ groups:
           description: "El p95 de GET /api/v1/cuentas/mia supera 500 ms durante al menos 2 minutos. Valor actual: {{ $value }} s."
 
       - alert: HU14ConsultaSaldoP99Sobre1s
-        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia"}[5m]))) > 1
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-core-banking-service", uri="/api/v1/cuentas/mia"}[5m]))) > 1
         for: 2m
         labels:
           severity: critical
@@ -23,7 +23,7 @@ groups:
           description: "El p99 de GET /api/v1/cuentas/mia supera 1 s durante al menos 2 minutos. Valor actual: {{ $value }} s."
 
       - alert: HU14MovimientosP95Sobre500ms
-        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 0.5
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-core-banking-service", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 0.5
         for: 2m
         labels:
           severity: warning
@@ -33,7 +33,7 @@ groups:
           description: "El p95 de GET /api/v1/cuentas/mia/movimientos supera 500 ms durante al menos 2 minutos. Valor actual: {{ $value }} s."
 
       - alert: HU14MovimientosP99Sobre1s
-        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 1
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-core-banking-service", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 1
         for: 2m
         labels:
           severity: critical
@@ -45,9 +45,9 @@ groups:
       - alert: HU14TasaDeErrorSobre01PorCiento
         expr: |
           (
-            sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-gateway", uri=~"/api/v1/cuentas/mia(/movimientos)?", status!~"2.."}[5m]))
+            sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-core-banking-service", uri=~"/api/v1/cuentas/mia(/movimientos)?", status!~"2.."}[5m]))
             /
-            clamp_min(sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-gateway", uri=~"/api/v1/cuentas/mia(/movimientos)?"}[5m])), 1e-9)
+            clamp_min(sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-core-banking-service", uri=~"/api/v1/cuentas/mia(/movimientos)?"}[5m])), 1e-9)
           ) > 0.001
         for: 2m
         labels:
@@ -58,7 +58,7 @@ groups:
           description: "Mas del 0.1 % de las consultas de saldo/movimientos no responde con HTTP 2xx durante 2 minutos. Valor actual: {{ $value | humanizePercentage }}."
 
       - alert: HU14TransferenciaP95Sobre3s
-        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/transferencias"}[5m]))) > 3
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-core-banking-service", uri="/api/v1/transferencias"}[5m]))) > 3
         for: 2m
         labels:
           severity: critical

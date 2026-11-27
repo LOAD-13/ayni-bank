@@ -1,7 +1,7 @@
 {
   "uid": "hu14-rendimiento",
   "title": "AYNI Bank · HU-14 Rendimiento",
-  "description": "Resultados k6 por ejecucion y latencia observada en el gateway. Los percentiles de k6 se expresan en milisegundos.",
+  "description": "Resultados k6 por ejecucion y latencia observada en core-banking (el gateway etiqueta las rutas reenviadas como UNKNOWN). Los percentiles de k6 se expresan en milisegundos.",
   "tags": ["ayni", "hu14", "k6", "sre"],
   "timezone": "America/Lima",
   "schemaVersion": 39,
@@ -110,11 +110,11 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Latencia p95 observada por el gateway",
+      "title": "Latencia p95 observada en core-banking",
       "description": "Métrica de servidor en segundos convertida a milisegundos.",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "x": 12, "y": 13, "w": 12, "h": 8 },
-      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"ayni-servicios\", servicio=\"ayni-gateway\", uri=~\"/api/v1/cuentas/mia(/movimientos)?\"}[5m]))) * 1000", "legendFormat": "{{uri}}", "refId": "A" }],
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"ayni-servicios\", servicio=\"ayni-core-banking-service\", uri=~\"/api/v1/cuentas/mia(/movimientos)?\"}[5m]))) * 1000", "legendFormat": "{{uri}}", "refId": "A" }],
       "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } }
     },
