@@ -21,6 +21,11 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Correo real en produccion con Amazon SES. El cliente HTTP es el de
              java.net (url-connection-client) y no Netty ni Apache: menos
              dependencias que escanear y ninguna conexion persistente que gestionar. -->
@@ -66,6 +71,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Historial de versiones de las entidades sensibles con su actor (HU-15, AYNI-279). -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-envers</artifactId>
         </dependency>
         <!-- Solo `spring-security-crypto`, no `spring-boot-starter-security`.
              Aqui hace falta unicamente Argon2PasswordEncoder para HU-01;
