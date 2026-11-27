@@ -35,12 +35,8 @@ El escenario mantiene 200 VU durante 10 minutos y alterna las consultas de saldo
 
 ## Ejecución de estrés
 
-```powershell
-# El archivo local debe contener 600 JWT distintos.
-./tests/performance/run-stress.ps1
-```
-
-El escenario parte de 200 VU y aumenta en escalones de 100 hasta 600 VU. Cada nivel se mantiene durante dos minutos (30 segundos de rampa y 90 segundos de estabilizacion en los niveles 300 a 600). Se interrumpe si el p95 supera 1 000 ms o si la tasa de errores supera 0.1 % durante 30 segundos. Los mensajes `[HU14] CANDIDATO_DEGRADACION` registran la concurrencia observada cuando aparece una respuesta individual superior a un segundo; el p95 del escalón se confirma en Grafana.
+El punto de quiebre se mide con `infra/carga/estres.js` (AYNI-300), por escalones de usuarios; el procedimiento
+completo y los resultados estan en [prueba-de-estres.md](prueba-de-estres.md).
 
 ## Registro de resultados (completar después de ejecutar)
 
@@ -59,11 +55,11 @@ El escenario parte de 200 VU y aumenta en escalones de 100 hasta 600 VU. Cada ni
 | Duración onboarding KYC completo | NO MEDIBLE CON LA INSTRUMENTACIÓN ACTUAL |
 | Tasa de error nominal | 0.00 % (0 de 503 peticiones; 503/503 checks) |
 | Throughput observado | 48 req/min (0.80 req/s), el perfil de trafico normal de 50 req/min |
-| Primer escalón con p95 > 1 s | PENDIENTE VU |
-| Tasa de error en el punto de degradación | PENDIENTE % |
-| CPU / memoria / conexiones DB | PENDIENTE |
-| Comportamiento observado | PENDIENTE |
-| Evidencia Grafana | PENDIENTE: ruta/captura |
+| Primer escalón con p95 > 1 s | 800 VU (AYNI-300, ver abajo) |
+| Tasa de error en el punto de degradación | 0.00 % en 800 VU; los fallos de 400–500 VU son de conexion del host, no de la aplicacion (ver abajo) |
+| CPU / memoria / conexiones DB | Gateway y core-banking contra su techo de CPU; PostgreSQL y Redis holgados (AYNI-300) |
+| Comportamiento observado | Degradacion controlada: crece la latencia, sin reinicios, sin falta de memoria ni errores de la aplicacion |
+| Evidencia Grafana | No se capturo: las cifras salen de los resumenes de k6 y de `docker stats` |
 
 ## Resultado de la carga nominal (AYNI-299)
 
@@ -73,11 +69,38 @@ Los 200 usuarios son clientes distintos preparados con `infra/carga/preparar-cli
 su token. El perfil es el de trafico normal (unas 50 peticiones por minuto en total): la carga sostenida y
 creciente es la de la prueba de estres.
 
-## Análisis del punto de quiebre
+## Punto de quiebre y comportamiento en degradación (AYNI-301)
 
-Registrar el primer escalón en el que el p95 de saldo o movimientos supera 1 000 ms durante al menos 30 segundos. Correlacionar el instante con `k6_vus`, CPU, memoria JVM, conexiones Hikari y disponibilidad de PostgreSQL en el dashboard técnico.
+**El punto de quiebre está en 800 usuarios concurrentes**, el primer escalon con p95 sobre 1 s (1 107 ms), segun la
+prueba de estres de AYNI-300 con los limites de produccion. HU-14 se cumple (p95 < 500 ms) hasta 400 usuarios.
 
-No afirmar que no hubo pérdida ni corrupción de transacciones a partir de esta prueba: los escenarios k6 incluidos aquí son de solo lectura. La integridad de transferencias debe verificarse con un escenario transaccional separado en staging, con cuentas sintéticas, claves de idempotencia y conciliación de asientos antes/después.
+| Usuarios | p95 | Errores | Estado |
+|---|---|---|---|
+| 200 | 106 ms | 0.00 % | dentro del objetivo |
+| 400 | 398 ms | 0.08 % | dentro del objetivo |
+| 500 | 605 ms | 0.26 % | sobre 500 ms |
+| 800 | 1 107 ms | 0.00 % | **punto de quiebre** |
+| 1 000 | 1 414 ms | 0.00 % | degradado |
+
+**Como degrada.** Pasado el quiebre la latencia crece, pero ningun servicio se reinicia ni se queda sin memoria y no
+hay errores de la aplicacion. La espera es de CPU: gateway y core-banking trabajan contra su techo (0.5 y 0.75
+nucleos) mientras PostgreSQL y Redis van holgados. Mas CPU o mas replicas del gateway (AYNI-306) mueven el quiebre;
+optimizar consultas, de momento, no.
+
+**Las respuestas distintas de 200 que quedaron por explicar en AYNI-300.** Se repitieron los escalones de 400 y 500
+usuarios (27-nov, `infra/carga/estres.js` con `-e NIVELES=400,500`) volcando cada peticion con su codigo:
+
+| Escalon | Peticiones | Distintas de 200 | Codigo |
+|---|---|---|---|
+| 400 | 51 600 | 195 | 0 (sin conexion) |
+| 500 | 96 320 | 469 | 0 (sin conexion) |
+
+Todas tienen **codigo 0**: k6 no llego a conectar (`connectex: No connection could be made … 127.0.0.1:8080`). Las
+rechaza el reenvio de puertos de Docker Desktop en Windows cuando cientos de usuarios abren conexion a la vez, antes
+de llegar al gateway; por eso ni el gateway ni core-banking las registran. **No son errores de la aplicacion**, sino
+del puesto de pruebas. En esta repeticion el salto directo a 400 usuarios, sin calentamiento, ademas infla el p95
+de ese escalon (1 209 ms, con un maximo de 31 s en el primer instante). La cifra definitiva debe tomarse en staging,
+con Linux y sin el reenvio de puertos de Docker Desktop.
 
 ## Alcance de las alertas
 
