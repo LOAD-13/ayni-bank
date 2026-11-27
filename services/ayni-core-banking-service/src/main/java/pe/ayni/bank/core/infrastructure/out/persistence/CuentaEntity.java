@@ -8,8 +8,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** Fila de {@code core.cuenta}. */
+import org.hibernate.envers.Audited;
+
+/** Fila de {@code core.cuenta}. Envers guarda cada version en {@code cuenta_aud} (HU-15). */
 @Entity
+@Audited
 @Table(name = "cuenta")
 public class CuentaEntity {
 

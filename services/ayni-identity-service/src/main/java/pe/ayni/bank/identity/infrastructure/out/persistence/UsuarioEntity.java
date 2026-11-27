@@ -8,6 +8,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
+
 /**
  * Fila de la tabla {@code identity.usuario}.
  *
@@ -18,6 +21,7 @@ import jakarta.persistence.Table;
  * alternativa es que la base de datos dicte las reglas del banco.
  */
 @Entity
+@Audited
 @Table(name = "usuario")
 public class UsuarioEntity {
 
@@ -30,6 +34,8 @@ public class UsuarioEntity {
     @Column(nullable = false, length = 9)
     private String celular;
 
+    // El hash de la contrasena no se guarda en el historial: nadie necesita sus versiones viejas.
+    @NotAudited
     @Column(name = "contrasena_hash", nullable = false, length = 255)
     private String contrasenaHash;
 
