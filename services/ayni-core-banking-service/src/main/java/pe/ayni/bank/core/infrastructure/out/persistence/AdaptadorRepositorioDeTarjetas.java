@@ -90,7 +90,8 @@ public class AdaptadorRepositorioDeTarjetas implements RepositorioDeTarjetasPort
 
     @Override
     public void actualizarEstado(UUID tarjetaId, EstadoDeTarjeta estado) {
-        jdbc.update("UPDATE core.tarjeta SET estado = ? WHERE id = ?", estado.name(), tarjetaId);
+        // Por JPA y no con SQL directo: asi Envers guarda la version con su actor (HU-15).
+        tarjetas.findById(tarjetaId).ifPresent(t -> tarjetas.save(t.conEstado(estado.name())));
     }
 
     @Override

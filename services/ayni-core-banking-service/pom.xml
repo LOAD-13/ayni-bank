@@ -41,6 +41,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
+        <!-- Historial de versiones de las entidades sensibles con su actor (HU-15, AYNI-279). -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-envers</artifactId>
+        </dependency>
         <!-- El esqueleto ambulante se sostiene sobre mensajeria: identity publica que
              una solicitud quedo aprobada y este servicio abre la cuenta al oirlo. -->
         <dependency>

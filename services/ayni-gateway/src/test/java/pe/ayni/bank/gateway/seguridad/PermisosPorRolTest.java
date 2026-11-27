@@ -103,6 +103,16 @@ class PermisosPorRolTest {
         "GET,  /api/v1/auditoria/eventos,                   OPERADOR,   403",
         "GET,  /api/v1/auditoria/eventos,                   SUPERVISOR, 403",
         "GET,  /api/v1/auditoria/eventos,                   OFICIAL,    403",
+        // Bloqueo de cuenta con cuatro ojos (AYNI-282): el operador inicia, el supervisor aprueba.
+        "POST, /api/v1/backoffice/bloqueos,                 OPERADOR,   200",
+        "POST, /api/v1/backoffice/bloqueos,                 SUPERVISOR, 403",
+        "POST, /api/v1/backoffice/bloqueos,                 CLIENTE,    403",
+        "POST, /api/v1/backoffice/bloqueos,                 AUDITOR,    403",
+        "POST, /api/v1/backoffice/bloqueos/abc/aprobacion,  SUPERVISOR, 200",
+        "POST, /api/v1/backoffice/bloqueos/abc/aprobacion,  OPERADOR,   403",
+        "POST, /api/v1/backoffice/bloqueos/abc/aprobacion,  AUDITOR,    403",
+        "GET,  /api/v1/backoffice/bloqueos,                 SUPERVISOR, 200",
+        "GET,  /api/v1/backoffice/bloqueos,                 CLIENTE,    403",
     })
     void matriz(String metodo, String ruta, String rol, int esperado) throws Exception {
         MockServerWebExchange intercambio = MockServerWebExchange.from(
