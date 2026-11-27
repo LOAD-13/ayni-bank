@@ -46,24 +46,32 @@ El escenario parte de 200 VU y aumenta en escalones de 100 hasta 600 VU. Cada ni
 
 | Dato | Resultado observado |
 |---|---|
-| Fecha y hora (zona America/Lima) | PENDIENTE |
-| Commit probado | PENDIENTE |
-| Ambiente / URL | PENDIENTE |
-| ID de ejecución k6 (`testid`) | PENDIENTE |
+| Fecha y hora (zona America/Lima) | 27-nov-2026, 17:04 a 17:15 |
+| Commit probado | `7707b68` (rama de esta HU al dia con develop) |
+| Ambiente / URL | Compose local con los limites de CPU y memoria de produccion (como AYNI-300), `http://localhost:8080` |
+| ID de ejecución k6 (`testid`) | Sin Remote Write; resumen en `docs/calidad/evidencia/hu14/nominal-resumen.json` |
 | VU nominal / duración | 200 / 10 min |
-| p95 saldo | PENDIENTE ms |
-| p99 saldo | PENDIENTE ms |
-| p95 movimientos | PENDIENTE ms |
-| p99 movimientos | PENDIENTE ms |
-| p95 transferencia interna | PENDIENTE ms |
+| p95 saldo | 15.68 ms |
+| p99 saldo | 26.04 ms |
+| p95 movimientos | 9.46 ms |
+| p99 movimientos | 12.69 ms |
+| p95 transferencia interna | No medido: el escenario nominal es de solo lectura |
 | Duración onboarding KYC completo | NO MEDIBLE CON LA INSTRUMENTACIÓN ACTUAL |
-| Tasa de error nominal | PENDIENTE % |
-| Throughput observado | PENDIENTE req/min |
+| Tasa de error nominal | 0.00 % (0 de 503 peticiones; 503/503 checks) |
+| Throughput observado | 48 req/min (0.80 req/s), el perfil de trafico normal de 50 req/min |
 | Primer escalón con p95 > 1 s | PENDIENTE VU |
 | Tasa de error en el punto de degradación | PENDIENTE % |
 | CPU / memoria / conexiones DB | PENDIENTE |
 | Comportamiento observado | PENDIENTE |
 | Evidencia Grafana | PENDIENTE: ruta/captura |
+
+## Resultado de la carga nominal (AYNI-299)
+
+**Cumple HU-14 con holgura:** con 200 usuarios concurrentes durante 10 minutos, el p95 es de 15.68 ms en saldo y
+9.46 ms en movimientos (umbral: 500 ms), el p99 no pasa de 26 ms (umbral: 1 000 ms) y no hubo ningun error.
+Los 200 usuarios son clientes distintos preparados con `infra/carga/preparar-clientes.py` (AYNI-300), cada uno con
+su token. El perfil es el de trafico normal (unas 50 peticiones por minuto en total): la carga sostenida y
+creciente es la de la prueba de estres.
 
 ## Análisis del punto de quiebre
 
