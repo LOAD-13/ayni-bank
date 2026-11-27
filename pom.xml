@@ -70,6 +70,13 @@
             **/infrastructure/out/client/*/invoker/**,
             **/infrastructure/out/client/*/model/**
         </sonar.coverage.exclusions>
+        <!-- La revision de Envers (HU-15) es la misma clase en core-banking y en identity: los
+             servicios no comparten codigo, cada uno es su propio contexto acotado, y una libreria
+             comun solo para esta entidad ataria sus despliegues. Se excluye solo ella del calculo
+             de duplicados; sus pruebas siguen contando para la cobertura. -->
+        <sonar.cpd.exclusions>
+            **/infrastructure/out/persistence/RevisionDeAuditoria.java
+        </sonar.cpd.exclusions>
         <!-- Umbral de cobertura del dominio exigido por la Definition of Done -->
         <jacoco.dominio.minimo>0.80</jacoco.dominio.minimo>
     </properties>

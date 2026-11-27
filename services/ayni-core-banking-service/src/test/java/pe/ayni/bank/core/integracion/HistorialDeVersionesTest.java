@@ -118,11 +118,16 @@ class HistorialDeVersionesTest {
 
     @Test
     @DisplayName("El historial devuelve el estado que tenia la tarjeta en una fecha pasada")
-    void estadoEnUnaFecha() throws InterruptedException {
+    void estadoEnUnaFecha() {
         Tarjeta tarjeta = emitida();
-        Thread.sleep(20);
-        Instant antesDeCongelar = Instant.now();
-        Thread.sleep(20);
+        // El momento exacto de la version de alta: lo que habia "entonces".
+        Instant antesDeCongelar = jdbc.queryForObject("""
+                SELECT r.momento FROM core.tarjeta_aud a JOIN core.revision_auditoria r ON r.id = a.rev
+                WHERE a.id = ? AND a.revtype = 0""", java.sql.Timestamp.class, tarjeta.id()).toInstant();
+        // Que el cambio caiga en un milisegundo posterior: si no, la fecha casaria con las dos versiones.
+        while (!Instant.now().isAfter(antesDeCongelar.plusMillis(1))) {
+            Thread.onSpinWait();
+        }
         tarjetas.actualizarEstado(tarjeta.id(), EstadoDeTarjeta.CONGELADA);
 
         try (var em = emf.createEntityManager()) {
@@ -134,7 +139,7 @@ class HistorialDeVersionesTest {
                     .isEqualTo("ACTIVA");
             RevisionDeAuditoria ultima = lector.findRevision(RevisionDeAuditoria.class,
                     lector.getRevisions(TarjetaEntity.class, tarjeta.id()).getLast());
-            assertThat(ultima.getMomento()).isAfter(antesDeCongelar);
+            assertThat(ultima.getMomento()).isAfterOrEqualTo(antesDeCongelar);
         }
         assertThat(jdbc.queryForObject("SELECT estado FROM core.tarjeta WHERE id = ?", String.class, tarjeta.id()))
                 .isEqualTo("CONGELADA");
