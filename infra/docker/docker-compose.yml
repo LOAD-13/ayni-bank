@@ -108,8 +108,10 @@ services:
     deploy:
       resources:
         limits: { memory: 256M, cpus: "0.5" }
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: ayni-minio
+    # La imagen corre como nonroot y el volumen de antes es de root: sin esto no arranca.
+    user: "0:0"
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -130,7 +132,7 @@ services:
     deploy:
       resources:
         limits: { memory: 64M, cpus: "0.25" }
-    image: minio/mc:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: ayni-minio-init
     depends_on:
       minio: { condition: service_healthy }
