@@ -1,0 +1,58 @@
+{
+  "descripcion": "Mes simulado de producción para medir la disponibilidad de HU-16 (AYNI-312). Cada incidente se apoya en un mecanismo real del sistema; las fechas son relativas al inicio de la ventana de 30 días.",
+  "servicios": {
+    "ayni-gateway": "ayni-gateway:8080",
+    "ayni-identity-service": "ayni-identity-service:8081",
+    "ayni-core-banking-service": "ayni-core-banking-service:8082",
+    "ayni-notification-service": "ayni-notification-service:8083",
+    "ayni-kyc-service": "ayni-kyc-service:8000"
+  },
+  "incidentes": [
+    {
+      "dia": 3, "hora": "22:00", "segundos": 75,
+      "servicios": ["ayni-gateway", "ayni-identity-service", "ayni-core-banking-service", "ayni-notification-service"],
+      "motivo": "Despliegue semanal: desplegar.sh recrea los contenedores que cambian y espera su health check."
+    },
+    {
+      "dia": 8, "hora": "14:20", "segundos": 180,
+      "servicios": ["ayni-core-banking-service"],
+      "motivo": "core-banking supera su límite de 768 MB y Docker lo reinicia (restart: unless-stopped)."
+    },
+    {
+      "dia": 10, "hora": "22:00", "segundos": 75,
+      "servicios": ["ayni-gateway", "ayni-identity-service", "ayni-core-banking-service", "ayni-notification-service"],
+      "motivo": "Despliegue semanal."
+    },
+    {
+      "dia": 12, "hora": "10:00", "segundos": 600,
+      "servicios": ["ayni-notification-service"],
+      "motivo": "Prueba de caída de notification-service durante una transferencia (AYNI-310). No esencial: el dinero se mueve y el aviso espera en el outbox."
+    },
+    {
+      "dia": 12, "hora": "11:00", "segundos": 600,
+      "servicios": ["ayni-kyc-service"],
+      "motivo": "Prueba de caída de kyc-service durante un onboarding (AYNI-311). No esencial: la solicitud queda EN_REVISION."
+    },
+    {
+      "dia": 17, "hora": "22:00", "segundos": 75,
+      "servicios": ["ayni-gateway", "ayni-identity-service", "ayni-core-banking-service", "ayni-notification-service"],
+      "motivo": "Despliegue semanal."
+    },
+    {
+      "dia": 19, "hora": "23:00", "segundos": 1680,
+      "servicios": ["ayni-gateway", "ayni-identity-service", "ayni-core-banking-service", "ayni-notification-service"],
+      "motivo": "Simulacro de restauración de la base de datos (AYNI-308): RDS restaura a un instante en una instancia nueva y se repuntan los servicios. 28 minutos."
+    },
+    {
+      "dia": 24, "hora": "22:00", "segundos": 75,
+      "servicios": ["ayni-gateway", "ayni-identity-service", "ayni-core-banking-service", "ayni-notification-service"],
+      "motivo": "Despliegue semanal."
+    },
+    {
+      "dia": 27, "hora": "03:10", "segundos": 120,
+      "servicios": [],
+      "sin_muestras": true,
+      "motivo": "Prometheus se reinicia al actualizar su imagen: dos minutos sin ninguna muestra. Nadie sabe si el banco estuvo arriba, así que cuenta como caída."
+    }
+  ]
+}

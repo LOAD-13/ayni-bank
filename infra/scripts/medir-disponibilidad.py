@@ -10,6 +10,10 @@ reenvío de puerto de Systems Manager):
 
     python3 infra/scripts/medir-disponibilidad.py --prometheus http://localhost:9090
 
+Un mes cerrado, por ejemplo noviembre, terminando la ventana en un instante dado:
+
+    python3 medir-disponibilidad.py --contenedor ayni-prometheus --hasta 2026-12-01T05:00:00Z
+
 Qué cuenta como «disponible»
 ----------------------------
 El banco está disponible cuando se puede operar con el dinero: gateway, identity y
@@ -48,12 +52,14 @@ def segundos(duracion: str) -> int:
 
 
 class Prometheus:
-    def __init__(self, url: str | None, contenedor: str | None) -> None:
+    def __init__(self, url: str | None, contenedor: str | None, hasta: float) -> None:
         self.url = url
         self.contenedor = contenedor
+        # Instante en que se evalúan todas las consultas: el final de la ventana.
+        self.hasta = hasta
 
     def consultar(self, promql: str) -> list[dict]:
-        ruta = "/api/v1/query?" + urllib.parse.urlencode({"query": promql})
+        ruta = "/api/v1/query?" + urllib.parse.urlencode({"query": promql, "time": f"{self.hasta:.3f}"})
         if self.contenedor:
             # La imagen de Prometheus trae el wget de busybox; no hace falta publicar el puerto.
             salida = subprocess.run(
@@ -82,9 +88,14 @@ def selector(servicios: list[str]) -> str:
 def medir(prom: Prometheus, ventana: str, raspado: str) -> dict:
     esperadas = segundos(ventana) / segundos(raspado)
 
-    # Todo el banco a la vez: el mínimo de `up` entre los esenciales, muestra a muestra.
+    # Todo el banco a la vez: el mínimo de `up` entre los esenciales, paso a paso. Dentro del
+    # paso se lee con `min_over_time(...[raspado])` y no con `up` a secas: una consulta
+    # instantánea mira hasta 5 minutos atrás y rellenaría con el último valor un hueco en el
+    # que Prometheus estuvo caído. Con una ventana del tamaño del raspado, un paso sin muestra
+    # no da resultado y cuenta como caída.
     banco = prom.escalar(
-        f"sum_over_time((min(up{{{selector(ESENCIALES)}}}))[{ventana}:{raspado}])"
+        f"sum_over_time((min(min_over_time(up{{{selector(ESENCIALES)}}}[{raspado}])))"
+        f"[{ventana}:{raspado}])"
     )
     por_servicio = {}
     for servicio in ESENCIALES + NO_ESENCIALES:
@@ -103,6 +114,7 @@ def medir(prom: Prometheus, ventana: str, raspado: str) -> dict:
         "banco": (banco or 0.0) / esperadas,
         "por_servicio": por_servicio,
         "primera_muestra": primera,
+        "hasta": prom.hasta,
     }
 
 
@@ -121,6 +133,8 @@ def legible(segs: float) -> str:
 
 def informe(m: dict) -> str:
     ahora = datetime.now(timezone.utc).strftime("%d-%m-%Y %H:%M UTC")
+    fin = datetime.fromtimestamp(m["hasta"], timezone.utc)
+    inicio = datetime.fromtimestamp(m["hasta"] - segundos(m["ventana"]), timezone.utc)
     presupuesto = minutos(1 - OBJETIVO, m["ventana"])
     caida = minutos(1 - m["banco"], m["ventana"])
     cumple = m["banco"] >= OBJETIVO
@@ -128,6 +142,7 @@ def informe(m: dict) -> str:
         f"# Disponibilidad medida · ventana de {m['ventana']}",
         "",
         f"Medido el {ahora} con `infra/scripts/medir-disponibilidad.py` (AYNI-312).",
+        f"Ventana: {inicio:%d-%m-%Y %H:%M} → {fin:%d-%m-%Y %H:%M} UTC.",
         "",
         "| Indicador | Valor |",
         "|---|---|",
@@ -148,7 +163,7 @@ def informe(m: dict) -> str:
 
     if m["primera_muestra"] is not None:
         desde = datetime.fromtimestamp(m["primera_muestra"], timezone.utc)
-        cubierto = (datetime.now(timezone.utc) - desde).total_seconds()
+        cubierto = (fin - desde).total_seconds()
         lineas += ["", f"Primera muestra dentro de la ventana: {desde:%d-%m-%Y %H:%M} UTC."]
         # Los pasos de la subconsulta se alinean al intervalo de raspado: se tolera ese desfase.
         if cubierto < segundos(m["ventana"]) - 2 * segundos(m["raspado"]):
@@ -172,11 +187,20 @@ def main() -> int:
     origen.add_argument("--contenedor", help="Contenedor de Prometheus en la instancia")
     parser.add_argument("--ventana", default="30d", help="Periodo a medir (por omisión 30d)")
     parser.add_argument("--raspado", default="15s", help="scrape_interval de Prometheus")
+    parser.add_argument(
+        "--hasta",
+        help="Final de la ventana en ISO 8601 (p. ej. 2026-12-01T05:00:00Z); por omisión, ahora",
+    )
     args = parser.parse_args()
+    hasta = (
+        datetime.fromisoformat(args.hasta.replace("Z", "+00:00")).timestamp()
+        if args.hasta
+        else datetime.now(timezone.utc).timestamp()
+    )
     # En Windows la salida redirigida a un .md saldría en cp1252 y rompería las tildes.
     sys.stdout.reconfigure(encoding="utf-8")
 
-    m = medir(Prometheus(args.prometheus, args.contenedor), args.ventana, args.raspado)
+    m = medir(Prometheus(args.prometheus, args.contenedor, hasta), args.ventana, args.raspado)
     print(informe(m))
     # Código de salida útil para automatizarlo: 0 si cumple el SLA, 1 si no.
     return 0 if m["banco"] >= OBJETIVO else 1
