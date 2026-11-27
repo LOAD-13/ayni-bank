@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -81,6 +82,10 @@ public class FiltroDeAutenticacion implements GlobalFilter, Ordered {
         if (!esProtegida(peticion)) {
             return cadena.filter(intercambio.mutate().request(peticion).build());
         }
+        // Lo que va detras de la sesion son datos del cliente (saldo, numero de cuenta,
+        // movimientos): no se guarda en ninguna cache, ni del navegador ni intermedia
+        // (AYNI-313). Si el servicio de destino manda su propia Cache-Control, prevalece.
+        intercambio.getResponse().getHeaders().setCacheControl(CacheControl.noStore());
 
         Optional<VerificadorDeTokens.Identidad> identidad = tokenDe(peticion).flatMap(verificador::identidadDe);
         if (identidad.isEmpty()) {
