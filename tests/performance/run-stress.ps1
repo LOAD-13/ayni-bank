@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 if (-not $env:BASE_URL) { $env:BASE_URL = 'http://localhost:8080' }
-if (-not $env:K6_TOKENS_FILE) { $env:K6_TOKENS_FILE = 'tests/performance/k6/tokens.local.json' }
+if (-not $env:K6_TOKENS_FILE) { $env:K6_TOKENS_FILE = (Join-Path $PSScriptRoot 'k6/tokens.local.json') }
 if (-not (Test-Path $env:K6_TOKENS_FILE)) {
     throw "No existe $env:K6_TOKENS_FILE. Copia tokens.example.json a tokens.local.json y agrega 600 JWT distintos."
 }

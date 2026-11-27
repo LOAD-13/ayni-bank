@@ -3,7 +3,7 @@ import { check, sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
 import exec from 'k6/execution';
 
-const TOKENS_PATH = __ENV.K6_TOKENS_FILE || './tests/performance/k6/tokens.local.json';
+const TOKENS_PATH = __ENV.K6_TOKENS_FILE || './tokens.local.json';
 const tokenFile = JSON.parse(open(TOKENS_PATH));
 const TOKENS = Array.isArray(tokenFile) ? tokenFile : tokenFile.tokens;
 
