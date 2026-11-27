@@ -1,0 +1,68 @@
+groups:
+  - name: hu14-sla
+    interval: 30s
+    rules:
+      - alert: HU14ConsultaSaldoP95Sobre500ms
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia"}[5m]))) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          historia: HU-14
+        annotations:
+          summary: "HU-14: p95 de consulta de saldo supera 500 ms"
+          description: "El p95 de GET /api/v1/cuentas/mia supera 500 ms durante al menos 2 minutos. Valor actual: {{ $value }} s."
+
+      - alert: HU14ConsultaSaldoP99Sobre1s
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia"}[5m]))) > 1
+        for: 2m
+        labels:
+          severity: critical
+          historia: HU-14
+        annotations:
+          summary: "HU-14: p99 de consulta de saldo supera 1 segundo"
+          description: "El p99 de GET /api/v1/cuentas/mia supera 1 s durante al menos 2 minutos. Valor actual: {{ $value }} s."
+
+      - alert: HU14MovimientosP95Sobre500ms
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          historia: HU-14
+        annotations:
+          summary: "HU-14: p95 de consulta de movimientos supera 500 ms"
+          description: "El p95 de GET /api/v1/cuentas/mia/movimientos supera 500 ms durante al menos 2 minutos. Valor actual: {{ $value }} s."
+
+      - alert: HU14MovimientosP99Sobre1s
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/cuentas/mia/movimientos"}[5m]))) > 1
+        for: 2m
+        labels:
+          severity: critical
+          historia: HU-14
+        annotations:
+          summary: "HU-14: p99 de consulta de movimientos supera 1 segundo"
+          description: "El p99 de GET /api/v1/cuentas/mia/movimientos supera 1 s durante al menos 2 minutos. Valor actual: {{ $value }} s."
+
+      - alert: HU14TasaDeErrorSobre01PorCiento
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-gateway", uri=~"/api/v1/cuentas/mia(/movimientos)?", status!~"2.."}[5m]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{job="ayni-servicios", servicio="ayni-gateway", uri=~"/api/v1/cuentas/mia(/movimientos)?"}[5m])), 1e-9)
+          ) > 0.001
+        for: 2m
+        labels:
+          severity: critical
+          historia: HU-14
+        annotations:
+          summary: "HU-14: tasa de respuestas no exitosas supera 0.1 %"
+          description: "Mas del 0.1 % de las consultas de saldo/movimientos no responde con HTTP 2xx durante 2 minutos. Valor actual: {{ $value | humanizePercentage }}."
+
+      - alert: HU14TransferenciaP95Sobre3s
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="ayni-servicios", servicio="ayni-gateway", uri="/api/v1/transferencias"}[5m]))) > 3
+        for: 2m
+        labels:
+          severity: critical
+          historia: HU-14
+        annotations:
+          summary: "HU-14: p95 de transferencia interna supera 3 segundos"
+          description: "El p95 de POST /api/v1/transferencias supera 3 s durante al menos 2 minutos. Valor actual: {{ $value }} s."

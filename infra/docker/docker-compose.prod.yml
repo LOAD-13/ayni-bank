@@ -257,8 +257,11 @@ services:
       # Quince dias o 2 GB, lo que llegue antes: el disco de la instancia es de 30 GB.
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.retention.size=2GB
+      # Permite que k6 publique resultados por Remote Write desde la red interna.
+      - --web.enable-remote-write-receiver
     volumes:
       - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observabilidad/alertas/hu14-sla.yml:/etc/prometheus/alertas/hu14-sla.yml:ro
       - prometheus-data:/prometheus
     logging: *logs
     networks: [ayni]

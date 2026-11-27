@@ -48,6 +48,8 @@ grafana/datasources-prod/datasources.yml grafana/datasources/datasources.yml
 grafana/dashboards/proveedor.yml grafana/dashboards/proveedor.yml
 grafana/dashboards/ayni-tecnico.json grafana/dashboards/ayni-tecnico.json
 grafana/dashboards/ayni-negocio.json grafana/dashboards/ayni-negocio.json
+grafana/dashboards/hu14-rendimiento.json grafana/dashboards/hu14-rendimiento.json
+rules/hu14-sla.yml alertas/hu14-sla.yml
 LISTA
 
 # ── 2. Secretos ──────────────────────────────────────────────────────────
