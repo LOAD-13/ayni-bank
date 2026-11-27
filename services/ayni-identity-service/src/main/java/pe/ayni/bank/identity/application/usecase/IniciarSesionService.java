@@ -191,8 +191,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         cifrador.cifrar(comando.contrasena());
         auditoria.registrar(TipoDeEventoDeAcceso.CREDENCIALES_INVALIDAS, null,
                 comando.cliente());
-        log.info("Intento de ingreso sobre un correo no registrado. ip={}",
-                comando.cliente().ip());
+        // Sin la IP: es dato personal y ya queda en la pista de auditoria, no en las trazas.
+        log.info("Intento de ingreso sobre un correo no registrado.");
         throw new CredencialesInvalidasException();
     }
 
@@ -299,8 +299,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         SesionIniciada sesion = abrirSesion(usuario, momento);
         auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(),
                 comando.cliente());
-        log.info("Ingreso completado. usuarioId={} ip={}",
-                usuario.id(), comando.cliente().ip());
+        log.info("Ingreso completado. usuarioId={}", usuario.id());
 
         return sesion;
     }
@@ -368,8 +367,8 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         usuarios.buscarPorId(token.usuarioId())
                 .ifPresent(u -> notificador.avisarSesionCerradaPorSeguridad(u.correo()));
 
-        log.warn("Reutilizacion de token de renovacion. usuarioId={} familia={} ip={}",
-                token.usuarioId(), causa.familiaId(), cliente.ip());
+        log.warn("Reutilizacion de token de renovacion. usuarioId={} familia={}",
+                token.usuarioId(), causa.familiaId());
     }
 
     // ─── Auxiliares ────────────────────────────────────────────────────────
@@ -416,8 +415,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
 
         SesionIniciada sesion = abrirSesion(usuario, momento);
         auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_EXITOSO, usuario.id(), comando.cliente());
-        log.info("Ingreso completado via OTP por correo/SMS. usuarioId={} ip={}",
-                usuario.id(), comando.cliente().ip());
+        log.info("Ingreso completado via OTP por correo/SMS. usuarioId={}", usuario.id());
         return Optional.of(sesion);
     }
 
@@ -449,8 +447,7 @@ public class IniciarSesionService implements IniciarSesionUseCase {
         if (actualizado.acabaDeBloquearse()) {
             notificador.avisarIngresoPausado(correo);
             auditoria.registrar(TipoDeEventoDeAcceso.INGRESO_BLOQUEADO, usuario.id(), cliente);
-            log.info("Ingreso pausado por intentos fallidos. usuarioId={} ip={}",
-                    usuario.id(), cliente.ip());
+            log.info("Ingreso pausado por intentos fallidos. usuarioId={}", usuario.id());
         }
     }
 }
