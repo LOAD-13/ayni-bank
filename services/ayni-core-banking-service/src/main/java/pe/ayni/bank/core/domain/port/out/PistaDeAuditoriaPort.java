@@ -37,4 +37,12 @@ public interface PistaDeAuditoriaPort {
 
     /** HU-09: revelar el PAN completo queda registrado con la tarjeta, la hora y la IP. */
     void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip);
+
+    /**
+     * HU-15, AYNI-282: quien inicio una operacion sensible intento aprobarla. La implementacion lo
+     * confirma en una transaccion propia: la denegacion deshace la aprobacion, pero no su rastro.
+     */
+    default void registrarCuatroOjosDenegado(UUID usuarioId, UUID solicitudId) {
+        registrar(TipoDeEventoDeOperacion.CUATRO_OJOS_DENEGADO, usuarioId, solicitudId);
+    }
 }
