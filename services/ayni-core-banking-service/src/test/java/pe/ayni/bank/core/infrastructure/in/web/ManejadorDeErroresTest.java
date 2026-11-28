@@ -1,8 +1,8 @@
 package pe.ayni.bank.core.infrastructure.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -15,12 +15,18 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
@@ -96,5 +102,17 @@ class ManejadorDeErroresTest {
 
         assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
         assertThat(respuesta.getBody().getDetail()).contains("limite");
+    }
+
+    @Test
+    @DisplayName("La base de datos no responde: 503 con Retry-After, sin el mensaje interno")
+    void baseCaida() {
+        ResponseEntity<ProblemDetail> respuesta = new ManejadorDeErrores()
+                .alNoResponderLaBase(new CannotGetJdbcConnectionException("Connection refused: postgres:5432"));
+
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(respuesta.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("5");
+        assertThat(respuesta.getBody().getProperties()).containsEntry("codigo", "SERVICIO_NO_DISPONIBLE");
+        assertThat(respuesta.getBody().getDetail()).doesNotContain("postgres");
     }
 }

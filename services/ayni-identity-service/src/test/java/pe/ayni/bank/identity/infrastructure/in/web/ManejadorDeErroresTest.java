@@ -8,11 +8,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -245,5 +248,16 @@ class ManejadorDeErroresTest {
 
         assertThat(String.valueOf(problema.getType())).startsWith("https://ayni.pe/problemas/");
         assertThat(String.valueOf(problema.getInstance())).isEqualTo("/api/v1/sesion");
+    }
+
+    @Test
+    void laBaseCaidaDevuelve503ConRetryAfterYSinElMensajeInterno() {
+        ResponseEntity<ProblemDetail> respuesta = manejador.alNoResponderLaBase(
+                new CannotCreateTransactionException("Could not open JPA EntityManager: postgres:5432"), peticion);
+
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(respuesta.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("5");
+        assertThat(respuesta.getBody().getType().toString()).endsWith("servicio-no-disponible");
+        assertThat(respuesta.getBody().getDetail()).doesNotContain("postgres");
     }
 }

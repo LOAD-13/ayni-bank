@@ -14,6 +14,9 @@ spring:
     hikari:
       pool-name: ayni-core-banking-service-pool
       maximum-pool-size: 10
+      # Con la base caida, la peticion espera un hueco del pool como mucho 3 s (30 s por defecto)
+      # y luego responde 503: mejor un error claro y rapido que un cliente colgado.
+      connection-timeout: 3000
 
   # Cada servicio migra unicamente su propio schema. Ningun servicio lee ni
   # altera tablas de otro: esa frontera es el limite del bounded context.
