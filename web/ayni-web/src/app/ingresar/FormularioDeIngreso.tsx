@@ -12,6 +12,7 @@ import {
   type TipoDeSegundoFactor,
 } from "@/lib/api";
 import { guardarSesion } from "@/lib/sesion";
+import { falloInesperado } from "@/lib/mensajes";
 
 /**
  * Los dos pasos del ingreso · HU-04.
@@ -73,7 +74,7 @@ export function FormularioDeIngreso() {
    */
   function interpretar(fallo: unknown) {
     if (!(fallo instanceof ErrorDeApi)) {
-      setError("No pudimos completar el ingreso. Inténtalo de nuevo.");
+      setError(falloInesperado("completar el ingreso"));
       return;
     }
 

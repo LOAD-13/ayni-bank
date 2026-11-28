@@ -37,6 +37,7 @@ import {
   type Titular,
 } from "@/lib/api";
 import { formatearImporte } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 type Estado =
   | { tipo: "cargando" }
@@ -206,9 +207,7 @@ export default function PanelDeBanca() {
               <ListaDeMovimientos movimientos={estado.movimientos} oculto={oculto} />
             ) : (
               <p role="status" aria-live="polite" className="px-6 pb-6 text-body text-gris-700">
-                {estado.tipo === "error"
-                  ? "No pudimos cargar tus movimientos. Inténtalo de nuevo en unos minutos."
-                  : "Cargando…"}
+                {estado.tipo === "error" ? falloInesperado("cargar tus movimientos") : "Cargando…"}
               </p>
             )}
           </section>

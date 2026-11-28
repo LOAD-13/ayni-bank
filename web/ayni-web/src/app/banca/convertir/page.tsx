@@ -21,6 +21,7 @@ import {
   type MonedaDeCuenta,
 } from "@/lib/api";
 import { formatearFecha, formatearImporte, normalizarImporte, nuevaClave } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 const ID_DEL_AVISO = "aviso-tipo-de-cambio";
 
@@ -73,7 +74,7 @@ export default function PaginaDeConversion() {
         else throw fallo;
       }
     } catch (fallo) {
-      setErrorDeCarga(mensajeDe(fallo, "No pudimos cargar tus cuentas. Inténtalo de nuevo."));
+      setErrorDeCarga(mensajeDe(fallo, falloInesperado("cargar tus cuentas")));
     } finally {
       setCargando(false);
     }
@@ -90,7 +91,7 @@ export default function PaginaDeConversion() {
     try {
       setDolares(await abrirCuentaEnDolares(await token(), claveDeApertura.current));
     } catch (fallo) {
-      setError(mensajeDe(fallo, "No pudimos abrir tu cuenta en dólares. Inténtalo de nuevo."));
+      setError(mensajeDe(fallo, falloInesperado("abrir tu cuenta en dólares")));
     } finally {
       setTrabajando(false);
     }
@@ -120,7 +121,7 @@ export default function PaginaDeConversion() {
       setCotizacion(await cotizarConversion(await token(), origen, normalizado));
     } catch (fallo) {
       setCotizacion(null);
-      setError(mensajeDe(fallo, "No pudimos cotizar ahora. Inténtalo de nuevo en unos minutos."));
+      setError(mensajeDe(fallo, falloInesperado("cotizar ahora")));
     } finally {
       setTrabajando(false);
     }
@@ -158,7 +159,9 @@ export default function PaginaDeConversion() {
           setCotizacion(null);
         }
       } else {
-        setError(mensajeDe(fallo, "No pudimos completar la conversión. Inténtalo de nuevo."));
+        setError(
+          mensajeDe(fallo, falloInesperado("completar la conversión", { mueveDinero: true })),
+        );
       }
     } finally {
       setTrabajando(false);
