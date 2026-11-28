@@ -7,11 +7,15 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -271,6 +275,16 @@ public class ManejadorDeErrores {
         return problema(HttpStatus.BAD_REQUEST, "validacion",
                 "Los datos enviados no son validos",
                 "El cuerpo de la peticion no tiene el formato esperado.", List.of(), peticion);
+    }
+
+    /** La base de datos no responde: 503 con Retry-After, no un 500 ni una espera de 30 s · ISO/IEC 25010, tolerancia a fallos. */
+    @ExceptionHandler({DataAccessResourceFailureException.class, CannotCreateTransactionException.class})
+    public ResponseEntity<ProblemDetail> alNoResponderLaBase(Exception excepcion, WebRequest peticion) {
+        log.warn("Base de datos no disponible: {}", excepcion.getClass().getSimpleName());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header(HttpHeaders.RETRY_AFTER, "5")
+                .body(problema(HttpStatus.SERVICE_UNAVAILABLE, "servicio-no-disponible",
+                        "Servicio no disponible",
+                        "Vuelve a intentarlo en unos segundos.", List.of(), peticion));
     }
 
     /**
