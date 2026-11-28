@@ -45,9 +45,10 @@ function archivos(dir: string): string[] {
 function paresDelCodigo() {
   const pares: { archivo: string; texto: string; fondo: string; grande: boolean }[] = [];
   for (const archivo of archivos(RAIZ)) {
-    for (const [, clases] of readFileSync(archivo, "utf8").matchAll(
+    for (const [, comillas, plantilla] of readFileSync(archivo, "utf8").matchAll(
       /className=(?:"([^"]+)"|\{`([^`]+)`\})/g,
     )) {
+      const clases = comillas ?? plantilla;
       if (!clases) continue;
       const sueltas = clases.split(/\s+/).filter((c) => !c.includes(":"));
       const texto = sueltas.map((c) => /^text-([\w-]+)$/.exec(c)?.[1]).find((t) => t && TOKENS[t]);
