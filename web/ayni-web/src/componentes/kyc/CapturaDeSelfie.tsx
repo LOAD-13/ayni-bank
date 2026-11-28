@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Boton } from "@/componentes/Boton";
 import { entregarSelfie, ErrorDeApi, solicitarUrlDeSubida, subirDocumento } from "@/lib/api";
+import { falloInesperado } from "@/lib/mensajes";
 
 type Fase =
   "cargando-modelos" | "pidiendo-permiso" | "en-vivo" | "sin-camara" | "revisando" | "subiendo";
@@ -219,7 +220,7 @@ export function CapturaDeSelfie({ solicitudId, onCompletado }: Props) {
       setErrorDeSubida(
         error instanceof ErrorDeApi
           ? (error.problema.detail ?? error.message)
-          : "No pudimos subir tu foto. Inténtalo de nuevo.",
+          : falloInesperado("subir tu foto"),
       );
       setFase("revisando");
     }

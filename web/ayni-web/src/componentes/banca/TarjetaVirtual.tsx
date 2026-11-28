@@ -22,6 +22,7 @@ import {
   type TarjetaVirtual as Tarjeta,
 } from "@/lib/api";
 import { nuevaClave } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 const HORA = new Intl.DateTimeFormat("es-PE", {
   hour: "2-digit",
@@ -204,7 +205,7 @@ export function TarjetaVirtual({ alCargar }: Props) {
 
 function mensajeDe(fallo: unknown): string {
   if (!(fallo instanceof ErrorDeApi)) {
-    return "No pudimos completar la operación. Inténtalo de nuevo.";
+    return falloInesperado("completar la operación");
   }
   if (fallo.estado === 403 || fallo.estado === 410) {
     return "Tu confirmación ya no es válida. Vuelve a pedir el número completo.";

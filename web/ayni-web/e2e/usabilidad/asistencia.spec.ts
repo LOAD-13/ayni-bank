@@ -48,7 +48,7 @@ test.describe("Usabilidad · Asistencia al usuario", () => {
     await page.goto("/banca");
 
     await expect(page.getByText(/no pudimos cargar tus movimientos/i)).toContainText(
-      /inténtalo de nuevo/i,
+      /revisa tu conexión y vuelve a intentarlo en unos minutos/i,
     );
   });
 
