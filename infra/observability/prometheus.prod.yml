@@ -19,6 +19,8 @@ scrape_configs:
     static_configs:
       - targets: [ayni-gateway:8080]
         labels: { servicio: ayni-gateway }
+      - targets: [ayni-gateway-2:8080]
+        labels: { servicio: ayni-gateway-2 }
       - targets: [ayni-identity-service:8081]
         labels: { servicio: ayni-identity-service }
       - targets: [ayni-core-banking-service:8082]

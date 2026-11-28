@@ -17,9 +17,18 @@ x-java-common: &java-common
   restart: unless-stopped
   stop_grace_period: 30s
   networks: [ayni]
+  # Logs a CloudWatch Logs (grupo /ayni/prod, un flujo por contenedor). Docker guarda ademas una
+  # copia local, asi que `docker logs` sigue funcionando. El rol de la instancia ya tiene
+  # CloudWatchAgentServerPolicy, que permite crear el grupo y escribir en el.
   logging: &logs
-    driver: json-file
-    options: { max-size: "20m", max-file: "5" }
+    driver: awslogs
+    options:
+      awslogs-region: us-east-1
+      awslogs-group: /ayni/prod
+      awslogs-create-group: "true"
+      tag: "{{.Name}}"
+      mode: non-blocking
+      max-buffer-size: 4m
 
 x-java-env: &java-env
   SPRING_PROFILES_ACTIVE: prod
@@ -58,6 +67,7 @@ services:
     depends_on:
       ayni-web: { condition: service_started }
       ayni-gateway: { condition: service_started }
+      ayni-gateway-2: { condition: service_started }
     logging: *logs
     networks: [ayni]
 
@@ -100,7 +110,10 @@ services:
     logging: *logs
     networks: [ayni]
 
-  ayni-gateway:
+  # Dos replicas del gateway tras Caddy (HU-16, AYNI-306): si una cae, Caddy deja de enviarle
+  # trafico por su health check y la otra sigue atendiendo. Es seguro porque la sesion viaja en
+  # el token y el limite de tasa vive en Redis, compartido por las dos.
+  ayni-gateway: &gateway
     deploy:
       resources:
         limits: { memory: 640M, cpus: "0.5" }
@@ -122,6 +135,10 @@ services:
       timeout: 5s
       retries: 6
       start_period: 40s
+
+  ayni-gateway-2:
+    <<: *gateway
+    container_name: ayni-gateway-2
 
   ayni-identity-service:
     deploy:

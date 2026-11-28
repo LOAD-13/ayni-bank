@@ -14,6 +14,7 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import ch.qos.logback.core.read.ListAppender;
 
 import org.slf4j.LoggerFactory;
@@ -227,6 +228,7 @@ public class PasosDePistaDeAuditoria {
         String patron = (String) new YamlPropertySourceLoader().load("app", new ClassPathResource("application.yml"))
                 .get(0).getProperty("logging.pattern.console");
         LoggerContext contexto = new LoggerContext();
+        contexto.setMDCAdapter(new LogbackMDCAdapter());
         PatternLayout disposicion = new PatternLayout();
         disposicion.setContext(contexto);
         disposicion.getInstanceConverterMap().put("wEx", WhitespaceThrowableProxyConverter::new);
