@@ -8,6 +8,18 @@
 	email {$AYNI_CORREO_TLS}
 }
 
+# Dos replicas del gateway: reparto por turnos; la que no pasa el health check sale del reparto y
+# una peticion que no llego a ninguna se reintenta en la otra durante 5 s. X-Ayni-Instancia dice
+# que replica atendio (sirve para la demostracion de alta disponibilidad).
+(replicas) {
+	lb_policy round_robin
+	lb_try_duration 5s
+	health_uri /actuator/health
+	health_interval 5s
+	fail_duration 10s
+	header_down X-Ayni-Instancia {rp.upstream.hostport}
+}
+
 {$AYNI_DOMINIO} {
 	encode zstd gzip
 
@@ -42,13 +54,17 @@
 	# gateway, que a su vez comprueba los servicios de detras.
 	handle /api/health {
 		rewrite * /actuator/health
-		reverse_proxy ayni-gateway:8080
+		reverse_proxy ayni-gateway:8080 ayni-gateway-2:8080 {
+			import replicas
+		}
 	}
 
 	# La API vive en el mismo dominio que la web: el navegador no hace
 	# peticiones entre origenes y la cookie de renovacion es de primer nivel.
 	handle /api/* {
-		reverse_proxy ayni-gateway:8080
+		reverse_proxy ayni-gateway:8080 ayni-gateway-2:8080 {
+			import replicas
+		}
 	}
 
 	# Grafana con sus tableros (AYNI-159). Tiene su propio inicio de sesion;

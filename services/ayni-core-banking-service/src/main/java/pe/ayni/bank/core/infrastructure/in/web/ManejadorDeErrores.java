@@ -5,10 +5,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +34,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 public class ManejadorDeErrores {
+
+    private static final Logger log = LoggerFactory.getLogger(ManejadorDeErrores.class);
 
     private static final URI TIPO = URI.create("https://ayni.pe/problemas/solicitud-invalida");
 
@@ -61,6 +68,18 @@ public class ManejadorDeErrores {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ProblemDetail> alFaltarUnParametro(MissingServletRequestParameterException excepcion) {
         return invalida("Falta el parametro «" + excepcion.getParameterName() + "».", Map.of());
+    }
+
+    /** La base de datos no responde: 503 con Retry-After, no un 500 ni una espera de 30 s · ISO/IEC 25010, tolerancia a fallos. */
+    @ExceptionHandler({DataAccessResourceFailureException.class, CannotCreateTransactionException.class})
+    public ResponseEntity<ProblemDetail> alNoResponderLaBase(Exception excepcion) {
+        log.warn("Base de datos no disponible: {}", excepcion.getClass().getSimpleName());
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+                "El servicio no esta disponible en este momento. Vuelve a intentarlo en unos segundos.");
+        problema.setType(URI.create("https://ayni.pe/problemas/servicio-no-disponible"));
+        problema.setTitle("Servicio no disponible");
+        problema.setProperty("codigo", "SERVICIO_NO_DISPONIBLE");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).header(HttpHeaders.RETRY_AFTER, "5").body(problema);
     }
 
     private static ResponseEntity<ProblemDetail> invalida(String detalle, Map<String, Object> extras) {
