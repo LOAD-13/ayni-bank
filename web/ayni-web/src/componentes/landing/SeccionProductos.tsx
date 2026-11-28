@@ -106,7 +106,7 @@ export function ListaDeProductos({
                 aria-hidden="true"
                 width={64}
                 height={64}
-                className="h-10 w-10"
+                className="h-10 w-10 object-contain"
               />
             </span>
             <span className="mt-5 block text-[21px] leading-tight font-bold text-azul-900">

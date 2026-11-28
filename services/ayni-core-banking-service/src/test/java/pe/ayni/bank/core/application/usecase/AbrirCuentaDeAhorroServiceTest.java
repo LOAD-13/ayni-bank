@@ -296,5 +296,10 @@ class AbrirCuentaDeAhorroServiceTest {
         public void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip) {
             throw new AssertionError("Abrir una cuenta no revela tarjetas.");
         }
+
+        @Override
+        public void registrarEscrituraDenegada(UUID usuarioId, String permiso) {
+            throw new AssertionError("Abrir una cuenta no pasa por permisos de personal.");
+        }
     }
 }

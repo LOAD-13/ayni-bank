@@ -62,6 +62,8 @@ public class AjustesComunes {
         jdbc.update("DELETE FROM core.tipo_cambio");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
+        // Apuntan a cuenta: se borran antes que ella (HU-15, cuatro ojos).
+        jdbc.update("DELETE FROM core.solicitud_bloqueo");
         jdbc.update("DELETE FROM core.consumo_tarjeta");
         jdbc.update("DELETE FROM core.control_tarjeta");
         jdbc.update("DELETE FROM core.tarjeta");

@@ -24,6 +24,7 @@ import {
   solicitarUrlDeSubida,
   subirDocumento,
 } from "@/lib/api";
+import { falloInesperado } from "@/lib/mensajes";
 
 /**
  * Ancho ÷ alto de un documento de identidad ISO/IEC 7810 ID-1 (85.60 × 53.98 mm), que es
@@ -277,7 +278,7 @@ export function CapturaDeDocumento({
       setErrorDeSubida(
         error instanceof ErrorDeApi
           ? (error.problema.detail ?? error.message)
-          : "No pudimos subir tu documento. Inténtalo de nuevo.",
+          : falloInesperado("subir tu documento"),
       );
       setFase("revisando");
     }

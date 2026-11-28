@@ -24,6 +24,7 @@ import {
   type TransferenciaInterbancaria,
 } from "@/lib/api";
 import { formatearImporte, normalizarImporte, nuevaClave } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 interface Borrador {
   cci: string;
@@ -505,7 +506,7 @@ function agrupar(cci: string): string {
 /** Mensajes para el cliente a partir de los códigos de identity y core-banking. */
 function mensajeDe(fallo: unknown): string {
   if (!(fallo instanceof ErrorDeApi)) {
-    return "No pudimos completar la transferencia. Inténtalo de nuevo.";
+    return falloInesperado("completar la transferencia", { mueveDinero: true });
   }
   const intentos = fallo.problema.intentosRestantes;
   if (fallo.estado === 422 && typeof intentos === "number") {

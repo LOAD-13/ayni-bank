@@ -16,6 +16,7 @@ import {
   type ControlesDeTarjeta,
 } from "@/lib/api";
 import { formatearImporte, normalizarImporte, porcentajeUsado } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 type Accion = "congelamiento" | "internet" | "limite";
 
@@ -214,7 +215,7 @@ export default function PaginaDeLaTarjeta() {
 function mensajeDe(fallo: unknown): string {
   return fallo instanceof ErrorDeApi
     ? (fallo.problema.detail ?? fallo.message)
-    : "No pudimos completar el cambio. Inténtalo de nuevo.";
+    : falloInesperado("completar el cambio");
 }
 
 function avisoDe(accion: Accion, controles: ControlesDeTarjeta): string {

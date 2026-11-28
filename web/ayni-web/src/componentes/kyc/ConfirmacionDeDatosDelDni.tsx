@@ -12,6 +12,7 @@ import {
   ErrorDeApi,
   extraerDatosDelDni,
 } from "@/lib/api";
+import { falloInesperado } from "@/lib/mensajes";
 
 interface Props {
   solicitudId: string;
@@ -73,7 +74,7 @@ export function ConfirmacionDeDatosDelDni({ solicitudId, onConfirmado, onDerivad
           mensaje:
             error instanceof ErrorDeApi
               ? (error.problema.detail ?? error.message)
-              : "No pudimos leer los datos de tu DNI. Inténtalo de nuevo.",
+              : falloInesperado("leer los datos de tu DNI"),
         });
       });
   }, [solicitudId]);
@@ -178,7 +179,7 @@ function FormularioDeConfirmacion({
         setErrores(error.porCampo());
         setErrorGeneral(error.problema.detail ?? error.message);
       } else {
-        setErrorGeneral("No pudimos confirmar tus datos. Inténtalo de nuevo.");
+        setErrorGeneral(falloInesperado("confirmar tus datos"));
       }
     } finally {
       setEnviando(false);
