@@ -116,10 +116,27 @@ final class ComprobanteEnPdf {
         return simbolo + c.importe().importe().toPlainString();
     }
 
-    /** «**********0031» como «•••• 0031», igual que en la banca. Posesivo: sin backtracking (Sonar S8786). */
+    /**
+     * «**********0031» como «•••• 0031», igual que en la banca. Se recorre el texto en lugar de usar una expresión
+     * regular: un patrón con repetición sin tope tenía backtracking superlineal (Sonar S8786).
+     */
     static String legible(String texto) {
-        return texto.replaceAll("\\*{4,}+(\\d{4})", "•••• $1")
-                .replaceFirst("^Deposito", "Depósito").replaceFirst("^Devolucion", "Devolución");
+        StringBuilder salida = new StringBuilder(texto.length());
+        int i = 0;
+        while (i < texto.length()) {
+            int fin = i;
+            while (fin < texto.length() && texto.charAt(fin) == '*') {
+                fin++;
+            }
+            if (fin - i >= 4 && fin + 4 <= texto.length() && texto.substring(fin, fin + 4).chars().allMatch(Character::isDigit)) {
+                salida.append("•••• ");
+                i = fin;
+            } else {
+                salida.append(texto, i, Math.max(fin, i + 1));
+                i = Math.max(fin, i + 1);
+            }
+        }
+        return salida.toString().replaceFirst("^Deposito", "Depósito").replaceFirst("^Devolucion", "Devolución");
     }
 
     private static Paragraph centrado(String texto, Font fuente, float antes, float despues) {

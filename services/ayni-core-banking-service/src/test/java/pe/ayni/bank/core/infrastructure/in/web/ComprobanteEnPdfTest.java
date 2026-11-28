@@ -54,4 +54,12 @@ class ComprobanteEnPdfTest {
         assertThat(ComprobanteEnPdf.legible("Cena · a **********0031")).isEqualTo("Cena · a •••• 0031");
         assertThat(ComprobanteEnPdf.legible("Deposito simulado")).isEqualTo("Depósito simulado");
     }
+
+    @Test
+    @DisplayName("Solo se acorta una máscara de cuatro o más asteriscos seguida de cuatro dígitos")
+    void soloLaMascaraCompleta() {
+        assertThat(ComprobanteEnPdf.legible("Pago ***1234")).isEqualTo("Pago ***1234");
+        assertThat(ComprobanteEnPdf.legible("Pago ******12")).isEqualTo("Pago ******12");
+        assertThat(ComprobanteEnPdf.legible("De ****0001 a ****0002")).isEqualTo("De •••• 0001 a •••• 0002");
+    }
 }
