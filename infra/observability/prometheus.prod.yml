@@ -10,6 +10,9 @@ global:
   external_labels:
     entorno: prod
 
+rule_files:
+  - /etc/prometheus/alertas/hu14-sla.yml
+
 scrape_configs:
   - job_name: ayni-servicios
     metrics_path: /actuator/prometheus
