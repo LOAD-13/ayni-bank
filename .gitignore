@@ -88,3 +88,7 @@ allure-results/
 
 # Resultados de la prueba de estrés de k6 (infra/carga/estres.js): evidencia local, no código
 estres-resultado.*
+
+# === HU-14: JWT de usuarios de prueba y resultados temporales de k6 ===
+tests/performance/k6/tokens.local.json
+tests/performance/results/

@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - /etc/prometheus/rules/hu14-sla.yml
+
 scrape_configs:
   # Cada servicio escucha en su propio puerto: el 8080 es solo el del gateway.
   # Se declaran por separado para poder etiquetar el servicio, que es lo que
