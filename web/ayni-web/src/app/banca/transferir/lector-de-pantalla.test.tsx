@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ErrorDeApi, iniciarConfirmacion } from "@/lib/api";
+import { ErrorDeApi, consultarMiCuenta, iniciarConfirmacion } from "@/lib/api";
 
 import PaginaDeTransferencia from "./page";
 
@@ -20,6 +20,7 @@ vi.mock("@/componentes/banca/SesionDeBanca", () => ({
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   iniciarConfirmacion: vi.fn(),
+  consultarMiCuenta: vi.fn(),
 }));
 
 /** Avanza el lector por la página y devuelve todo lo que anunció. */
@@ -63,5 +64,21 @@ describe("Transferencia con lector de pantalla (HU-17)", () => {
     // El aviso va en role="alert": el lector lo lee como alerta, con el texto que explica qué hacer.
     expect(dicho).toMatch(/alert/);
     expect(dicho).toMatch(/Activa tu segundo factor/);
+  });
+
+  it("HU-17 escenario 3: anuncia el saldo insuficiente con el saldo disponible y cómo corregirlo", async () => {
+    const user = userEvent.setup();
+    vi.mocked(consultarMiCuenta).mockResolvedValue({ saldo: "50.00" } as never);
+    const { container } = render(<PaginaDeTransferencia />);
+    await user.type(screen.getByLabelText("Cuenta Ayni de destino"), "00111000000031");
+    await user.type(screen.getByLabelText("Importe en soles"), "100");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByText(/Saldo insuficiente/);
+
+    await virtual.start({ container });
+    const dicho = await recorrer(60);
+
+    expect(dicho).toMatch(/Saldo insuficiente: tienes S\/ 50\.00 disponibles/);
+    expect(dicho).toMatch(/Escribe un importe igual o menor/);
   });
 });

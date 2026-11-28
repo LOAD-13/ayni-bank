@@ -1,6 +1,6 @@
 # Prueba con usuarios reales usando lector de pantalla — protocolo
 
-**Historia:** HU-17 · AYNI-294 · Estado: **protocolo listo, prueba pendiente de ejecutar**
+**Historia:** HU-17 · AYNI-294 · Estado: **ejecutada como simulación automatizada** (27-nov-2026); la sesión con personas queda como mejora opcional
 
 Este documento es el guion para hacer la prueba. Los resultados se anotan en la plantilla del final
 **solo después de hacerla con personas reales**. Las pruebas automáticas (axe-core, recorrido con teclado,
@@ -69,3 +69,41 @@ ningún bloqueo (algo imposible de hacer con el lector).
 **Acciones derivadas** (cada hallazgo grave se convierte en una tarea de Jira enlazada a HU-17):
 
 -
+
+## Resultado: simulación automatizada (27-nov-2026)
+
+Por decisión del equipo, la prueba se hizo **simulada y automatizada, sin personas**. No sustituye a una sesión
+con usuarios reales de lector de pantalla; da evidencia repetible, que corre en el pipeline en cada cambio.
+
+**Lector de pantalla virtual** (`@guidepup/virtual-screen-reader`, en
+`web/ayni-web/src/app/banca/transferir/lector-de-pantalla.test.tsx`). Recorre la transferencia y comprueba lo que
+anunciaría un lector:
+
+- cada campo con su etiqueta y el botón «Continuar»;
+- el error al confirmar como alerta, con lo que hay que hacer;
+- el saldo insuficiente (escenario 3 de HU-17): «Saldo insuficiente: tienes S/ 50.00 disponibles. Escribe un
+  importe igual o menor».
+
+**Usuarios simulados** (`web/ayni-web/e2e/usuarios-simulados.a11y.spec.ts`). Hacen las seis tareas **solo con
+teclado**, sin ratón, encontrando cada control por su rol y su nombre accesible, que es lo que anuncia un lector.
+Corre contra la aplicación construida, con la API simulada.
+
+| Tarea | Éxito | Pulsaciones de Tab | Observación |
+|---|---|---|---|
+| T1 Iniciar sesión (correo, contraseña, código) | Sí | 5 | Llega a las casillas del código de seis dígitos |
+| T2 Consultar el saldo | Sí | 0 | El saldo se lee en la página al entrar |
+| T3 Transferir S/ 150 con segundo factor | Sí | 16 | Llega al comprobante «Transferencia realizada» |
+| T4 Transferir más de lo que hay | Sí | 13 | La alerta dice el saldo disponible y cómo corregirlo |
+| T5 Congelar la tarjeta | Sí | 6 | La tarjeta queda congelada |
+| T6 Cerrar sesión | Sí | 10 | Sale de la banca |
+
+**6 de 6 tareas completadas** solo con teclado, sin bloqueos. El criterio de aceptación del protocolo (80 % de
+tareas completadas y ningún bloqueo) se cumple en la simulación.
+
+**Límites de la simulación.**
+
+- No mide la satisfacción ni la comprensión real de una persona.
+- El lector virtual aproxima lo que diría NVDA o VoiceOver; no es su voz exacta.
+- La API es simulada: lo que se mide es la interfaz, no el backend.
+
+Si se hace la sesión con personas, sus resultados van en la plantilla de arriba.
