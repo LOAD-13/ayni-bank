@@ -153,6 +153,29 @@ Las métricas de negocio las emiten los servicios con Micrometer (`ayni_operacio
 `ayni_operaciones_importe_soles_total`, `ayni_operaciones_rechazos_total`,
 `ayni_acceso_eventos_total`) y no llevan etiquetas que identifiquen al cliente.
 
+### En CloudWatch (ADR-0043)
+
+| Qué | Dónde | Cómo llega |
+|---|---|---|
+| CPU, red y disco de EBS de la EC2 | `AWS/EC2`, `AWS/EBS` | Métricas estándar, sin configuración |
+| Memoria, disco usado, E/S y conexiones TCP | `CWAgent` | Agente de CloudWatch con `infra/aws/cloudwatch-agent.json` |
+| CPU, memoria libre, almacenamiento, IOPS y red de la base | `AWS/RDS` | Métricas estándar de RDS |
+| Logs de cada contenedor | Grupo `/ayni/prod`, un flujo por contenedor | Driver `awslogs` de `docker-compose.prod.yml` |
+| Logs de PostgreSQL | `/aws/rds/instance/ayni-bank-prod/postgresql` | Exportación de RDS |
+
+Cada línea de log de los servicios Java lleva el `traceId` de la petición entre corchetes después del nivel.
+
+El agente se instala una vez por instancia, por SSM:
+
+```bash
+aws ssm send-command --instance-ids <id> --document-name AWS-ConfigureAWSPackage   --parameters action=Install,name=AmazonCloudWatchAgent
+aws ssm put-parameter --name AmazonCloudWatch-ayni --type String --overwrite   --value file://infra/aws/cloudwatch-agent.json
+aws ssm send-command --instance-ids <id> --document-name AmazonCloudWatch-ManageAgent   --parameters action=configure,mode=ec2,optionalConfigurationSource=ssm,optionalConfigurationLocation=AmazonCloudWatch-ayni,optionalRestart=yes
+```
+
+La retención del grupo de logs se fija en 30 días:
+`aws logs put-retention-policy --log-group-name /ayni/prod --retention-in-days 30`.
+
 ## 11. Alta disponibilidad de la base de datos
 
 El nivel 1 del [ADR-0037](../arquitectura/adr/0037-alta-disponibilidad-de-la-base-de-datos.md)

@@ -77,6 +77,10 @@ server:
   shutdown: graceful
 
 management:
+  # Todas las peticiones llevan traceId en el log (no hay colector: muestrear no cuesta nada).
+  tracing:
+    sampling:
+      probability: 1.0
   endpoints:
     web:
       exposure:
@@ -106,4 +110,4 @@ management:
 logging:
   pattern:
     console: |-
-      %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %-40.40logger{39} : %replace(%replace(%replace(%replace(%replace(%m%n%wEx){'eyJ[\w-]+\.[\w-]+\.[\w-]+', '[TOKEN]'}){'(?i)(bearer\s+)[\w.~+/=-]+', '$1[TOKEN]'}){'(?i)(contrasena|password|clave)(\W{1,3})[^\s,;]+', '$1$2***'}){'(?i)(dni|documento)(\D{1,3})\d{8}', '$1$2********'}){'\b(\d{4})\d{5,11}(\d{4})\b', '$1****$2'}
+      %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%X{traceId:--}] [%15.15t] %-40.40logger{39} : %replace(%replace(%replace(%replace(%replace(%m%n%wEx){'eyJ[\w-]+\.[\w-]+\.[\w-]+', '[TOKEN]'}){'(?i)(bearer\s+)[\w.~+/=-]+', '$1[TOKEN]'}){'(?i)(contrasena|password|clave)(\W{1,3})[^\s,;]+', '$1$2***'}){'(?i)(dni|documento)(\D{1,3})\d{8}', '$1$2********'}){'\b(\d{4})\d{5,11}(\d{4})\b', '$1****$2'}

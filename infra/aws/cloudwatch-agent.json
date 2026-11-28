@@ -1,0 +1,14 @@
+{
+  "agent": { "metrics_collection_interval": 60 },
+  "metrics": {
+    "namespace": "CWAgent",
+    "append_dimensions": { "InstanceId": "${aws:InstanceId}" },
+    "metrics_collected": {
+      "mem": { "measurement": ["mem_used_percent", "mem_used", "mem_available"] },
+      "disk": { "measurement": ["used_percent", "used", "free"], "resources": ["/"], "ignore_file_system_types": ["sysfs", "devtmpfs", "tmpfs", "overlay"] },
+      "diskio": { "measurement": ["read_bytes", "write_bytes", "reads", "writes"] },
+      "net": { "measurement": ["bytes_sent", "bytes_recv"], "resources": ["ens5"] },
+      "netstat": { "measurement": ["tcp_established"] }
+    }
+  }
+}
