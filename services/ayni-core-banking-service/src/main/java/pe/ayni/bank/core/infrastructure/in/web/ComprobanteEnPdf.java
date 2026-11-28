@@ -116,9 +116,9 @@ final class ComprobanteEnPdf {
         return simbolo + c.importe().importe().toPlainString();
     }
 
-    /** «**********0031» como «•••• 0031», igual que en la banca. */
+    /** «**********0031» como «•••• 0031», igual que en la banca. Posesivo: sin backtracking (Sonar S8786). */
     static String legible(String texto) {
-        return texto.replaceAll("\\*{4,}(\\d{4})", "•••• $1")
+        return texto.replaceAll("\\*{4,}+(\\d{4})", "•••• $1")
                 .replaceFirst("^Deposito", "Depósito").replaceFirst("^Devolucion", "Devolución");
     }
 
