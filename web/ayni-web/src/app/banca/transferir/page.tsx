@@ -19,6 +19,7 @@ import {
   type ConfirmacionIniciada,
 } from "@/lib/api";
 import { formatearImporte, normalizarImporte, nuevaClave, superaA } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 interface Borrador {
   cuentaDestino: string;
@@ -309,7 +310,7 @@ function Fila({ clave, valor }: { clave: string; valor: string }) {
 /** Mensajes para el cliente; los códigos vienen de identity y core-banking (ADR-0031). */
 function mensajeDe(fallo: unknown): string {
   if (!(fallo instanceof ErrorDeApi)) {
-    return "No pudimos completar la transferencia. Inténtalo de nuevo.";
+    return falloInesperado("completar la transferencia", { mueveDinero: true });
   }
   const intentos = fallo.problema.intentosRestantes;
   switch (fallo.estado) {

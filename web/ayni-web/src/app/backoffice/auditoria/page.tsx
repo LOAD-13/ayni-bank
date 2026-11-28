@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { formatearFecha } from "@/lib/formato";
 import { permisosDelToken } from "@/lib/sesion";
+import { falloInesperado } from "@/lib/mensajes";
 
 const PERMISO = "auditoria:leer";
 const POR_PAGINA = 20;
@@ -70,7 +71,7 @@ export default function PaginaDeAuditoria() {
           setError(
             fallo instanceof ErrorDeApi
               ? (fallo.problema.detail ?? fallo.message)
-              : "No pudimos leer la pista de auditoría. Inténtalo de nuevo.",
+              : falloInesperado("leer la pista de auditoría"),
           );
         }
       } finally {
