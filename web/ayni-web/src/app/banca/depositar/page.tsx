@@ -10,6 +10,7 @@ import { useSesion } from "@/componentes/banca/SesionDeBanca";
 import { TarjetaDeComprobante } from "@/componentes/banca/TarjetaDeComprobante";
 import { depositarSimulado, ErrorDeApi, type Comprobante } from "@/lib/api";
 import { normalizarImporte, nuevaClave } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 /**
  * Depósito simulado. En un banco real el dinero entraría por una transferencia
@@ -50,7 +51,7 @@ export default function PaginaDeDeposito() {
       setError(
         fallo instanceof ErrorDeApi
           ? (fallo.problema.detail ?? fallo.message)
-          : "No pudimos completar el depósito. Inténtalo de nuevo.",
+          : falloInesperado("completar el depósito", { mueveDinero: true }),
       );
     } finally {
       setEnviando(false);
@@ -76,6 +77,7 @@ export default function PaginaDeDeposito() {
       {error && (
         <p
           role="alert"
+          aria-live="assertive"
           className="mt-5 rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}

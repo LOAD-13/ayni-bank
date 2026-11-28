@@ -119,10 +119,25 @@ revisaba con axe. Ahora queda en la CI.
 
 ## 5. Compromiso del usuario
 
-**Sin medir todavía.** El compromiso, es decir si la interfaz resulta agradable y motiva a seguir
-usándola, solo lo pueden juzgar personas. No se puede automatizar ni lo puede decidir el propio
-equipo. Se medirá con el cuestionario SUS (*System Usability Scale*) del anexo A, con al menos cinco
-participantes de 18 a 35 años que no hayan visto la aplicación, antes de la sustentación del APF3.
+Se mide con los mecanismos de compromiso vistos en clase (sesión 24): cada uno debe estar
+implementado **y** comprobado por una prueba automática que corre en la CI.
+
+| Mecanismo | Cómo está en Ayni Bank | Prueba automática |
+|---|---|---|
+| Personalización | El panel saluda por el nombre: «Hola, Ana» | `panel.spec.ts` |
+| Progreso visible en tareas de varios pasos | Registro, verificación y transferencias muestran el paso actual | `transferir.test.tsx`, `AsistenteDeBienvenida.test.tsx` |
+| Pistas en los íconos principales, también con el teclado | Cinco en el panel, de 80 caracteres como máximo | `Pista.test.tsx`, `compromiso.spec.ts` |
+| Asistente de bienvenida en el primer ingreso | Cuatro pasos con barra de progreso, una sola vez | `AsistenteDeBienvenida.test.tsx`, `compromiso.spec.ts` |
+| Reconocimiento de logro | «¡Primera operación completada!» junto al primer comprobante | `LogroDePrimeraOperacion.test.tsx` |
+| Ayuda contextual | Página «Ayuda» con preguntas frecuentes, enlazada desde cada operación | `compromiso.spec.ts` |
+| Retroalimentación del usuario | Página «Tu opinión» con el cuestionario del anexo A | `opinion.test.tsx` |
+
+**Mecanismos implementados y verificados: X = 7 / 7 = 1,00 · Alto.**
+
+Esta medida comprueba que la interfaz **ofrece** lo que motiva a seguir usándola; no mide la
+percepción de las personas. Esa percepción se medirá en el proyecto final con el cuestionario SUS
+(*System Usability Scale*) del anexo A, con al menos cinco participantes que no hayan visto la
+aplicación:
 
 | Puntuación SUS | Lectura |
 |---|---|
@@ -130,10 +145,6 @@ participantes de 18 a 35 años que no hayan visto la aplicación, antes de la su
 | 68 – 80,2 | Buena (68 es la media de la industria) |
 | 51 – 67,9 | Aceptable con mejoras |
 | < 51 | Insuficiente |
-
-Lo que sí se puede afirmar sin usuarios es que la interfaz sigue el diseño aprobado, con un único
-sistema de diseño (`docs/marca/design-tokens.md`). Eso es consistencia, no compromiso, y no sustituye
-la medición.
 
 ## 6. Relación con el capítulo 14: la suite automatizada
 
@@ -159,11 +170,11 @@ La suite de usabilidad tiene **24 pruebas** que corren en escritorio y en celula
 | Protección contra errores | Acciones sensibles protegidas | 0,90 | 1,00 | **Alto** |
 | Asistencia al usuario | Mensajes de error comprensibles | 0,94 | 1,00 | **Alto** |
 | Asistencia al usuario | Pantallas sin violaciones de WCAG 2.1 AA | 1,00 | 1,00 | **Alto** |
-| Compromiso del usuario | SUS | — | — | **Sin medir** (anexo A) |
+| Compromiso del usuario | Mecanismos de compromiso implementados y verificados | — | 1,00 | **Alto** |
 
 **Nivel de cumplimiento de la usabilidad del incremento entregado: Alto en facilidad de aprendizaje,
-protección contra errores y asistencia al usuario.** El compromiso del usuario queda pendiente de la
-prueba con participantes.
+protección contra errores, asistencia y compromiso del usuario.** La percepción de los usuarios
+(SUS) se medirá en el proyecto final.
 
 Que todo termine en 1,00 no significa que la interfaz no tenga nada que mejorar. Significa que lo
 encontrado con estas medidas se corrigió. Entre el capítulo 14 y este, la evaluación encontró y
@@ -184,7 +195,7 @@ corrigió **diez defectos de usabilidad**:
 
 | Acción | Dónde |
 |---|---|
-| Aplicar el cuestionario SUS del anexo A a cinco participantes y completar la sección 5 | T-22, antes del APF3 |
+| Aplicar el cuestionario SUS del anexo A a cinco participantes (percepción del compromiso) | Proyecto final |
 | Añadir la recuperación de la contraseña a las pruebas permanentes de axe | Nueva tarea de HU-17 |
 | Repetir esta evaluación al cierre del Sprint 8, con la tarjeta y la transferencia interbancaria ya entregadas | T-22 del PROY |
 | Cerrar los elementos marcados como «Falta» o «Parcial» en la sección 8 | Taller de la semana 12 (ver sección 8) |

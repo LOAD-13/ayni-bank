@@ -26,11 +26,12 @@ export function LogroDePrimeraOperacion() {
   return (
     <div
       role="status"
+      aria-live="polite"
       className="flex gap-4 rounded-[16px] border border-dorado-500 bg-dorado-100 p-5"
     >
       <span
         aria-hidden="true"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dorado-500 text-blanco"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dorado-500 text-azul-900"
       >
         <Award className="h-6 w-6" />
       </span>

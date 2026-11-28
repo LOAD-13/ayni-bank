@@ -108,8 +108,10 @@ services:
     deploy:
       resources:
         limits: { memory: 256M, cpus: "0.5" }
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: ayni-minio
+    # La imagen corre como nonroot y el volumen de antes es de root: sin esto no arranca.
+    user: "0:0"
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -130,7 +132,7 @@ services:
     deploy:
       resources:
         limits: { memory: 64M, cpus: "0.25" }
-    image: minio/mc:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: ayni-minio-init
     depends_on:
       minio: { condition: service_healthy }
@@ -232,6 +234,9 @@ services:
       AYNI_FX_SUNAT_URL: ${AYNI_FX_SUNAT_URL}
       # HU-06: cada cuanto se buscan dias sin cerrar (por defecto, cada hora a los 5 min).
       AYNI_DEVENGO_CRON: ${AYNI_DEVENGO_CRON:-0 5 * * * *}
+      # Feature flag (AYNI-319): false vuelve al historial calculado en memoria. Se cambia en
+      # el .env y basta recrear el contenedor; la imagen no se reconstruye.
+      AYNI_FUNCIONES_HISTORIAL_EN_BASE: ${AYNI_FUNCIONES_HISTORIAL_EN_BASE:-true}
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }

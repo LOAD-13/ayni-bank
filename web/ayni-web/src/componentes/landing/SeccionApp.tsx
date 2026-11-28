@@ -157,7 +157,7 @@ function MaquetaDelTelefono() {
               alt=""
               width={36}
               height={36}
-              className="h-8 w-8"
+              className="h-8 w-8 object-contain"
             />
           </div>
 

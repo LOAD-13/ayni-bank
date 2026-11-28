@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import pe.ayni.bank.core.domain.port.in.AbrirCuentaDeAhorroUseCase;
 import pe.ayni.bank.core.domain.port.in.OperarCuentaUseCase;
 import pe.ayni.bank.core.domain.port.out.LibroMayorPort;
 import pe.ayni.bank.core.domain.port.out.RepositorioDeCuentasPort;
@@ -34,7 +35,8 @@ class ManejadorDeErroresTest {
     private final OperarCuentaUseCase operar = mock(OperarCuentaUseCase.class);
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new OperacionesController(mock(RepositorioDeCuentasPort.class), mock(LibroMayorPort.class),
-                    operar, new MetricasDeOperaciones(new SimpleMeterRegistry())))
+                    operar, new MetricasDeOperaciones(new SimpleMeterRegistry()),
+                    mock(AbrirCuentaDeAhorroUseCase.class)))
             .setControllerAdvice(new ManejadorDeErrores())
             .build();
 

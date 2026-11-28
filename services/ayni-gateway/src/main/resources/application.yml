@@ -103,12 +103,12 @@ spring:
                     redis-rate-limiter.requestedTokens: 360
 
             # Lo que mueve dinero se cuenta por titular, no por IP (ver porUsuario). La
-            # interbancaria (HU-11) comparte cupo con la transferencia y el deposito.
+            # interbancaria (HU-11) y la conversion (HU-12) comparten cupo con la transferencia y el deposito.
             - id: limite-dinero
               uri: &core ${AYNI_CORE_URI:http://ayni-core-banking-service:8082}
               order: -1
               predicates:
-                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados,/api/v1/interbancarias
+                - Path=/api/v1/transferencias,/api/v1/cuentas/mia/depositos-simulados,/api/v1/interbancarias,/api/v1/conversiones
                 - Method=POST
               filters:
                 - name: RequestRateLimiter
@@ -118,6 +118,23 @@ spring:
                     redis-rate-limiter.replenishRate: 1
                     redis-rate-limiter.burstCapacity: 60
                     redis-rate-limiter.requestedTokens: 6
+
+            # Libro de reclamaciones: publico (sin sesion), asi que se cuenta por IP y con un
+            # cupo bajo, como el registro, para que nadie pueda llenarlo de hojas falsas.
+            - id: limite-reclamaciones
+              uri: *core
+              order: -1
+              predicates:
+                - Path=/api/v1/reclamaciones
+                - Method=POST
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    rate-limiter: "#{@limitadorDeTasa}"
+                    key-resolver: "#{@porIp}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 60
+                    redis-rate-limiter.requestedTokens: 20
 
             # ─── Rutas generales ─────────────────────────────────────────────────────
             - id: identity
@@ -137,7 +154,7 @@ spring:
             - id: core-banking
               uri: *core
               predicates:
-                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/interbancarias,/api/v1/interbancarias/**
+                - Path=/api/v1/cuentas/**,/api/v1/movimientos/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/tarjetas/**,/api/v1/tipo-cambio/**,/api/v1/conversiones,/api/v1/auditoria/**,/api/v1/backoffice/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/reclamaciones
 
             # Sin ruta hacia ayni-kyc-service, a proposito: es un servicio interno al que
             # solo llama identity-service (diseno-base.md §3.4). La ruta que habia
@@ -175,7 +192,27 @@ ayni:
     # muestra o mueve el dinero del titular. Toda consulta de cuentas exige sesion,
     # tambien al terminar el registro (ADR-0038).
     rutas-protegidas: >-
-      /api/v1/cuentas,/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
+      /api/v1/cuentas,/api/v1/cuentas/**,/api/v1/transferencias,/api/v1/transferencias/**,/api/v1/confirmaciones,/api/v1/confirmaciones/**,/api/v1/movimientos/**,/api/v1/conversiones,/api/v1/tipo-cambio/cotizacion,/api/v1/auditoria/**,/api/v1/backoffice/**,/api/v1/interbancarias,/api/v1/interbancarias/**,/api/v1/tarjetas/mia,/api/v1/tarjetas/mia/**
+    # Que permiso del token exige cada ruta (AYNI-281), con la forma [METODO:]patron=permiso. Gana
+    # la primera que case. Una ruta protegida sin regla solo exige sesion. Los permisos salen de
+    # los roles del catalogo de identity (V1) y viajan en el claim `permisos` del token.
+    permisos-por-ruta: >-
+      /api/v1/auditoria/**=auditoria:leer,
+      POST:/api/v1/backoffice/bloqueos=cliente:bloquear_iniciar,
+      /api/v1/backoffice/bloqueos/**=cliente:bloquear_aprobar,
+      /api/v1/backoffice/bloqueos=cliente:bloquear_aprobar,
+      POST:/api/v1/transferencias=transferencia:iniciar,
+      POST:/api/v1/interbancarias=transferencia:iniciar,
+      POST:/api/v1/conversiones=transferencia:iniciar,
+      POST:/api/v1/cuentas/mia/depositos-simulados=transferencia:iniciar,
+      /api/v1/interbancarias/**=transferencia:iniciar,
+      /api/v1/transferencias/**=transferencia:iniciar,
+      /api/v1/tarjetas/**=tarjeta:administrar,
+      /api/v1/cuentas/**=cuenta:leer,
+      /api/v1/cuentas=cuenta:leer,
+      /api/v1/movimientos/**=cuenta:leer,
+      /api/v1/tipo-cambio/cotizacion=cuenta:leer,
+      /api/v1/conversiones=transferencia:iniciar
 
 # Swagger UI en /api/docs con los contratos de identity, core-banking y kyc. APAGADA por
 # defecto: solo el compose local pone AYNI_API_DOCS=true. Las rutas hacia los contratos de
@@ -229,3 +266,12 @@ management:
       enabled: true
     readinessState:
       enabled: true
+
+# HU-15 · AYNI-283: red de seguridad sobre lo que llega a Loki. El codigo ya registra todo
+# enmascarado; si algun dia se escapa un dato sensible en un mensaje o en una excepcion, el
+# patron lo tapa antes de escribirlo: tokens JWT y Bearer, contrasenas en clave=valor, DNI
+# etiquetado y cualquier numero de 13 a 19 cifras (PAN). LogsSinDatosSensiblesTest lo comprueba.
+logging:
+  pattern:
+    console: |-
+      %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%15.15t] %-40.40logger{39} : %replace(%replace(%replace(%replace(%replace(%m%n%wEx){'eyJ[\w-]+\.[\w-]+\.[\w-]+', '[TOKEN]'}){'(?i)(bearer\s+)[\w.~+/=-]+', '$1[TOKEN]'}){'(?i)(contrasena|password|clave)(\W{1,3})[^\s,;]+', '$1$2***'}){'(?i)(dni|documento)(\D{1,3})\d{8}', '$1$2********'}){'\b(\d{4})\d{5,11}(\d{4})\b', '$1****$2'}

@@ -42,6 +42,7 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
     private final RegistroDeIdempotenciaPort idempotencia;
     private final PistaDeAuditoriaPort auditoria;
     private final short productoDeAhorro;
+    private final short productoDeAhorroEnDolares;
     private final Clock reloj;
 
     public AbrirCuentaDeAhorroService(
@@ -50,12 +51,14 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
             RegistroDeIdempotenciaPort idempotencia,
             PistaDeAuditoriaPort auditoria,
             @Value("${ayni.productos.ahorro-soles}") short productoDeAhorro,
+            @Value("${ayni.productos.ahorro-dolares}") short productoDeAhorroEnDolares,
             Clock reloj) {
         this.cuentas = cuentas;
         this.eventos = eventos;
         this.idempotencia = idempotencia;
         this.auditoria = auditoria;
         this.productoDeAhorro = productoDeAhorro;
+        this.productoDeAhorroEnDolares = productoDeAhorroEnDolares;
         this.reloj = reloj;
     }
 
@@ -88,7 +91,8 @@ public class AbrirCuentaDeAhorroService implements AbrirCuentaDeAhorroUseCase {
         NumeroDeCuenta numero = NumeroDeCuenta.de(moneda, cuentas.siguienteCorrelativo());
 
         Cuenta cuenta = cuentas.guardar(Cuenta.abrir(
-                UUID.randomUUID(), usuarioId, productoDeAhorro, numero, moneda,
+                UUID.randomUUID(), usuarioId,
+                moneda == Moneda.PEN ? productoDeAhorro : productoDeAhorroEnDolares, numero, moneda,
                 reloj.instant()));
 
         // 4. El evento va a la bandeja de salida dentro de esta misma transaccion. No sale

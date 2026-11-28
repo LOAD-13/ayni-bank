@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Info, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
-import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 
 import { type TipoDeSegundoFactor } from "@/lib/api";
 import { InscripcionDelSegundoFactor } from "./InscripcionDelSegundoFactor";
@@ -38,6 +38,9 @@ export function PasoDeSegundoFactor({
   const [metodoActual, setMetodoActual] = useState<TipoDeSegundoFactor>(tipoMetodo);
   const [reenviando, setReenviando] = useState(false);
   const [mensajeReenvio, setMensajeReenvio] = useState<string | null>(null);
+  // Las seis casillas se enlazan al error (AYNI-291): sin esto, el lector anuncia el
+  // aviso una vez y al volver a una casilla no queda rastro de qué falló.
+  const idError = useId();
 
   useEffect(() => {
     const temporizador = setInterval(() => setRestantes(segundosHastaElSiguienteCodigo()), 1000);
@@ -150,7 +153,9 @@ export function PasoDeSegundoFactor({
 
           {error && (
             <p
+              id={idError}
               role="alert"
+              aria-live="assertive"
               className="mt-5 flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
             >
               <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -159,7 +164,13 @@ export function PasoDeSegundoFactor({
           )}
 
           {mensajeReenvio && (
-            <p className="mt-3 text-[13.5px] font-semibold text-verde-700">{mensajeReenvio}</p>
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-3 text-[13.5px] font-semibold text-verde-700"
+            >
+              {mensajeReenvio}
+            </p>
           )}
 
           <form onSubmit={alEnviar} noValidate className="mt-6">
@@ -180,11 +191,13 @@ export function PasoDeSegundoFactor({
                     autoComplete={indice === 0 ? "one-time-code" : "off"}
                     maxLength={1}
                     aria-label={`Dígito ${indice + 1} de ${DIGITOS}`}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? idError : undefined}
                     value={digito}
                     onChange={(e) => escribir(indice, e.target.value)}
                     onKeyDown={(e) => alPulsarTecla(indice, e.key)}
                     onPaste={alPegar}
-                    className="campo h-[58px] w-full max-w-[58px] flex-1 rounded-[12px] border border-gris-300 bg-blanco text-center text-[24px] font-bold text-gris-900 outline-none"
+                    className="campo h-[58px] w-full max-w-[58px] flex-1 rounded-[12px] border border-gris-300 bg-blanco text-center text-[24px] font-bold text-gris-900"
                   />
                 ))}
               </div>

@@ -24,6 +24,7 @@ import {
   solicitarUrlDeSubida,
   subirDocumento,
 } from "@/lib/api";
+import { falloInesperado } from "@/lib/mensajes";
 
 /**
  * Ancho ÷ alto de un documento de identidad ISO/IEC 7810 ID-1 (85.60 × 53.98 mm), que es
@@ -277,7 +278,7 @@ export function CapturaDeDocumento({
       setErrorDeSubida(
         error instanceof ErrorDeApi
           ? (error.problema.detail ?? error.message)
-          : "No pudimos subir tu documento. Inténtalo de nuevo.",
+          : falloInesperado("subir tu documento"),
       );
       setFase("revisando");
     }
@@ -301,6 +302,7 @@ export function CapturaDeDocumento({
           {errorDeSubida && (
             <p
               role="alert"
+              aria-live="assertive"
               className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
             >
               <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -333,7 +335,7 @@ export function CapturaDeDocumento({
             >
               {/* El video es funcional, no decorativo, pero no tiene contenido que un lector
               de pantalla pueda anunciar: el estado con significado (`fase`) se dice
-              aparte, en los mensajes de texto de este mismo `role="status"`. */}
+              aparte, en los mensajes de texto de este mismo `role="status" aria-live="polite"`. */}
               <video
                 ref={videoRef}
                 autoPlay
@@ -519,7 +521,7 @@ function SelectorDeArchivo({ idDeInput, inputRef, error, onArchivo }: SelectorDe
         />
       </label>
       {error && (
-        <p role="alert" className="mt-2 text-[12.5px] font-medium text-error">
+        <p role="alert" aria-live="assertive" className="mt-2 text-[12.5px] font-medium text-error">
           {error}
         </p>
       )}

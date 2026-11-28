@@ -41,6 +41,7 @@ export default function PaginaDeOpinion() {
       {puntuacion !== null ? (
         <section
           role="status"
+          aria-live="polite"
           aria-labelledby="titulo-resultado-sus"
           className="rounded-[20px] border border-azul-200 bg-blanco p-7"
         >
@@ -57,6 +58,7 @@ export default function PaginaDeOpinion() {
           {faltan.length > 0 && (
             <p
               role="alert"
+              aria-live="assertive"
               className="rounded-lg border border-error bg-blanco p-4 text-body text-error"
             >
               Falta responder {faltan.length === 1 ? "la afirmación" : "las afirmaciones"}{" "}

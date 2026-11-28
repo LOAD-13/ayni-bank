@@ -116,7 +116,7 @@ Decisiones razonadas en [`docs/arquitectura/adr/`](docs/arquitectura/adr/)
 
 | Capa | Tecnología |
 |---|---|
-| Back-end | Java 21 · Spring Boot 3 · Spring Security · Spring Cloud Gateway |
+| Back-end | Java 21 · Spring Boot 4 · Spring Security · Spring Cloud Gateway |
 | Visión por computadora | Python 3.12 · FastAPI · OpenCV · PaddleOCR |
 | Front-end | Next.js · React · TypeScript · Tailwind |
 | Persistencia | PostgreSQL 16 · Flyway · Hibernate Envers |

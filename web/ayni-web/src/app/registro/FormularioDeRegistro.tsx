@@ -139,6 +139,7 @@ export function FormularioDeRegistro() {
     return (
       <div
         role="status"
+        aria-live="polite"
         className="rounded-[16px] border border-azul-200 bg-azul-050 p-8 text-center"
       >
         <CircleCheck aria-hidden="true" className="mx-auto h-10 w-10 text-exito" />
@@ -165,6 +166,7 @@ export function FormularioDeRegistro() {
       {errorGeneral && (
         <p
           role="alert"
+          aria-live="assertive"
           className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -335,6 +337,7 @@ export function FormularioDeRegistro() {
           <p
             id="error-terminos"
             role="alert"
+            aria-live="assertive"
             className="mt-2 pl-8 text-[12.5px] font-medium text-error"
           >
             {errores.aceptaTerminos}
@@ -446,7 +449,12 @@ function Campo({ etiqueta, value, onChange, ayuda, error, prefijo, ...resto }: C
         />
       </div>
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-[12.5px] font-medium text-error">
+        <p
+          id={`${id}-error`}
+          role="alert"
+          aria-live="assertive"
+          className="text-[12.5px] font-medium text-error"
+        >
           {error}
         </p>
       ) : (

@@ -33,6 +33,12 @@ const LO_QUE_SIGUE = [
   },
 ];
 
+const EMITIDA = new Intl.DateTimeFormat("es-PE", {
+  dateStyle: "long",
+  timeStyle: "short",
+  timeZone: "America/Lima",
+});
+
 /**
  * Paso final del onboarding · «Verificación aprobada».
  *
@@ -77,8 +83,14 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
         </p>
       </div>
 
-      <h2 className="mt-8 text-[15px] font-bold text-azul-800">Lo que sigue</h2>
-      <ul className="mt-3 flex flex-col gap-3">
+      <p className="mt-8 hidden border-t border-azul-200 pt-5 text-[13.5px] text-gris-700 print:block">
+        Constancia de verificación de identidad emitida el {EMITIDA.format(new Date())}
+        {titular?.nombreDePila && <> a nombre de {titular.nombreDePila}</>}. Ayni Bank · Banca 100 %
+        digital.
+      </p>
+
+      <h2 className="mt-8 text-[15px] font-bold text-azul-800 print:hidden">Lo que sigue</h2>
+      <ul className="mt-3 flex flex-col gap-3 print:hidden">
         {LO_QUE_SIGUE.map(({ Icono, texto }) => (
           <li key={texto} className="flex items-start gap-3 text-[13.5px] text-gris-700">
             <Icono aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-azul-600" />
@@ -89,7 +101,7 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
 
       {/* Proporción 3:2 como en el diseño. Con `flex-1` en los dos, el texto del botón
           principal se partía en tres líneas dentro de la píldora. */}
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row print:hidden">
         <Link
           href="/ingresar"
           className="inline-flex min-h-[48px] items-center justify-center gap-2.5 rounded-full bg-azul-700 px-5 text-[14.5px] font-bold whitespace-nowrap text-blanco sm:flex-[3] hover:bg-azul-800"
@@ -97,15 +109,16 @@ export function EstadoDeLaCuenta({ usuarioId }: { usuarioId: string }) {
           Iniciar sesión para ver mi cuenta
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </Link>
-        {/* La constancia en PDF no existe todavia: la genera HU-12. Enlazar a la pagina de
-            pendientes es preferible a un boton que no hace nada. */}
-        <Link
-          href="/pendiente"
+        {/* La constancia es esta misma pantalla impresa: el diálogo de impresión permite
+            guardarla en PDF. Sin número de cuenta ni CCI, por el mismo motivo (ADR-0038). */}
+        <button
+          type="button"
+          onClick={() => window.print()}
           className="inline-flex min-h-[48px] items-center justify-center gap-2.5 rounded-full border border-gris-300 px-5 text-[14.5px] font-semibold whitespace-nowrap text-azul-700 sm:flex-[2] hover:bg-azul-050"
         >
           <Download aria-hidden="true" className="h-4 w-4" />
           Descargar constancia
-        </Link>
+        </button>
       </div>
     </div>
   );

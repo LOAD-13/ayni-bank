@@ -2,6 +2,10 @@
 
 > Cómo se monta producción desde cero y cómo llega cada versión. La decisión y sus alternativas
 > están en [ADR-0026](../arquitectura/adr/0026-produccion-en-aws-con-despliegue-continuo.md).
+>
+> **Versión 2 del manual** (release 2.0.0, 30-oct-2026). Lo nuevo respecto a la 1.x está en la
+> [sección 12](#12-versión-2-qué-cambió-al-desplegar-la-200) y la verificación contra la nube, en la
+> [sección 13](#13-validación-de-la-versión-desplegada).
 
 ## 1. Arquitectura desplegada
 
@@ -12,12 +16,14 @@ flowchart LR
         C[Caddy<br/>TLS + cabeceras] --> W[ayni-web<br/>Next.js]
         C -- /api/* --> G[ayni-gateway<br/>JWT · CORS]
         G --> I[identity-service]
+        G -.límite de tasa.-> RD[(Redis)]
         G --> CB[core-banking-service]
         I --> K[kyc-service]
         I & CB & N[notification-service] --> R[(RabbitMQ)]
     end
     I & CB & N -- TLS 5432 --> DB[(RDS PostgreSQL 17)]
     I & K -- HTTPS --> S3[(S3 · documentos KYC)]
+    I & N -- HTTPS --> SES[Amazon SES<br/>correo]
     GH[GitHub Actions] -- OIDC --> ECR[(ECR)]
     GH -- SSM Run Command --> EC2
     EC2 -- rol IAM --> ECR
@@ -62,6 +68,8 @@ Se guardan en Parameter Store como `SecureString`. Ninguno se escribe en el repo
 P=/ayni/prod
 aws ssm put-parameter --type SecureString --name $P/jwt-clave            --value "$(openssl rand -base64 48)"
 aws ssm put-parameter --type SecureString --name $P/cifrado-clave        --value "$(openssl rand -base64 32)"
+aws ssm put-parameter --type SecureString --name $P/confirmacion-clave   --value "$(openssl rand -base64 32)"   # desde la 2.0
+aws ssm put-parameter --type SecureString --name $P/operador-clave       --value "$(openssl rand -base64 24 | tr -d '/+=')"   # opcional
 aws ssm put-parameter --type SecureString --name $P/db-app-contrasena    --value "$(openssl rand -base64 24 | tr -d '/+=')"
 aws ssm put-parameter --type SecureString --name $P/rabbitmq-contrasena  --value "$(openssl rand -base64 24 | tr -d '/+=')"
 aws ssm put-parameter --type SecureString --name $P/grafana-contrasena   --value "$(openssl rand -base64 18 | tr -d '/+=')"
@@ -191,3 +199,76 @@ docker compose -f infra/docker/ha/docker-compose.yml up -d --wait
 infra/scripts/prueba-de-conmutacion.sh        # RPO, coste por confirmación y RTO
 docker compose -f infra/docker/ha/docker-compose.yml down -v
 ```
+
+## 12. Versión 2: qué cambió al desplegar la 2.0.0
+
+La 2.0 reúne los sprints 3 a 5: transferencias con segundo factor, interbancaria, notificaciones por
+correo, tarjeta de débito virtual y recuperación de contraseña. La infraestructura de la plantilla
+es la misma; cambian los secretos, dos contenedores y una configuración de un solo uso.
+
+| Pieza | Qué cambia | Dónde |
+|---|---|---|
+| Confirmación de operaciones | Las transferencias piden un código de segundo factor firmado con una clave propia, distinta de la del JWT | SSM `/ayni/prod/confirmacion-clave` (nuevo, obligatorio) |
+| Panel del operador KYC | Clave del operador que aprueba aperturas pendientes | SSM `/ayni/prod/operador-clave` (opcional) |
+| Límite de tasa | El gateway cuenta las peticiones en **Redis** (48 MB, sin disco), compartido por todas sus réplicas | contenedor `ayni-redis` |
+| Correo | identity (códigos y recuperación) y notification (un correo por movimiento) envían por **Amazon SES**; el rol de la instancia solo puede enviar desde el remitente verificado | plantilla, `ses:FromAddress` |
+| Interbancaria | core-banking habla con la cámara de compensación por su contrato OpenAPI; en producción la cámara es el simulador del propio servicio (`/simulador/camara/v1`) | `AYNI_CAMARA_URL` |
+| Tarjeta de débito | El PAN se guarda cifrado con AES-256-GCM y una huella para la unicidad; la web solo ve los últimos 4 dígitos | `AYNI_CIFRADO_CLAVE` (la misma de siempre) |
+| Cuentas | Toda consulta de cuentas exige sesión en el gateway, también la del final del registro (ADR-0038) | `application.yml` del gateway |
+| Base de datos | Migraciones Flyway nuevas en identity y core-banking; se aplican solas al arrancar cada servicio | `db/migration` de cada servicio |
+
+### Procedimiento que se siguió (y que se repite en la próxima versión mayor)
+
+1. **Copia de la base antes de tocar nada.** Las migraciones no tienen vuelta atrás automática:
+   ```bash
+   aws rds create-db-snapshot --db-instance-identifier ayni-bank-prod      --db-snapshot-identifier ayni-bank-prod-antes-de-2-0-0
+   aws rds wait db-snapshot-available --db-snapshot-identifier ayni-bank-prod-antes-de-2-0-0
+   ```
+2. **Secretos nuevos** (sección 4): `confirmacion-clave`. Sin él, `desplegar.sh` (con `set -e`) se
+   detiene al leerlo, antes de cambiar ningún contenedor.
+3. **Release:** rama `release/2.0.0` desde `develop`, `VERSION` a `2.0.0`, PR a `main` con la CI
+   completa en verde y la aprobación de la revisora. El *push* a `main` dispara el CD, que enciende la
+   instancia si está apagada, publica las imágenes en ECR, despliega por SSM, pasa las pruebas de humo
+   y crea el tag `v2.0.0` con su Release.
+4. **Republicar los titulares una sola vez.** notification-service nació en la 2.0 y no conoce a los
+   clientes que ya existían. Por SSM Run Command se recrea identity con
+   `AYNI_REPUBLICAR_TITULARES=true` (variable del compose de producción), que vuelve a anunciar los
+   titulares activos, y se recrea otra vez sin ella, que por omisión es `false`.
+5. **Alinear ramas:** PR de `main` a `develop` para que `develop` lleve la versión y los *hotfix*.
+
+### Si algo falla
+
+- **Prueba de humo en rojo:** el job *Revertir* restaura las imágenes y la configuración anteriores
+  (sección 7). La base no se toca.
+- **Migración incompatible:** se restaura el snapshot en una instancia nueva, se apunta
+  `/ayni/prod/db-host` a ella y se vuelve a desplegar la etiqueta anterior desde *Run workflow*.
+- **Fallo intermitente en la CI del CD** (nos pasó con la 2.0): el CD se corta antes de desplegar, así
+  que producción sigue en la versión anterior. Se corrige con un `hotfix/` a `main` y el CD vuelve a
+  correr solo.
+
+## 13. Validación de la versión desplegada
+
+Además de las pruebas de humo del pipeline, la web tiene una suite de Playwright que corre contra la
+URL pública y graba la ejecución en video (`web/ayni-web/e2e/nube`). No levanta nada en local.
+
+```bash
+cd web/ayni-web
+# Parte pública: portada y cabeceras, registro, ingreso, recuperación, accesibilidad y 401
+BASE_URL_NUBE=https://<url> npx playwright test
+
+# Recorrido con sesión: ingreso con TOTP, depósito, transferencia, interbancaria y tarjeta.
+# Necesita una cuenta de prueba ya abierta; las variables nunca van al repositorio.
+BASE_URL_NUBE=https://<url> NUBE_CORREO=… NUBE_CONTRASENA=… NUBE_TOTP_SEMILLA=…   NUBE_CUENTA_DESTINO=… npx playwright test
+```
+
+Con `ROTULOS=1`, cada paso muestra en pantalla qué se está comprobando y la grabación va a cámara
+lenta; así se generan los videos de evidencia. El informe queda en `informe-playwright/` y los videos
+y trazas en `test-results/`.
+
+| Comprobación (2.0.0, 30-oct-2026) | Resultado |
+|---|---|
+| CD de `main` (imágenes, despliegue, humo, tag) | verde, tag `v2.0.0` |
+| Web por HTTPS y versión en el ingreso | 200, «versión v2.0.0» |
+| HSTS, CSP con `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff` | presentes |
+| Registro, ingreso y recuperación sin violaciones WCAG 2.1 AA (axe) | 0 violaciones |
+| `GET /api/v1/cuentas/mia` sin token | 401 |

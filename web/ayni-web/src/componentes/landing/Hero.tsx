@@ -66,7 +66,7 @@ export function Hero() {
               <span aria-hidden="true">→</span>
             </Link>
             <Link
-              href="/pendiente"
+              href="#como-funciona"
               className="inline-flex min-h-[44px] items-center justify-center gap-2.5 rounded-full bg-blanco/10 px-7 py-4 text-[16px] font-semibold text-blanco hover:bg-blanco/15"
             >
               <Play aria-hidden="true" className="h-4 w-4" />

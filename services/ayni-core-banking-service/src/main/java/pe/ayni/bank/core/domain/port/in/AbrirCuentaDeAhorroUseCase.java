@@ -8,9 +8,9 @@ import pe.ayni.bank.core.domain.model.Moneda;
 /**
  * Puerto de entrada de HU-05.
  *
- * <p>Lo invoca el escuchador del evento {@code SolicitudAprobada}, no un controlador REST:
- * abrir una cuenta no es algo que nadie pida por HTTP, es la consecuencia de que un KYC
- * salga aprobado.
+ * <p>La cuenta en soles la abre el escuchador del evento {@code SolicitudAprobada}: es la
+ * consecuencia de que un KYC salga aprobado. La cuenta en dolares la pide el propio cliente
+ * ya con la de soles abierta (HU-12).
  */
 public interface AbrirCuentaDeAhorroUseCase {
 

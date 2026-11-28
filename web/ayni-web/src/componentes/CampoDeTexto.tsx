@@ -18,7 +18,7 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "id"> {
  *   no como texto suelto que aparece en otro punto de la pagina.
  * - `aria-invalid` marca el campo como erroneo para la tecnologia asistiva. Sin el, un
  *   borde rojo es informacion que solo existe para quien ve.
- * - `role="alert"` en el mensaje: se anuncia en cuanto aparece, sin esperar a que el
+ * - `role="alert" aria-live="assertive"` en el mensaje: se anuncia en cuanto aparece, sin esperar a que el
  *   usuario vuelva a recorrer el formulario.
  */
 export function CampoDeTexto({ etiqueta, ayuda, error, className = "", ...resto }: Props) {
@@ -56,7 +56,12 @@ export function CampoDeTexto({ etiqueta, ayuda, error, className = "", ...resto 
       )}
 
       {error && (
-        <p id={idError} role="alert" className="text-caption font-medium text-error">
+        <p
+          id={idError}
+          role="alert"
+          aria-live="assertive"
+          className="text-caption font-medium text-error"
+        >
           {error}
         </p>
       )}

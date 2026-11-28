@@ -9,8 +9,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.NotAudited;
+
 /** La fila de la tarjeta (HU-09): el PAN solo aparece cifrado y como huella. */
 @Entity
+@Audited
 @Table(name = "tarjeta")
 public class TarjetaEntity {
 
@@ -23,9 +27,12 @@ public class TarjetaEntity {
     @Column(name = "usuario_id", nullable = false)
     private UUID usuarioId;
 
+    // El PAN no cambia nunca: no hace falta repetirlo, ni cifrado, en cada version del historial.
+    @NotAudited
     @Column(name = "pan_cifrado", nullable = false, length = 120)
     private String panCifrado;
 
+    @NotAudited
     @Column(name = "pan_huella", nullable = false, length = 64)
     private String panHuella;
 
@@ -77,6 +84,11 @@ public class TarjetaEntity {
 
     LocalDate venceEn() {
         return venceEn;
+    }
+
+    TarjetaEntity conEstado(String nuevo) {
+        this.estado = nuevo;
+        return this;
     }
 
     String estado() {

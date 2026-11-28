@@ -122,7 +122,7 @@ public class PasosDeSegundoFactor {
                 Instant.parse("%d-10-%02dT%02d:%02d:00Z".formatted(anio, dia, hora, minuto)));
 
         generarDesafioService = new GenerarDesafioCodigoService(
-                desafios, usuarios, notificador, reloj, solicitudes);
+                desafios, usuarios, notificador, reloj, new java.security.SecureRandom(), solicitudes);
         seleccionarService = new SeleccionarSegundoFactorService(
                 metodos, totp, reloj, solicitudes, segundosFactores, usuarios, generarDesafioService);
         verificarContactoService = new VerificarContactoRegistroService(

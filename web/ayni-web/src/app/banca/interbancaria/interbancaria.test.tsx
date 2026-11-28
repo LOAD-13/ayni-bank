@@ -82,6 +82,23 @@ describe("Transferencia interbancaria (HU-11)", () => {
     expect(iniciarConfirmacion).not.toHaveBeenCalled();
   });
 
+  it("mientras valida el CCI no deja continuar, y al terminar sigue sin dar el CCI por erróneo", async () => {
+    const user = userEvent.setup();
+    render(<PaginaInterbancaria />);
+
+    await user.type(screen.getByLabelText("CCI de destino"), "002-193-000012345678-86");
+    const ocupado = screen.getByRole("button", { name: "Un momento…" });
+    expect(ocupado).toBeDisabled();
+    expect(ocupado).toHaveAttribute("aria-busy", "true");
+
+    await screen.findByText("CCI válido.");
+    await user.type(screen.getByLabelText("Importe en soles"), "5");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(
+      screen.queryByText("Revisa el CCI: son 20 dígitos y los dos últimos lo validan."),
+    ).not.toBeInTheDocument();
+  });
+
   it("confirma con el segundo factor y envía solo el CCI, el importe y las cabeceras: nunca un usuario", async () => {
     const user = userEvent.setup();
     vi.mocked(iniciarConfirmacion).mockResolvedValue({

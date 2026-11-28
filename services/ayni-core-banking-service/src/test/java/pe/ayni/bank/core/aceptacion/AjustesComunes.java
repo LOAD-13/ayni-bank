@@ -25,6 +25,8 @@ public class AjustesComunes {
     private JdbcTemplate jdbc;
     @Autowired
     private CamaraDePrueba camara;
+    @Autowired
+    private FuenteDeTipoDeCambioDePrueba bcrp;
 
     @ParameterType("\\d{4}-\\d{2}-\\d{2}")
     public LocalDate fecha(String texto) {
@@ -44,12 +46,24 @@ public class AjustesComunes {
     @Before(order = 0)
     public void limpiar() {
         camara.reiniciar();
+        bcrp.reiniciar();
         jdbc.update("DELETE FROM core.devengo_interes");
         jdbc.update("DELETE FROM core.capitalizacion_interes");
         jdbc.update("DELETE FROM core.cierre_diario");
+        // La pista es de solo insercion (V14): solo las pruebas, como duenas de la tabla, apagan el
+        // trigger un instante para empezar cada escenario de cero.
+        jdbc.execute("ALTER TABLE core.evento_auditoria DISABLE TRIGGER USER");
         jdbc.update("DELETE FROM core.evento_auditoria");
+        jdbc.execute("ALTER TABLE core.evento_auditoria ENABLE TRIGGER USER");
+        // La conversion tambien es de solo insercion (V16): se vacia igual que la pista.
+        jdbc.execute("ALTER TABLE core.conversion DISABLE TRIGGER USER");
+        jdbc.update("DELETE FROM core.conversion");
+        jdbc.execute("ALTER TABLE core.conversion ENABLE TRIGGER USER");
+        jdbc.update("DELETE FROM core.tipo_cambio");
         jdbc.update("DELETE FROM core.outbox");
         jdbc.update("DELETE FROM core.operacion_idempotente");
+        // Apuntan a cuenta: se borran antes que ella (HU-15, cuatro ojos).
+        jdbc.update("DELETE FROM core.solicitud_bloqueo");
         jdbc.update("DELETE FROM core.consumo_tarjeta");
         jdbc.update("DELETE FROM core.control_tarjeta");
         jdbc.update("DELETE FROM core.tarjeta");

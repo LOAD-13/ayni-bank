@@ -18,7 +18,8 @@ public class ConfiguracionDeSeguridad {
     @Bean
     public FiltroDeAutenticacion filtroDeAutenticacion(
             VerificadorDeTokens verificador,
-            @Value("${ayni.seguridad.rutas-protegidas}") List<String> rutasProtegidas) {
-        return new FiltroDeAutenticacion(verificador, rutasProtegidas);
+            @Value("${ayni.seguridad.rutas-protegidas}") List<String> rutasProtegidas,
+            @Value("${ayni.seguridad.permisos-por-ruta:}") List<String> permisosPorRuta) {
+        return new FiltroDeAutenticacion(verificador, rutasProtegidas, new PermisosPorRuta(permisosPorRuta));
     }
 }

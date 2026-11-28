@@ -16,6 +16,7 @@ import {
   type ControlesDeTarjeta,
 } from "@/lib/api";
 import { formatearImporte, normalizarImporte, porcentajeUsado } from "@/lib/formato";
+import { falloInesperado } from "@/lib/mensajes";
 
 type Accion = "congelamiento" | "internet" | "limite";
 
@@ -100,6 +101,7 @@ export default function PaginaDeLaTarjeta() {
       {/* Siempre en el DOM: una región viva que aparece junto con su texto no se anuncia. */}
       <p
         role="status"
+        aria-live="polite"
         className={
           aviso
             ? "rounded-lg border border-exito/30 bg-exito/5 p-4 text-body text-gris-900"
@@ -111,6 +113,7 @@ export default function PaginaDeLaTarjeta() {
       {error && (
         <p
           role="alert"
+          aria-live="assertive"
           className="rounded-lg border border-error bg-blanco p-4 text-body text-error"
         >
           {error}
@@ -212,7 +215,7 @@ export default function PaginaDeLaTarjeta() {
 function mensajeDe(fallo: unknown): string {
   return fallo instanceof ErrorDeApi
     ? (fallo.problema.detail ?? fallo.message)
-    : "No pudimos completar el cambio. Inténtalo de nuevo.";
+    : falloInesperado("completar el cambio");
 }
 
 function avisoDe(accion: Accion, controles: ControlesDeTarjeta): string {

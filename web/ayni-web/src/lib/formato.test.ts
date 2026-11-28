@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dividirHalfEven, porcentajeUsado, rendimientoMensualEstimado } from "./formato";
+import { dividirHalfEven, porcentajeUsado, rendimientoMensualEstimado, superaA } from "./formato";
 
 describe("dividirHalfEven", () => {
   it("redondea al entero más cercano cuando no hay empate", () => {
@@ -68,5 +68,24 @@ describe("porcentajeUsado · HU-10", () => {
   it("un límite cero o un texto que no es importe dan 0", () => {
     expect(porcentajeUsado("10.00", "0.00")).toBe(0);
     expect(porcentajeUsado("diez", "300.00")).toBe(0);
+  });
+});
+
+describe("superaA · HU-17", () => {
+  it("compara al céntimo, sin coma flotante", () => {
+    expect(superaA("850.01", "850.00")).toBe(true);
+    expect(superaA("850.00", "850.00")).toBe(false);
+    expect(superaA("849.99", "850.00")).toBe(false);
+  });
+
+  it("alinea escalas distintas antes de comparar", () => {
+    expect(superaA("850.0", "850.00")).toBe(false);
+    expect(superaA("850.1", "850.09")).toBe(true);
+    expect(superaA("1000.00", "999.99999999")).toBe(true);
+  });
+
+  it("con un texto que no es importe no bloquea: decide el servidor", () => {
+    expect(superaA("abc", "850.00")).toBe(false);
+    expect(superaA("10.00", "")).toBe(false);
   });
 });

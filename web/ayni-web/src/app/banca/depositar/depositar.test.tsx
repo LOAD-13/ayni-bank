@@ -51,7 +51,10 @@ describe("Depósito simulado", () => {
     render(<PaginaDeDeposito />);
 
     await intentar(user, "100");
-    expect(await screen.findByRole("alert")).toHaveTextContent(/inténtalo de nuevo/i);
+    // Qué pasó y qué hacer: con dinero de por medio, mirar los movimientos antes de repetir.
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /No pudimos completar el depósito\. Antes de repetirla, revisa en tus movimientos si ya se hizo/,
+    );
     await intentar(user, "100");
 
     expect(depositar).toHaveBeenCalledTimes(2);

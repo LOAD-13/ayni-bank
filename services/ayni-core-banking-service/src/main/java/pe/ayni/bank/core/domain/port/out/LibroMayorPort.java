@@ -32,6 +32,9 @@ public interface LibroMayorPort {
     /** La cuenta tecnica que paga los intereses capitalizados (HU-06). Sembrada por V5. */
     Cuenta cuentaDeIntereses(Moneda moneda);
 
+    /** La posicion cambiaria del banco en esa moneda: contrapartida de las conversiones (HU-12). Sembrada por V13. */
+    Cuenta cuentaDePosicionCambiaria(Moneda moneda);
+
     /**
      * Bloquea las cuentas hasta el final de la transaccion ({@code SELECT ... FOR UPDATE}).
      *

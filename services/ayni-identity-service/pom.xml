@@ -15,6 +15,17 @@
     <name>ayni-identity-service</name>
 
     <dependencies>
+        <!-- Spring Boot 4 separa las pruebas por capas en modulos propios. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Correo real en produccion con Amazon SES. El cliente HTTP es el de
              java.net (url-connection-client) y no Netty ni Apache: menos
              dependencias que escanear y ninguna conexion persistente que gestionar. -->
@@ -42,7 +53,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <!-- Validacion declarativa de los DTO de entrada (@Email, @Pattern,
              @AssertTrue). Es una dependencia aparte desde Spring Boot 3: no
@@ -60,6 +71,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Historial de versiones de las entidades sensibles con su actor (HU-15, AYNI-279). -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-envers</artifactId>
         </dependency>
         <!-- Solo `spring-security-crypto`, no `spring-boot-starter-security`.
              Aqui hace falta unicamente Argon2PasswordEncoder para HU-01;
@@ -93,8 +109,8 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
         <!-- Desde Flyway 10 el soporte de cada motor va en su propio modulo -->
         <dependency>
@@ -109,7 +125,13 @@
         <!-- Interoperabilidad con el almacenamiento de objetos contra un MinIO real (T-20). -->
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Las migraciones de roles (V13) contra un PostgreSQL real. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -186,7 +208,7 @@
              version fijada a mano, igual que minio/swagger-annotations-jakarta. -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
+            <artifactId>resilience4j-spring-boot4</artifactId>
             <version>2.4.0</version>
         </dependency>
         <!-- Solo para el perfil `e2e` (ver NotificadorDeSegundoFactorPorCorreoDePrueba):
@@ -219,7 +241,7 @@
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>7.11.0</version>
+                <version>7.27.0</version>
                 <executions>
                     <execution>
                         <id>generar-cliente-kyc</id>

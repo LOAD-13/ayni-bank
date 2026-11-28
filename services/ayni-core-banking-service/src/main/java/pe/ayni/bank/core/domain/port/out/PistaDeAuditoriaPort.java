@@ -37,4 +37,21 @@ public interface PistaDeAuditoriaPort {
 
     /** HU-09: revelar el PAN completo queda registrado con la tarjeta, la hora y la IP. */
     void registrarRevelacionDePan(UUID usuarioId, UUID tarjetaId, String ip);
+
+    /**
+     * HU-15, AYNI-282: quien inicio una operacion sensible intento aprobarla. La implementacion lo
+     * confirma en una transaccion propia: la denegacion deshace la aprobacion, pero no su rastro.
+     */
+    /**
+     * HU-15, escenario 3: un usuario sin el permiso de escritura intento usarlo (por ejemplo, un auditor). Se
+     * confirma en una transaccion propia, como los demas rechazos. {@code permiso} es el que le falto.
+     */
+    default void registrarEscrituraDenegada(UUID usuarioId, String permiso) {
+        // Solo los dobles de prueba que nunca la usan se quedan con esta version.
+        throw new UnsupportedOperationException("Esta pista no registra escrituras denegadas.");
+    }
+
+    default void registrarCuatroOjosDenegado(UUID usuarioId, UUID solicitudId) {
+        registrar(TipoDeEventoDeOperacion.CUATRO_OJOS_DENEGADO, usuarioId, solicitudId);
+    }
 }

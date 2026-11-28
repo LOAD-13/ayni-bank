@@ -12,6 +12,7 @@ import {
   ErrorDeApi,
   extraerDatosDelDni,
 } from "@/lib/api";
+import { falloInesperado } from "@/lib/mensajes";
 
 interface Props {
   solicitudId: string;
@@ -73,14 +74,14 @@ export function ConfirmacionDeDatosDelDni({ solicitudId, onConfirmado, onDerivad
           mensaje:
             error instanceof ErrorDeApi
               ? (error.problema.detail ?? error.message)
-              : "No pudimos leer los datos de tu DNI. Inténtalo de nuevo.",
+              : falloInesperado("leer los datos de tu DNI"),
         });
       });
   }, [solicitudId]);
 
   if (estado.fase === "leyendo") {
     return (
-      <p role="status" className="py-10 text-center text-[14.5px] text-gris-700">
+      <p role="status" aria-live="polite" className="py-10 text-center text-[14.5px] text-gris-700">
         Leyendo los datos de tu DNI…
       </p>
     );
@@ -99,6 +100,7 @@ export function ConfirmacionDeDatosDelDni({ solicitudId, onConfirmado, onDerivad
       <div className="flex flex-col gap-5">
         <p
           role="alert"
+          aria-live="assertive"
           className="flex items-start gap-2.5 rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -177,7 +179,7 @@ function FormularioDeConfirmacion({
         setErrores(error.porCampo());
         setErrorGeneral(error.problema.detail ?? error.message);
       } else {
-        setErrorGeneral("No pudimos confirmar tus datos. Inténtalo de nuevo.");
+        setErrorGeneral(falloInesperado("confirmar tus datos"));
       }
     } finally {
       setEnviando(false);
@@ -203,6 +205,7 @@ function FormularioDeConfirmacion({
       {errorGeneral && (
         <p
           role="alert"
+          aria-live="assertive"
           className="rounded-[12px] border border-error bg-blanco p-4 text-[13.5px] text-error"
         >
           {errorGeneral}

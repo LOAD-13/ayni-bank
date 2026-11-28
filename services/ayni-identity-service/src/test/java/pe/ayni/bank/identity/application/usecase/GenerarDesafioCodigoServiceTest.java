@@ -46,7 +46,8 @@ class GenerarDesafioCodigoServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GenerarDesafioCodigoService(repositorioDesafio, repositorioUsuarios, notificador);
+        service = new GenerarDesafioCodigoService(repositorioDesafio, repositorioUsuarios, notificador,
+                java.time.Clock.systemUTC(), new java.util.Random(321), null);
     }
 
     private static Usuario usuarioDePrueba(UUID id) {
@@ -145,7 +146,8 @@ class GenerarDesafioCodigoServiceTest {
         pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort solicitudes = org.mockito.Mockito.mock(
                 pe.ayni.bank.identity.domain.port.out.RepositorioDeSolicitudesPort.class);
         GenerarDesafioCodigoService conSolicitudes = new GenerarDesafioCodigoService(
-                repositorioDesafio, repositorioUsuarios, notificador, java.time.Clock.systemUTC(), solicitudes);
+                repositorioDesafio, repositorioUsuarios, notificador, java.time.Clock.systemUTC(),
+                new java.util.Random(321), solicitudes);
 
         UUID senueloId = UUID.randomUUID();
         when(solicitudes.titularDe(senueloId)).thenReturn(Optional.empty());

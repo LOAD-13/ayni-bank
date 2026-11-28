@@ -46,7 +46,7 @@ class DespachadorProgramadoTest {
                 .extracting(Binding::getRoutingKey)
                 .containsExactly("identity.titular.activado", "core.transferencia.realizada",
                         "core.deposito.simulado.registrado", "core.interes.capitalizado");
-        assertThat(mensajeria.conversorDeMensajes(new com.fasterxml.jackson.databind.ObjectMapper())).isNotNull();
+        assertThat(mensajeria.conversorDeMensajes(new tools.jackson.databind.json.JsonMapper())).isNotNull();
 
         var notificaciones = new ConfiguracionDeNotificaciones();
         assertThat(notificaciones.politicaDeReintentos(Duration.ofSeconds(30), 5).maximo()).isEqualTo(5);

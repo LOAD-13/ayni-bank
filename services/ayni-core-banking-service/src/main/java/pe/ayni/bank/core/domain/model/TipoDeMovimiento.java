@@ -8,5 +8,7 @@ public enum TipoDeMovimiento {
     /** Entrada de dinero simulada, contra la cuenta tecnica de fondeo. */
     DEPOSITO_SIMULADO,
     /** Capitalizacion mensual de intereses, contra la cuenta tecnica de intereses · HU-06. */
-    INTERES
+    INTERES,
+    /** Una de las dos patas de un cambio de moneda (HU-12): cliente y posicion cambiaria. */
+    CONVERSION
 }

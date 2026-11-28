@@ -7,8 +7,8 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import pe.ayni.bank.notification.domain.model.EstadoDeNotificacion;
 import pe.ayni.bank.notification.domain.model.IntentoDeEnvio;
@@ -61,7 +61,7 @@ public class AdaptadorRepositorioDeNotificaciones implements RepositorioDeNotifi
     private String json(Notificacion n) {
         try {
             return mapeador.writeValueAsString(n.datos());
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // Un Map<String, String> siempre se puede escribir: llegar aqui es un error de programacion.
             throw new IllegalStateException("No se pudieron serializar los datos del aviso", e);
         }
