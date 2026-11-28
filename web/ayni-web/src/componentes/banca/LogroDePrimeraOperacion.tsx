@@ -31,7 +31,7 @@ export function LogroDePrimeraOperacion() {
     >
       <span
         aria-hidden="true"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dorado-500 text-blanco"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dorado-500 text-azul-900"
       >
         <Award className="h-6 w-6" />
       </span>

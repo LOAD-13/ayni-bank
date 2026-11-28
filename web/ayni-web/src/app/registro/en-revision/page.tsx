@@ -47,7 +47,7 @@ export default async function EnRevision({
           <div className="flex flex-col items-center gap-4 text-center">
             <span
               aria-hidden="true"
-              className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dorado-500 bg-dorado-100 text-dorado-700"
+              className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dorado-500 bg-dorado-100 text-dorado-800"
             >
               <SearchCheck className="h-9 w-9" />
             </span>
