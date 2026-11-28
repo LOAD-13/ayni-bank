@@ -24,6 +24,7 @@ import pe.ayni.bank.core.domain.model.CuatroOjosException;
 import pe.ayni.bank.core.domain.model.SolicitudDeBloqueo;
 import pe.ayni.bank.core.domain.model.SolicitudDeBloqueoNoValidaException;
 import pe.ayni.bank.core.domain.port.in.BloquearCuentaUseCase;
+import pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort;
 
 /**
  * Back-office: bloqueo de la cuenta de un cliente con cuatro ojos (HU-15, AYNI-282). El operador
@@ -42,9 +43,11 @@ public class BloqueosController {
     private static final Logger log = LoggerFactory.getLogger(BloqueosController.class);
 
     private final BloquearCuentaUseCase bloqueos;
+    private final PistaDeAuditoriaPort auditoria;
 
-    public BloqueosController(BloquearCuentaUseCase bloqueos) {
+    public BloqueosController(BloquearCuentaUseCase bloqueos, PistaDeAuditoriaPort auditoria) {
         this.bloqueos = bloqueos;
+        this.auditoria = auditoria;
     }
 
     @PostMapping
@@ -74,9 +77,11 @@ public class BloqueosController {
         return SolicitudDto.desde(bloqueos.aprobar(supervisor, id));
     }
 
-    private static void exigir(String permisos, String permiso, UUID usuario) {
+    private void exigir(String permisos, String permiso, UUID usuario) {
         if (permisos == null || !Arrays.asList(permisos.split(",")).contains(permiso)) {
             log.warn("Bloqueo de cuenta denegado: sin el permiso {}. usuarioId={}", permiso, usuario);
+            // HU-15, escenario 3: el intento queda en la propia pista, no solo en el log.
+            auditoria.registrarEscrituraDenegada(usuario, permiso);
             throw new SinPermisoException();
         }
     }

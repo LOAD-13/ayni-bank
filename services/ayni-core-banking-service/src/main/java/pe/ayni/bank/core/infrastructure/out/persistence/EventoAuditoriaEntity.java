@@ -49,7 +49,7 @@ public class EventoAuditoriaEntity {
     private String resultado;
 
     private static final Set<String> RECHAZOS =
-            Set.of("OPERACION_RECHAZADA", "APERTURA_RECHAZADA", "ACCESO_AJENO_DENEGADO", "CUATRO_OJOS_DENEGADO");
+            Set.of("OPERACION_RECHAZADA", "APERTURA_RECHAZADA", "ACCESO_AJENO_DENEGADO", "CUATRO_OJOS_DENEGADO", "ESCRITURA_DENEGADA");
 
     protected EventoAuditoriaEntity() {
         // Exigido por JPA.
