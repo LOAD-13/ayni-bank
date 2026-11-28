@@ -280,6 +280,7 @@ services:
       - --storage.tsdb.retention.size=5GB
     volumes:
       - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observabilidad/alertas/hu14-sla.yml:/etc/prometheus/alertas/hu14-sla.yml:ro
       - prometheus-data:/prometheus
     logging: *logs
     networks: [ayni]
