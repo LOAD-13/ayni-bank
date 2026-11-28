@@ -77,4 +77,11 @@ public class AdaptadorPistaDeAuditoria implements PistaDeAuditoriaPort {
         repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.CUATRO_OJOS_DENEGADO.name(),
                 usuarioId, solicitudId, null, reloj.instant())));
     }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void registrarEscrituraDenegada(UUID usuarioId, String permiso) {
+        repositorio.save(conPeticion(new EventoAuditoriaEntity(TipoDeEventoDeOperacion.ESCRITURA_DENEGADA.name(),
+                usuarioId, null, permiso, reloj.instant())));
+    }
 }

@@ -21,6 +21,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 import io.cucumber.spring.CucumberContextConfiguration;
 import pe.ayni.bank.core.application.usecase.AbrirCuentaDeAhorroService;
+import pe.ayni.bank.core.application.usecase.BloquearCuentaService;
+import pe.ayni.bank.core.application.usecase.ConsultarHistorialDeCuentaService;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorHistorialDeCuentas;
+import pe.ayni.bank.core.infrastructure.out.persistence.AdaptadorSolicitudesDeBloqueo;
 import pe.ayni.bank.core.application.usecase.CierreDiarioService;
 import pe.ayni.bank.core.application.usecase.ConfirmarConversionService;
 import pe.ayni.bank.core.application.usecase.ConsultarRendimientoService;
@@ -78,6 +82,8 @@ import pe.ayni.bank.core.infrastructure.out.persistence.BandejaDeSalida;
         ConfirmarConversionService.class, ObtenerTipoDeCambioService.class,
         AdaptadorRegistroDeConversiones.class, AdaptadorRepositorioDeTipoDeCambio.class,
         AdaptadorSegmentosCambiarios.class,
+        BloquearCuentaService.class, AdaptadorSolicitudesDeBloqueo.class,
+        ConsultarHistorialDeCuentaService.class, AdaptadorHistorialDeCuentas.class,
         AdaptadorRepositorioDeTarjetas.class, CifradorDePan.class, ConfiguracionDeTarjeta.class,
         ContextoDeAceptacion.Infraestructura.class})
 public class ContextoDeAceptacion {

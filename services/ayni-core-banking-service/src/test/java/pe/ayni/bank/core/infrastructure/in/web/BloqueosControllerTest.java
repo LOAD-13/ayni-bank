@@ -34,7 +34,9 @@ class BloqueosControllerTest {
     private static final String CUERPO = "{\"numeroDeCuenta\":\"00110000000101\",\"motivo\":\"Fraude\"}";
 
     private final BloquearCuentaUseCase bloqueos = mock(BloquearCuentaUseCase.class);
-    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new BloqueosController(bloqueos)).build();
+    private final pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort auditoria =
+            mock(pe.ayni.bank.core.domain.port.out.PistaDeAuditoriaPort.class);
+    private final MockMvc mvc = MockMvcBuilders.standaloneSetup(new BloqueosController(bloqueos, auditoria)).build();
     private final SolicitudDeBloqueo pedida =
             SolicitudDeBloqueo.iniciar(UUID.randomUUID(), UUID.randomUUID(), "Fraude", OPERADOR, AHORA);
 
@@ -57,6 +59,9 @@ class BloqueosControllerTest {
         mvc.perform(post(RUTA + "/" + pedida.id() + "/aprobacion").header("X-Ayni-Usuario", SUPERVISOR))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(bloqueos);
+        // HU-15, escenario 3: cada intento denegado queda en la pista con el permiso que faltaba.
+        org.mockito.Mockito.verify(auditoria).registrarEscrituraDenegada(OPERADOR, "cliente:bloquear_iniciar");
+        org.mockito.Mockito.verify(auditoria).registrarEscrituraDenegada(SUPERVISOR, "cliente:bloquear_aprobar");
     }
 
     @Test

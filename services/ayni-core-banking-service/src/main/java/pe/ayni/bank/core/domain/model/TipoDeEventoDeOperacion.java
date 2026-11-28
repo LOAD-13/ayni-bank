@@ -42,5 +42,7 @@ public enum TipoDeEventoDeOperacion {
     /** HU-15, AYNI-282: un supervisor distinto aprobo el bloqueo y la cuenta quedo bloqueada. */
     CUENTA_BLOQUEADA,
     /** HU-15, AYNI-282: quien inicio el bloqueo intento aprobarlo y se le denego. */
-    CUATRO_OJOS_DENEGADO
+    CUATRO_OJOS_DENEGADO,
+    /** HU-15, escenario 3: alguien sin el permiso de escritura lo intento y se le denego. */
+    ESCRITURA_DENEGADA
 }
