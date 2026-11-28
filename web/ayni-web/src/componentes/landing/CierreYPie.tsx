@@ -80,7 +80,7 @@ export function CierreFinal() {
             aria-hidden="true"
             width={48}
             height={48}
-            className="h-9 w-9"
+            className="h-9 w-9 object-contain"
           />
 
           <h2 className="mt-5 max-w-[640px] text-[clamp(1.9rem,4.2vw,52px)] leading-[1.1] font-bold text-azul-900">
