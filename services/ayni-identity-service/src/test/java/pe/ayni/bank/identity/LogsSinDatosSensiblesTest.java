@@ -9,6 +9,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.LoggingEvent;
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -29,6 +30,8 @@ class LogsSinDatosSensiblesTest {
         assertThat(patron).as("logging.pattern.console en application.yml").isNotBlank();
 
         LoggerContext contexto = new LoggerContext();
+        // El patron imprime el traceId del MDC: un contexto nuevo no trae adaptador de MDC.
+        contexto.setMDCAdapter(new LogbackMDCAdapter());
         PatternLayout disposicion = new PatternLayout();
         disposicion.setContext(contexto);
         disposicion.getInstanceConverterMap().put("wEx", WhitespaceThrowableProxyConverter::new);
